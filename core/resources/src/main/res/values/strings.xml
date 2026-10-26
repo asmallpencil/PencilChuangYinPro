@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">铅笔创印Pro</string>
+
+    <!-- 通用动作 -->
+    <string name="action_confirm">确定</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_save">保存</string>
+    <string name="action_delete">删除</string>
+    <string name="action_edit">编辑</string>
+    <string name="action_import">导入</string>
+    <string name="action_export">导出</string>
+    <string name="action_share">分享</string>
+    <string name="action_read_more">展开</string>
+    <string name="action_read_less">收起</string>
+    <string name="action_collapse">收起</string>
+
+    <!-- 通用状态 -->
+    <string name="state_loading">加载中…</string>
+    <string name="state_empty">暂无内容</string>
+    <string name="state_error">出错了</string>
+    <string name="state_success">操作成功</string>
+    <string name="state_retry">重试</string>
+    <string name="state_no_data">没有数据</string>
+
+    <!-- 通用标签 -->
+    <string name="label_back">返回</string>
+    <string name="label_next">下一步</string>
+    <string name="label_done">完成</string>
+    <string name="label_ok">好的</string>
+    <string name="label_title">标题</string>
+    <string name="label_name">名称</string>
+    <string name="label_optional">（可选）</string>
+    <string name="label_settings">设置</string>
+
+    <!-- 底部导航 -->
+    <string name="nav_home">主页</string>
+    <string name="nav_creative">创意</string>
+    <string name="nav_pstation">P站</string>
+
+    <!-- 创意页 -->
+    <string name="creative_title">创意工坊</string>
+    <string name="creative_text_print">文本打印</string>
+    <string name="creative_text_print_desc">编辑文字、字体与排版，热敏输出</string>
+    <string name="creative_image_print">图片打印</string>
+    <string name="creative_image_print_desc">相册/PDF/压缩包图片，黑白算法热敏输出</string>
+    <string name="creative_photo_print">拍照打印</string>
+    <string name="creative_photo_print_desc">拍摄纸面文档，自动拉正、去阴影并提取文字后打印</string>
+    <string name="creative_ai_print">AI 打印</string>
+    <string name="creative_ai_print_desc">对话下达任务，AI 自动调用工具完成并打印</string>
+    <string name="image_action_camera">拍照打印</string>
+    <string name="creative_label_print">标签打印</string>
+    <string name="creative_empty_desc">灵感功能筹备中，敬请期待</string>
+    <string name="common_coming_soon">敬请期待</string>
+
+    <!-- P站（自研客户端） -->
+    <string name="pstation_title">P站</string>
+    <string name="pstation_desc">登录 P 站，浏览推荐 / 排行榜 / 搜索作品，并一键打印原图</string>
+
+    <string name="pixiv_login">登录 P 站</string>
+    <string name="pixiv_logout">退出登录</string>
+    <string name="pixiv_login_web_title">登录 P 站</string>
+    <string name="pixiv_login_browser_hint">在打开的页面中登录 P 站账号，完成授权后将自动返回</string>
+    <string name="pixiv_login_loading">正在登录…</string>
+    <string name="pixiv_login_failed">登录失败，请重试</string>
+    <string name="pixiv_not_login_title">尚未登录</string>
+    <string name="pixiv_not_login_desc">登录后可浏览推荐与排行榜、搜索作品，并把原图一键送到打印页</string>
+    <string name="pixiv_go_login">去登录</string>
+
+    <string name="pixiv_recommend">推荐</string>
+    <string name="pixiv_rank_day">每日</string>
+    <string name="pixiv_rank_week">每周</string>
+    <string name="pixiv_rank_month">每月</string>
+    <string name="pixiv_rank_week_original">原创</string>
+    <string name="pixiv_rank_week_rookie">新人</string>
+    <string name="pixiv_rank_day_male">受男性欢迎</string>
+    <string name="pixiv_rank_day_female">受女性欢迎</string>
+
+    <string name="pixiv_search">搜索</string>
+    <string name="pixiv_search_hint">搜索作品 / 标签</string>
+    <string name="pixiv_chinese_first">中文优先</string>
+    <string name="pixiv_chinese_first_desc">优先展示中文小说</string>
+    <string name="pixiv_sort_new">最新</string>
+    <string name="pixiv_sort_old">最旧</string>
+    <string name="pixiv_target_partial_tag">标签·模糊</string>
+    <string name="pixiv_target_exact_tag">标签·精确</string>
+    <string name="pixiv_target_title_caption">标题/简介</string>
+    <string name="pixiv_empty">未找到相关作品</string>
+    <string name="pixiv_load_failed">加载失败，请重试</string>
+    <string name="pixiv_loading_more">正在加载更多…</string>
+    <string name="pixiv_no_more">没有更多了</string>
+    <string name="pixiv_refresh">刷新</string>
+
+    <string name="pixiv_related">相关作品</string>
+    <string name="pixiv_tags">标签</string>
+    <string name="pixiv_print">打印</string>
+    <string name="pixiv_print_all">打印全部 %1$d 张</string>
+    <string name="pixiv_preparing_print">正在下载原图并准备打印…（%1$d/%2$d）</string>
+    <string name="pixiv_bookmark">收藏</string>
+    <string name="pixiv_bookmarked">已收藏</string>
+    <string name="pixiv_bookmark_count">%1$s 收藏</string>
+    <string name="pixiv_view_count">%1$s 浏览</string>
+    <string name="pixiv_page_count">共 %1$d 张</string>
+    <string name="pixiv_print_failed">准备打印失败，请检查网络后重试</string>
+    <string name="pixiv_action_failed">操作失败，请稍后重试</string>
+    <string name="pixiv_author_works">作者：%1$s</string>
+
+    <!-- 三期：详情页评论区 & 标签快捷搜索 -->
+    <string name="pixiv_comments">评论</string>
+    <string name="pixiv_comments_empty">还没有评论，来抢沙发吧</string>
+    <string name="pixiv_comment_input_hint">友善评论，理性发言…</string>
+    <string name="pixiv_comment_send">发送</string>
+    <string name="pixiv_comment_posted">评论已发布</string>
+    <string name="pixiv_search_tag">搜索该标签</string>
+
+    <!-- 四期：详情页全屏查看 & 手势缩放 -->
+    <string name="pixiv_detail_fullscreen_enter">全屏查看</string>
+    <string name="pixiv_detail_fullscreen_exit">退出全屏</string>
+    <string name="pixiv_detail_fullscreen_hint">双击放大，双指捏合缩放</string>
+
+    <!-- 二期：插图/漫画分区 -->
+    <string name="pixiv_mode_illust">插画</string>
+    <string name="pixiv_mode_manga">漫画</string>
+    <string name="pixiv_mode_novel">小说</string>
+    <string name="pixiv_rank_day_manga">漫画每日</string>
+    <string name="pixiv_download_all">下载全部原图</string>
+    <string name="pixiv_source_search">以图搜源</string>
+
+    <!-- 二期：侧边栏 13 项 -->
+    <string name="pixiv_menu">菜单</string>
+    <string name="pixiv_drawer_account">账号管理</string>
+    <string name="pixiv_drawer_walkthrough">速览漫步</string>
+    <string name="pixiv_drawer_browser">浏览器</string>
+    <string name="pixiv_drawer_novel">切换到小说模式</string>
+    <string name="pixiv_drawer_sources">以图搜源</string>
+    <string name="pixiv_drawer_history">历史记录</string>
+    <string name="pixiv_drawer_bookmarks">收藏</string>
+    <string name="pixiv_drawer_close">收起侧边栏</string>
+    <string name="pixiv_drawer_downloads">下载进度</string>
+    <string name="pixiv_drawer_theme">主题样式</string>
+    <string name="pixiv_drawer_settings">应用设置</string>
+    <string name="pixiv_drawer_functional_settings">功能设置</string>
+    <string name="pixiv_drawer_gallery">已保存内容</string>
+    <string name="pixiv_drawer_blocked_tags">屏蔽标签</string>
+    <string name="pixiv_drawer_cache">运行缓存</string>
+    <string name="pixiv_drawer_clear_cache">清除缓存</string>
+
+    <!-- 账号管理 -->
+    <string name="pixiv_account_title">账号管理</string>
+    <string name="pixiv_account_id_label">P 站账号</string>
+    <string name="pixiv_account_user_id_label">用户 ID</string>
+    <string name="pixiv_account_relogin">重新登录</string>
+    <string name="pixiv_account_logout_confirm">确定退出当前 P 站账号吗？本地登录信息将被清除。</string>
+
+    <!-- 速览漫步 -->
+    <string name="pixiv_walkthrough_title">速览漫步</string>
+    <string name="pixiv_walkthrough_empty">暂无漫步内容，稍后再来</string>
+    <string name="pixiv_walkthrough_switch_to_vertical">切换为竖向浏览</string>
+    <string name="pixiv_walkthrough_switch_to_horizontal">切换为横向浏览</string>
+
+    <!-- 内置浏览器 -->
+    <string name="pixiv_browser_title">浏览器</string>
+    <string name="pixiv_browser_home">P 站主页</string>
+    <string name="pixiv_browser_back">后退</string>
+    <string name="pixiv_browser_forward">前进</string>
+    <string name="pixiv_browser_refresh">刷新</string>
+    <string name="pixiv_browser_download_started">已开始下载</string>
+    <!-- 内置浏览器：Edge 风格底栏与菜单 -->
+    <string name="pixiv_browser_search_hint">搜索或输入网址</string>
+    <string name="pixiv_browser_page_home">主页</string>
+    <string name="pixiv_browser_fullscreen">全屏</string>
+    <string name="pixiv_browser_exit_fullscreen">退出全屏</string>
+    <string name="pixiv_browser_menu">菜单</string>
+    <string name="pixiv_browser_night_mode">夜间模式</string>
+    <string name="pixiv_browser_bookmarks">书签</string>
+    <string name="pixiv_browser_history">历史</string>
+    <string name="pixiv_browser_downloads">下载</string>
+    <string name="pixiv_browser_incognito">隐身</string>
+    <string name="pixiv_browser_incognito_on">已进入隐身模式，本次浏览不记录历史</string>
+    <string name="pixiv_browser_incognito_off">已退出隐身模式</string>
+    <string name="pixiv_browser_add_bookmark">添加书签</string>
+    <string name="pixiv_browser_bookmark_added">已添加书签</string>
+    <string name="pixiv_browser_desktop_mode">电脑模式</string>
+    <string name="pixiv_browser_toolbox">工具箱</string>
+    <string name="pixiv_browser_find_in_page">页内查找</string>
+    <string name="pixiv_browser_exit">退出浏览器</string>
+    <string name="pixiv_browser_tabs">标签页</string>
+    <string name="pixiv_browser_new_tab">新建标签页</string>
+    <string name="pixiv_browser_close_tab">关闭标签页</string>
+    <string name="pixiv_browser_find_hint">在网页中查找</string>
+    <string name="pixiv_browser_find_result">%1$d/%2$d</string>
+    <string name="pixiv_browser_find_prev">上一个</string>
+    <string name="pixiv_browser_find_next">下一个</string>
+    <string name="pixiv_browser_close">关闭</string>
+    <string name="pixiv_browser_empty_bookmarks">暂无书签，点击菜单中的「添加书签」保存当前页</string>
+    <string name="pixiv_browser_empty_history">暂无浏览历史</string>
+    <string name="pixiv_browser_clear_bookmarks">清空书签</string>
+    <string name="pixiv_browser_clear_history">清空历史</string>
+    <string name="pixiv_browser_clear_confirm">确定清空全部内容吗？</string>
+    <string name="pixiv_browser_cookies">查看 Cookies</string>
+    <string name="pixiv_browser_site_info">网站信息</string>
+    <string name="pixiv_browser_clear_site_data">清除当前网站数据</string>
+    <string name="pixiv_browser_reader_mode">阅读模式</string>
+    <string name="pixiv_browser_site_data_cleared">已清除当前网站数据</string>
+    <string name="pixiv_browser_no_cookies">当前网站没有 Cookies</string>
+    <string name="pixiv_browser_downloads_open_failed">无法打开系统下载列表</string>
+
+    <!-- 小说模式 -->
+    <string name="pixiv_novel_title">小说</string>
+    <string name="pixiv_novel_rank_day">每日排行</string>
+    <string name="pixiv_novel_text_length">%1$d 字</string>
+    <string name="pixiv_novel_empty">暂无小说</string>
+    <string name="pixiv_novel_text_failed">正文加载失败，请重试</string>
+    <string name="pixiv_novel_download">下载小说</string>
+    <string name="pixiv_novel_saved">小说已保存到本地</string>
+
+    <!-- 三期：P 站功能设置 -->
+    <string name="pixiv_settings_title">功能设置</string>
+    <string name="pixiv_settings_default_mode_title">默认内容模式</string>
+    <string name="pixiv_settings_history_label">记录浏览历史</string>
+    <string name="pixiv_settings_history_desc">关闭后浏览作品不再写入历史记录</string>
+    <string name="pixiv_settings_hi_res_label">加载高清大图</string>
+    <string name="pixiv_settings_hi_res_desc">开启后优先加载大分辨率图片，更耗流量</string>
+    <string name="pixiv_settings_r18_label">R18 内容过滤</string>
+    <string name="pixiv_settings_r18_desc">开启后自动过滤 R-18 / R-18G 作品（推荐与排行榜、搜索结果同步生效）</string>
+    <string name="pixiv_settings_related">相关设置</string>
+
+    <!-- 以图搜源 -->
+    <string name="pixiv_sources_title">以图搜源</string>
+    <string name="pixiv_sources_desc">选择搜索引擎，将用系统浏览器打开并自动带入当前图片地址：</string>
+    <string name="pixiv_sources_desc_no_image">选择搜索引擎，将用系统浏览器打开：</string>
+    <string name="pixiv_source_saucenao">SauceNAO（插画/P 站首选）</string>
+    <string name="pixiv_source_ascii2d">ascii2d（二次元以图搜图）</string>
+    <string name="pixiv_source_google_lens">Google Lens</string>
+    <string name="pixiv_source_tineye">TinEye（全网反向搜索）</string>
+
+    <!-- 历史记录 -->
+    <string name="pixiv_history_title">历史记录</string>
+    <string name="pixiv_history_empty">还没有浏览记录</string>
+    <string name="pixiv_history_clear">清空历史</string>
+    <string name="pixiv_history_clear_confirm">确定清空全部浏览历史吗？</string>
+
+    <!-- 收藏页 -->
+    <string name="pixiv_bookmarks_title">收藏</string>
+    <string name="pixiv_bookmarks_empty">还没有收藏作品，在作品详情页点爱心即可收藏</string>
+    <string name="pixiv_bookmarks_clear">清空收藏</string>
+    <string name="pixiv_bookmarks_clear_confirm">确定清空全部本地收藏吗？（不影响 P 站服务端收藏）</string>
+    <string name="pixiv_bookmarks_remove">取消收藏</string>
+    <!-- REQ5：小说收藏并入收藏页，按内容类型分段展示 -->
+    <string name="pixiv_bookmarks_tab_works">作品</string>
+    <string name="pixiv_bookmarks_tab_novels">小说</string>
+    <string name="pixiv_bookmarks_novel_empty">还没有收藏的小说，在小说阅读页点爱心即可收藏</string>
+    <string name="pixiv_bookmarks_novel_remove">取消小说收藏</string>
+
+    <!-- 下载进度 -->
+    <string name="pixiv_downloads_title">下载进度</string>
+    <string name="pixiv_downloads_empty">没有下载任务，可在作品详情页下载原图，或在小说阅读页下载小说</string>
+    <string name="pixiv_download_running">下载中 %1$d/%2$d</string>
+    <string name="pixiv_download_done">已完成</string>
+    <string name="pixiv_download_failed">下载失败</string>
+    <string name="pixiv_download_http_error">下载原图失败：HTTP %1$d</string>
+    <string name="pixiv_download_empty_body">原图响应为空</string>
+    <string name="pixiv_download_empty_pages">该作品没有可下载的图片</string>
+    <string name="pixiv_download_remove">移除记录</string>
+    <string name="pixiv_download_queued">已加入下载队列</string>
+
+    <!-- 图片管理 -->
+    <string name="pixiv_gallery_title">已保存内容</string>
+    <string name="pixiv_gallery_empty">还没有保存的图片</string>
+    <string name="pixiv_gallery_caption">作品 %1$d · 第 %2$d 页 · %3$s</string>
+    <string name="pixiv_gallery_delete_all">全部删除</string>
+    <string name="pixiv_gallery_delete_confirm">确定删除这张图片吗？</string>
+    <string name="pixiv_gallery_delete_all_confirm">确定删除全部已保存图片吗？</string>
+    <!-- REQ6/REQ8：分类筛选 & 压缩包/小说查看 -->
+    <string name="pixiv_gallery_filter_all">全部</string>
+    <string name="pixiv_gallery_filter_download">手动下载</string>
+    <string name="pixiv_gallery_filter_print_cache">打印缓存</string>
+    <string name="pixiv_gallery_empty_filtered">该分类暂无内容</string>
+    <string name="pixiv_gallery_archive">压缩包</string>
+    <string name="pixiv_gallery_archive_pages">%1$d 页</string>
+    <string name="pixiv_gallery_archive_badge">多图</string>
+    <string name="pixiv_gallery_archive_cover_load_failed">封面加载失败</string>
+    <string name="pixiv_gallery_archive_title">作品 %1$d · 压缩包 %2$d 页 · %3$s</string>
+    <string name="pixiv_gallery_multi_title">作品 %1$d · 共 %2$d 页 · %3$s</string>
+    <string name="pixiv_gallery_loading">正在加载…</string>
+    <string name="pixiv_gallery_open_failed">打开失败，请稍后重试</string>
+    <string name="pixiv_gallery_novel_title">小说 %1$d · %2$s</string>
+    <string name="pixiv_gallery_archive_loading">正在解压压缩包…</string>
+    <string name="pixiv_gallery_archive_open_failed">压缩包解压失败，请稍后重试</string>
+    <string name="pixiv_gallery_novel_loading">正在加载小说内容…</string>
+    <string name="pixiv_gallery_close_preview">关闭预览</string>
+
+    <!-- 屏蔽标签 -->
+    <string name="pixiv_blocked_title">屏蔽标签</string>
+    <string name="pixiv_blocked_empty">还没有屏蔽标签</string>
+    <string name="pixiv_blocked_add_hint">输入标签名（如：東方）</string>
+    <string name="pixiv_blocked_add">添加屏蔽</string>
+    <string name="pixiv_blocked_remove">取消屏蔽</string>
+    <string name="pixiv_blocked_note">带屏蔽标签的作品不会出现在推荐 / 榜单 / 搜索结果中</string>
+
+    <!-- 运行缓存 -->
+    <string name="pixiv_cache_title">运行缓存</string>
+    <string name="pixiv_cache_print">打印原图缓存</string>
+    <string name="pixiv_cache_images">图片磁盘缓存</string>
+    <string name="pixiv_cache_downloads">已下载原图（长期保存，不会被清理）</string>
+    <string name="pixiv_cache_total">缓存合计</string>
+    <string name="pixiv_cache_clear">清除缓存</string>
+    <string name="pixiv_cache_cleared">缓存已清除</string>
+    <string name="pixiv_cache_clear_confirm">将清除打印原图与图片缓存（不影响已保存的下载图片），确定继续吗？</string>
+    <!-- /P站 -->
+
+    <!-- 打印机过热保护 -->
+    <string name="printer_overheat_title">打印机过热</string>
+    <string name="printer_overheat_message">打印机正在冷却，预计还需 %1$d 秒；降温后将自动继续打印，无需重新开始。</string>
+    <string name="printer_overheat_message_unknown">打印机正在冷却；降温后将自动继续打印，无需重新开始。</string>
+
+    <!-- 启动引导（onboarding） -->
+    <string name="onboarding_step_x_of_y">第 %1$d / %2$d 步</string>
+    <string name="onboarding_title">引导设置</string>
+    <string name="onboarding_skip">跳过</string>
+    <string name="label_previous">上一步</string>
+    <string name="onboarding_action_start">开始使用</string>
+
+    <!-- 欢迎 / 软件介绍 -->
+    <string name="onboarding_welcome_title">欢迎使用铅笔创印Pro</string>
+    <string name="onboarding_welcome_subtitle">一台热敏打印机，把文字、图片与创意立刻变成纸质输出</string>
+    <string name="onboarding_welcome_desc">几步完成权限配置与个性化设置，随时开始你的打印之旅</string>
+    <string name="onboarding_features_title">软件介绍</string>
+    <string name="onboarding_features_desc">铅笔创印Pro —— 一站式热敏打印创作工具：</string>
+    <string name="onboarding_feature_text">文字打印</string>
+    <string name="onboarding_feature_text_desc">编辑文字、字体与排版，热敏输出</string>
+    <string name="onboarding_feature_image">图片打印</string>
+    <string name="onboarding_feature_image_desc">相册、PDF、压缩包图片，黑白算法热敏输出</string>
+    <string name="onboarding_feature_scan">文档扫描</string>
+    <string name="onboarding_feature_scan_desc">拍摄纸面文档，自动拉正、去阴影并提取文字后打印</string>
+    <string name="onboarding_feature_graphics">图形创作</string>
+    <string name="onboarding_feature_graphics_desc">内置笔刷与几何工具，绘制图形后直接打印</string>
+    <string name="onboarding_feature_pixiv">P 站浏览</string>
+    <string name="onboarding_feature_pixiv_desc">登录 P 站浏览推荐与排行榜、搜索作品，并一键打印原图</string>
+
+    <!-- 权限 -->
+    <string name="onboarding_permissions_title">权限</string>
+    <string name="onboarding_permissions_desc">授予以下权限即可使用完整功能，也随时可在系统设置中更改</string>
+    <string name="onboarding_permission_camera">相机</string>
+    <string name="onboarding_permission_camera_desc">用于拍照打印纸面文档</string>
+    <string name="onboarding_permission_storage">存储</string>
+    <string name="onboarding_permission_storage_desc">用于把打印图片保存到相册（仅旧系统需要）</string>
+    <string name="onboarding_permission_bluetooth">蓝牙</string>
+    <string name="onboarding_permission_bluetooth_desc">用于扫描并连接蓝牙热敏打印机</string>
+    <string name="onboarding_permission_notification">通知</string>
+    <string name="onboarding_permission_notification_desc">用于展示打印进度与完成提醒</string>
+    <string name="onboarding_permission_grant">立即授权</string>
+    <string name="onboarding_permission_granted">已授予</string>
+    <string name="onboarding_permission_all_granted">所有权限已授予</string>
+
+    <!-- 主题 -->
+    <string name="onboarding_seed_title">选择主题色</string>
+    <string name="onboarding_seed_desc">选一个喜欢的颜色作为主题主色，之后可在设置中随时更换</string>
+    <string name="onboarding_style_title">形状与动效</string>
+    <string name="onboarding_style_desc">调整边角风格、强度与动效等级，让界面更合口味</string>
+    <string name="onboarding_label_shape">边角形状</string>
+    <string name="onboarding_label_corner_strength">边角强度</string>
+    <string name="onboarding_label_motion">动效等级</string>
+    <string name="onboarding_seed_orange">橙</string>
+    <string name="onboarding_seed_blue">蓝</string>
+    <string name="onboarding_seed_green">绿</string>
+    <string name="onboarding_seed_purple">紫</string>
+    <string name="onboarding_seed_rose">玫红</string>
+    <string name="onboarding_seed_teal">青绿</string>
+    <string name="onboarding_corner_rounded">圆边</string>
+    <string name="onboarding_corner_square">方边</string>
+    <string name="onboarding_corner_diamond">菱形边</string>
+    <string name="onboarding_corner_parallelogram">平行四边形边</string>
+    <string name="onboarding_motion_full">流畅</string>
+    <string name="onboarding_motion_expressive">动感</string>
+    <string name="onboarding_motion_reduced">减弱</string>
+
+    <!-- P 站提前登录 -->
+    <string name="onboarding_pixiv_title">登录 P 站</string>
+    <string name="onboarding_pixiv_desc">可提前登录 P 站账号，登录后无需重复登录即可浏览与打印作品</string>
+    <string name="onboarding_pixiv_optional">并不是必须步骤，可在进入应用后随时在 P 站页登录</string>
+    <string name="onboarding_pixiv_logged_in">已登录</string>
+    <string name="onboarding_pixiv_logged_in_as">已登录：%1$s</string>
+    <string name="onboarding_pixiv_not_logged">尚未登录</string>
+
+    <!-- 完成 -->
+    <string name="onboarding_finish_title">准备就绪</string>
+    <string name="onboarding_finish_desc">以下选项后续可在设置中随时调整</string>
+    <string name="onboarding_label_dark_theme">深色模式</string>
+    <string name="onboarding_label_outline">控件描边</string>
+    <string name="onboarding_label_snowfall">粒子飘落</string>
+</resources>

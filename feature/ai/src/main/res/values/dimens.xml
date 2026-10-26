@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 聊天气泡 -->
+    <dimen name="ai_bubble_max_width">300dp</dimen>
+    <dimen name="ai_bubble_padding">12dp</dimen>
+    <dimen name="ai_message_gap">12dp</dimen>
+
+    <!-- 深度思考折叠区 -->
+    <dimen name="ai_reasoning_max_height">220dp</dimen>
+
+    <!-- 产物预览 -->
+    <dimen name="ai_artifact_size">160dp</dimen>
+
+    <!-- 输入栏 -->
+    <dimen name="ai_input_max_height">140dp</dimen>
+
+    <!-- 挂载区附件卡片 -->
+    <dimen name="ai_attach_thumb_size">40dp</dimen>
+    <dimen name="ai_attach_label_width">120dp</dimen>
+
+    <!-- 配置页 -->
+    <dimen name="ai_model_row_gap">10dp</dimen>
+
+    <!-- 气泡内嵌小图标 -->
+    <dimen name="ai_inline_icon_size">18dp</dimen>
+
+    <!-- 历史会话面板可视化高度上限 -->
+    <dimen name="ai_history_max_height">360dp</dimen>
+</resources>

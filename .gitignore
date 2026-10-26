@@ -1,0 +1,42 @@
+# ---------- Gradle ----------
+.gradle/
+build/
+**/build/
+.kotlin/
+**/.kotlin/
+local.properties
+
+# ---------- NDK / CMake 中间产物 ----------
+.cxx/
+**/.cxx/
+
+# ---------- IDE ----------
+.idea/
+*.iml
+.vscode/
+captures/
+
+# ---------- 构建日志 / 临时产物 ----------
+*.log
+artifacts/
+build-tools/
+build-verify/
+*.apk
+*.aab
+*.har
+ketch-prune.zip
+
+# ---------- 本仓库的本地参考资料（体积大、非本项目代码，不随源码发布） ----------
+third_party/
+_reference/
+_ref_androidliquidglass/
+pixivez/
+pixivez_tmp/
+ketch_tmp/
+_tmp_shapes/
+.trae/
+
+# ---------- 系统 ----------
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,66 @@
+<resources>
+    <string name="dashboard_title">铅笔创印Pro</string>
+    <string name="dashboard_settings">设置</string>
+
+    <!-- 打印机连接卡 -->
+    <string name="home_settings">设置</string>
+    <string name="home_printer_title">蓝牙打印机</string>
+    <string name="home_connected">已连接：%1$s</string>
+    <string name="home_connecting">连接中…</string>
+    <string name="home_disconnected">未连接</string>
+    <string name="home_connected_badge">已连接</string>
+    <string name="home_disconnect">断开</string>
+    <string name="home_connect">连接</string>
+    <string name="home_grant_permission">授予蓝牙权限</string>
+    <string name="home_permission_rationale">连接蓝牙打印机需要蓝牙权限；在 Android 12 以下搜索附近设备还需要位置权限（本应用不会采集或上传位置信息）。</string>
+    <string name="home_pair_hint">连接方式：先在手机「设置 → 蓝牙」中与打印机完成配对，再回到本页点击对应设备的「连接」。</string>
+    <string name="home_bonded_section">已配对设备</string>
+    <string name="home_bonded_empty">暂无已配对设备，请先到系统蓝牙设置中配对</string>
+    <string name="home_nearby_section">附近设备</string>
+    <string name="home_scan">搜索附近设备</string>
+    <string name="home_stop_scan">停止搜索</string>
+
+    <!-- 连接错误 -->
+    <string name="home_err_permission">未授予蓝牙权限，请先授权</string>
+    <string name="home_err_bt_off">手机蓝牙未开启，请先打开蓝牙</string>
+    <string name="home_err_unsupported">该设备不支持蓝牙</string>
+    <string name="home_err_timeout">连接超时，请确认打印机已开机、在手机附近且已配对</string>
+    <string name="home_err_generic">连接失败，请重试</string>
+
+    <!-- 打印机状态提示 -->
+    <string name="home_status_out_of_paper">打印机缺纸</string>
+    <string name="home_status_cover_open">打印机开盖</string>
+    <string name="home_status_overheat">打印机过热</string>
+    <string name="home_status_low_battery">打印机电量低</string>
+
+    <!-- 创作工具 -->
+    <string name="home_creative_tools">创作工具</string>
+
+    <!-- 主页状态胶囊 -->
+    <string name="home_capsule_printer_title">打印机</string>
+    <string name="home_capsule_open">管理打印机连接</string>
+    <string name="home_capsule_battery">电量</string>
+    <string name="home_capsule_battery_normal">正常</string>
+    <string name="home_capsule_battery_low">低电</string>
+    <string name="home_capsule_battery_percent">电量 %1$d%%</string>
+    <string name="home_capsule_cover">合盖状态</string>
+    <string name="home_capsule_cover_closed">已合盖</string>
+    <string name="home_capsule_cover_open">开盖</string>
+    <string name="home_capsule_paper">纸张状态</string>
+    <string name="home_capsule_paper_ok">有纸</string>
+    <string name="home_capsule_paper_out">缺纸</string>
+    <string name="home_capsule_connection">连接状态</string>
+    <string name="home_capsule_overheat">过热</string>
+
+    <!-- 独立连接页 -->
+    <string name="connect_title">连接打印机</string>
+    <string name="connect_open_system_bt">前往系统蓝牙设置配对</string>
+
+    <!-- 走纸自测 -->
+    <string name="connect_test_feed">走纸测试</string>
+    <string name="connect_testing">测试中…</string>
+    <string name="connect_test_hint">点击后若打印机吐出一小段空白，说明连接与协议正常</string>
+    <string name="connect_test_ok">指令已发送，请观察打印机是否走纸</string>
+    <string name="connect_test_failed">测试指令发送失败，请重新连接后再试</string>
+    <string name="home_err_not_connected">打印机未连接</string>
+</resources>

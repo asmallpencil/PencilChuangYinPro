@@ -1,0 +1,45 @@
+<resources>
+    <string name="onboarding_title">引导设置</string>
+    <string name="onboarding_x_of_y">第 %1$d / %2$d 步</string>
+
+    <string name="onboarding_welcome_title">欢迎使用铅笔创印Pro</string>
+    <string name="onboarding_welcome_subtitle">轻松排版并打印文本，支持自定义字体与蓝牙连接</string>
+
+    <string name="onboarding_permissions_title">权限</string>
+    <string name="onboarding_permissions_desc">扫描与连接蓝牙打印机需要位置/蓝牙相关权限</string>
+    <string name="onboarding_permission_button">授权</string>
+    <string name="onboarding_permission_granted">已授权</string>
+    <string name="onboarding_permission_not_granted">未授权</string>
+
+    <string name="onboarding_seed_title">选择主题色</string>
+    <string name="onboarding_style_title">选择形状与动效</string>
+
+    <string name="onboarding_action_start">开始使用</string>
+
+    <string name="label_previous">上一步</string>
+
+    <!-- 主题标签（本地副本，避免 onboarding 依赖 settings 模块） -->
+    <string name="onboarding_seed_orange">橙</string>
+    <string name="onboarding_seed_blue">蓝</string>
+    <string name="onboarding_seed_green">绿</string>
+    <string name="onboarding_seed_purple">紫</string>
+    <string name="onboarding_seed_rose">玫红</string>
+    <string name="onboarding_seed_teal">青绿</string>
+    <string name="onboarding_corner_rounded">圆边</string>
+    <string name="onboarding_corner_square">方边</string>
+    <string name="onboarding_corner_diamond">菱形边</string>
+    <string name="onboarding_corner_parallelogram">平行四边形边</string>
+    <string name="onboarding_label_corner_strength">边强度</string>
+    <string name="onboarding_motion_full">流畅</string>
+    <string name="onboarding_motion_expressive">动感</string>
+    <string name="onboarding_motion_reduced">减弱</string>
+    <string name="onboarding_label_shape">边角形状</string>
+    <string name="onboarding_label_motion">动效等级</string>
+
+    <!-- 第 5 步：个性化显示 -->
+    <string name="onboarding_personal_title">个性化显示</string>
+    <string name="onboarding_personal_desc">以下选项后续可在设置中随时调整</string>
+    <string name="onboarding_label_dark_theme">深色模式</string>
+    <string name="onboarding_label_outline">控件描边</string>
+    <string name="onboarding_label_snowfall">粒子飘落</string>
+</resources>

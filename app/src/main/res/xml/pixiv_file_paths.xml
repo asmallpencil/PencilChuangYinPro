@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- P 站图片管理：分享 filesDir/pixiv_downloads 下的已保存原图 -->
+    <files-path
+        name="pixiv_downloads"
+        path="pixiv_downloads/" />
+</paths>

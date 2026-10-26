@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- 铅笔创印Pro 应用图标：铅笔 + 打印点阵，由纯矢量构建（零硬编码，仅作启动图标） -->
+    <path
+        android:fillColor="#F6B626"
+        android:pathData="M24,2C12,2 2,12 2,24C2,36 12,46 24,46C36,46 46,36 46,24C46,12 36,2 24,2Z" />
+    <path
+        android:fillColor="#2E2E2E"
+        android:pathData="M24,10C24,10 12,22 12,32C12,37 17,40 24,40C31,40 36,37 36,32C36,22 24,10 24,10Z" />
+    <path
+        android:fillColor="#F6B626"
+        android:pathData="M24,18L24,30L30,24Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M18,34C20,36 22,37 24,37C26,37 28,36 30,34" />
+</vector>

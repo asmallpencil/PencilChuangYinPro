@@ -1,0 +1,116 @@
+<resources>
+    <string name="settings_title">设置</string>
+
+    <!-- 设置主菜单 -->
+    <string name="settings_menu_ai">AI 配置设置</string>
+    <string name="settings_menu_ai_desc">配置 OpenAI 兼容接口的模型</string>
+    <string name="settings_menu_visual">画面设置</string>
+    <string name="settings_menu_visual_desc">主题、描边、粒子、背景</string>
+    <string name="settings_menu_liquid_glass">液态玻璃</string>
+    <string name="settings_menu_liquid_glass_desc">渲染实现与详细参数</string>
+    <string name="settings_menu_size">尺寸设置</string>
+    <string name="settings_menu_size_desc">热敏纸宽度</string>
+    <string name="settings_menu_output">产物输出路径</string>
+    <string name="settings_menu_output_desc">目录：%1$s</string>
+    <string name="settings_menu_output_default">Pictures/%1$s（默认）</string>
+    <string name="settings_output_dialog_title">产物输出路径</string>
+    <string name="settings_output_dialog_hint">可填写完整绝对路径（如 /storage/emulated/0/MyFolder/Sub），产物将直接保存到该目录；留空则使用默认 PencilChuangyinPro。注意：Android 11+ 需应用可写或已授权的位置，否则会自动回退到默认相册目录。</string>
+    <string name="settings_output_dialog_label">完整路径</string>
+    <string name="settings_output_dialog_placeholder">/storage/emulated/0/Pictures/PencilChuangyinPro</string>
+    <string name="settings_output_default_absolute">/storage/emulated/0/Pictures/PencilChuangyinPro</string>
+    <string name="settings_menu_licenses">开放源代码许可</string>
+    <string name="settings_menu_licenses_desc">本应用所使用的开源项目</string>
+
+    <!-- 画面设置 -->
+    <string name="settings_visual_title">画面设置</string>
+    <string name="settings_label_theme">主题偏好</string>
+    <string name="settings_label_seed_color">种子色</string>
+    <string name="settings_label_dark">深色模式</string>
+    <string name="settings_label_shape">边角形状</string>
+    <string name="settings_label_motion">动效等级</string>
+
+    <string name="settings_label_current_color">当前颜色</string>
+    <string name="settings_color_code">颜色代码</string>
+    <string name="settings_color_code_hint">#RRGGBB</string>
+    <string name="settings_color_code_apply">应用</string>
+    <string name="settings_color_code_invalid">颜色代码无效，支持 #RGB / #RRGGBB / #AARRGGBB</string>
+
+    <string name="corner_rounded">圆边</string>
+    <string name="corner_square">方边</string>
+    <string name="corner_diamond">菱形边</string>
+    <string name="corner_parallelogram">平行四边形边</string>
+    <string name="settings_label_corner_strength">边强度</string>
+
+    <string name="motion_full">流畅</string>
+    <string name="motion_expressive">动感</string>
+    <string name="motion_reduced">减弱</string>
+
+    <string name="settings_label_outline">控件描边</string>
+    <string name="settings_outline_enabled">启用控件描边</string>
+    <string name="settings_label_outline_width">描边粗细</string>
+    <string name="settings_label_outline_opacity">描边不透明度</string>
+    <string name="outline_mode_seed">跟随主题</string>
+    <string name="outline_mode_rgb">自定义RGB</string>
+    <string name="outline_mode_rainbow">RGB彩虹</string>
+
+    <string name="settings_label_snowfall">粒子飘落</string>
+    <string name="settings_label_particle_type">飘落类型</string>
+    <string name="settings_label_particle_speed">飘落速度</string>
+    <string name="particle_snow">雪花</string>
+    <string name="particle_rain">雨滴</string>
+    <string name="particle_leaf">落叶</string>
+    <string name="particle_petal">花瓣</string>
+
+    <string name="settings_label_background">自定义背景</string>
+    <string name="settings_background_pick">选择图片</string>
+    <string name="settings_background_clear">清除背景</string>
+    <string name="settings_background_opacity">背景不透明度</string>
+    <string name="settings_surface_opacity">控件不透明度</string>
+    <string name="settings_background_blur">背景模糊度</string>
+
+    <!-- 液态玻璃（LiquidGlass-Cpp 原生渲染） -->
+    <string name="settings_liquid_glass_title">液态玻璃</string>
+    <string name="settings_label_liquid_glass">液态玻璃</string>
+    <string name="settings_liquid_glass_controls">液态玻璃控件（不含导航栏）</string>
+    <string name="settings_liquid_glass_navbar">液态玻璃导航栏</string>
+    <string name="settings_liquid_glass_hint">液态玻璃由所选实现方式实时渲染（C++ 原生或 Kotlin/Compose）。默认关闭；开启前请仔细阅读警告。</string>
+    <string name="settings_lg_impl">实现方式</string>
+    <string name="settings_lg_impl_hint">两种实现共用同一套开关与样式参数，仅渲染路径不同：C++ 原生覆盖层由 GLES3 实时绘制；Kotlin/Compose 实现基于 AndroidLiquidGlass 的折射与模糊。</string>
+    <string name="settings_lg_impl_cpp">C++ 原生</string>
+    <string name="settings_lg_impl_kyant">Kotlin/Compose</string>
+    <string name="settings_lg_impl_cpp_unavailable">当前设备原生库不可用，无法选用 C++ 实现。</string>
+    <string name="settings_lg_impl_kyant_unavailable">当前系统低于 Android 13（API 33），Kotlin 实现所需的运行时着色器不可用。</string>
+    <string name="settings_lg_warn1_title">警告（1/3）</string>
+    <string name="settings_lg_warn1_body">液态玻璃由 C++ 原生库实时渲染，在部分设备上会直接崩溃、闪退或花屏。这不是显示错误，而是设备兼容性问题。</string>
+    <string name="settings_lg_warn2_title">警告（2/3）</string>
+    <string name="settings_lg_warn2_body">在低端设备上会严重卡顿，界面可能完全无法使用。请确认你的设备性能足以支撑实时玻璃渲染。</string>
+    <string name="settings_lg_warn3_title">最后确认（3/3）</string>
+    <string name="settings_lg_warn3_body">开启后如遇异常或卡顿，可随时回到此设置关闭并恢复。确认现在开启吗？</string>
+    <string name="settings_lg_warn_continue">继续</string>
+    <string name="settings_lg_warn_confirm">我已了解，开启</string>
+    <string name="settings_lg_details">详细参数</string>
+    <string name="settings_lg_blur">背景模糊</string>
+    <string name="settings_lg_lens_height">透镜高度</string>
+    <string name="settings_lg_lens_amount">透镜位移</string>
+    <string name="settings_lg_spectral">光谱色散</string>
+    <string name="settings_lg_tint_alpha">控件不透明度</string>
+    <string name="settings_lg_shadow">投射阴影</string>
+    <string name="settings_lg_glass">玻璃材质</string>
+    <string name="settings_lg_contour">轮廓高光边缘</string>
+    <string name="settings_lg_preview">快捷预览</string>
+    <string name="settings_lg_preview_hint">下方控件使用与全局一致的液态玻璃渲染，参数调整后即时生效。开启「液态玻璃控件」后按钮、开关、滑条、分段行会替换为液态玻璃控件（分段行支持按住拖动选择）。</string>
+    <string name="settings_lg_preview_toggle">开关</string>
+    <string name="settings_lg_preview_button">按钮</string>
+    <string name="settings_lg_preview_field">输入框</string>
+    <string name="settings_lg_preview_slider">滑动条</string>
+
+    <!-- 尺寸设置 -->
+    <string name="settings_size_title">尺寸设置</string>
+    <string name="settings_label_paper_width">热敏纸宽度</string>
+    <string name="settings_paper_width_value">%1$d mm</string>
+    <string name="settings_paper_width_hint">范围 1–58 mm，对应打印头像素宽自动换算</string>
+
+    <!-- 开源许可 -->
+    <string name="settings_licenses_title">开放源代码许可</string>
+    <string name="settings_licenses_intro">本应用在开发过程中使用了以下开源项目，向其作者致以感谢。点击可跳转至项目主页查看许可证详情。</string>
+</resources>

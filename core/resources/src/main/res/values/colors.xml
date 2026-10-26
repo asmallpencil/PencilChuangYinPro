@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 应用启动底色：实际配色由 core:theme 的 ColorScheme 驱动，此处仅作 Window 背景兜底 -->
+    <color name="window_background">#FFFFFFFF</color>
+    <color name="window_background_dark">#FF121316</color>
+
+    <!-- RGB 彩虹描边：红橙黄绿青蓝紫（控件彩虹描边专用，深浅色模式通用） -->
+    <color name="rainbow_red">#FFFF3B30</color>
+    <color name="rainbow_orange">#FFFF9500</color>
+    <color name="rainbow_yellow">#FFFFCC00</color>
+    <color name="rainbow_green">#FF34C759</color>
+    <color name="rainbow_cyan">#FF00C7BE</color>
+    <color name="rainbow_blue">#FF007AFF</color>
+    <color name="rainbow_purple">#FFAF52DE</color>
+
+    <!--
+      液态玻璃渲染令牌（纯 Compose 自研控件）。
+      alpha 直接内嵌在 ARGB 中，避免代码里散落浮点透明度硬编码；
+      明暗两套，由自研渲染层按当前 ColorScheme 亮度择一取用。
+    -->
+    <!-- 顶部高光 sheen -->
+    <color name="liquid_glass_sheen_light">#8CFFFFFF</color>
+    <color name="liquid_glass_sheen_dark">#29FFFFFF</color>
+    <!-- 磨砂frost白纱（模拟模糊感） -->
+    <color name="liquid_glass_frost_light">#66FFFFFF</color>
+    <color name="liquid_glass_frost_dark">#1FFFFFFF</color>
+    <!-- 底部内阴影 -->
+    <color name="liquid_glass_shade">#14000000</color>
+    <!-- 外轮廓描边 -->
+    <color name="liquid_glass_border_light">#B8FFFFFF</color>
+    <color name="liquid_glass_border_dark">#38FFFFFF</color>
+    <!-- 轮廓高光内描边 -->
+    <color name="liquid_glass_rim_light">#E6FFFFFF</color>
+    <color name="liquid_glass_rim_dark">#59FFFFFF</color>
+    <!-- 玻璃圆点/滑块 thumb -->
+    <color name="liquid_glass_thumb_light">#FFFFFFFF</color>
+    <color name="liquid_glass_thumb_dark">#F2FFFFFF</color>
+    <!-- 投射阴影 -->
+    <color name="liquid_glass_shadow">#33000000</color>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 打印机状态胶囊：迷你状态项图标尺寸、图标与文字/行间距 -->
+    <dimen name="dimen_dashboard_status_icon">16dp</dimen>
+    <dimen name="dimen_dashboard_status_gap">4dp</dimen>
+</resources>

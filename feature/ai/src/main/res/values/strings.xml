@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AI 打印（聊天任务页） -->
+    <string name="ai_title">AI 打印</string>
+    <string name="ai_subtitle_ready">当前模型：%1$s</string>
+    <string name="ai_subtitle_no_model">尚未配置模型</string>
+    <string name="ai_input_hint">描述你想打印或完成的任务…</string>
+    <string name="ai_send">发送</string>
+    <string name="ai_stop">停止</string>
+    <string name="ai_new_conversation">新建对话</string>
+    <string name="ai_history">历史对话</string>
+    <string name="ai_history_empty">暂无历史对话</string>
+    <string name="ai_untitled_conversation">未命名对话</string>
+    <string name="ai_message_count">%1$d 条消息</string>
+    <string name="ai_welcome_title">你好，我是打印助手</string>
+    <string name="ai_welcome_desc">连接打印机后直接下达任务，我可以查资料、读写文件、画图并直接打印。</string>
+
+    <!-- 深度思考 -->
+    <string name="ai_reasoning_title">深度思考</string>
+    <string name="ai_reasoning_expand">展开</string>
+    <string name="ai_reasoning_collapse">收起</string>
+    <string name="ai_thinking">正在思考…</string>
+
+    <!-- 工具活动 -->
+    <string name="ai_tool_running">正在执行：%1$s</string>
+    <string name="ai_tool_done">已执行：%1$s</string>
+    <string name="ai_tool_failed">执行失败：%1$s</string>
+    <string name="ai_artifact_image">图片产物</string>
+    <string name="ai_artifact_file">文件产物</string>
+
+    <!-- 工具名称 -->
+    <string name="ai_tool_list_files">浏览文件</string>
+    <string name="ai_tool_read_file">读取文件</string>
+    <string name="ai_tool_write_file">写入文件</string>
+    <string name="ai_tool_delete_file">删除文件</string>
+    <string name="ai_tool_search_files">搜索文件</string>
+    <string name="ai_tool_print_text">打印文字</string>
+    <string name="ai_tool_print_image">打印图片</string>
+    <string name="ai_tool_print_conversation">打印聊天记录</string>
+    <string name="ai_tool_printer_status">查询打印机</string>
+    <string name="ai_tool_test_feed">走纸自测</string>
+    <string name="ai_tool_draw_image">绘制图片</string>
+    <string name="ai_tool_make_dir">新建文件夹</string>
+    <string name="ai_tool_copy_file">复制文件</string>
+    <string name="ai_tool_move_file">移动文件</string>
+    <string name="ai_tool_file_info">查看文件信息</string>
+    <string name="ai_tool_extract_archive">解压文件</string>
+    <string name="ai_tool_create_archive">打包压缩</string>
+    <string name="ai_tool_edit_image">处理图片</string>
+    <string name="ai_tool_print_table">打印表格</string>
+    <string name="ai_tool_app_navigate">跳转页面</string>
+    <string name="ai_tool_app_list_destinations">查询可跳转页面</string>
+    <string name="ai_tool_pixiv_home_feed">浏览 P 站首页</string>
+    <string name="ai_tool_pixiv_search_illust">搜索 P 站插画</string>
+    <string name="ai_tool_pixiv_illust_detail">查看插画详情</string>
+    <string name="ai_tool_pixiv_download_illust">下载 P 站插画</string>
+    <string name="ai_tool_pixiv_search_novel">搜索 P 站小说</string>
+    <string name="ai_tool_pixiv_download_novel">下载 P 站小说</string>
+    <string name="ai_tool_web_search">联网搜索</string>
+    <string name="ai_tool_web_fetch">抓取网页</string>
+    <string name="ai_tool_run_command">执行终端命令</string>
+    <string name="ai_tool_shell_setup">安装终端环境</string>
+    <string name="ai_tool_shell_status">查询终端环境</string>
+    <string name="ai_tool_unknown">工具调用</string>
+
+    <!-- 上传 -->
+    <string name="ai_attach">上传图片或文件</string>
+    <string name="ai_attach_title">上传到 AI 工作区</string>
+    <string name="ai_attach_image">上传图片</string>
+    <string name="ai_attach_image_desc">从相册或文件中选择图片，AI 可查看、编辑并打印</string>
+    <string name="ai_attach_file">上传文件</string>
+    <string name="ai_attach_file_desc">任意文件（含压缩包），AI 可解析、解压与操作</string>
+    <string name="ai_attach_success">已上传到 %1$s</string>
+    <string name="ai_attach_failed">上传失败：%1$s</string>
+
+    <!-- 权限模式 -->
+    <string name="ai_permission_title">工具审批模式</string>
+    <string name="ai_permission_desc">切换工具审批模式</string>
+    <string name="ai_permission_always_title">每次审批</string>
+    <string name="ai_permission_always_desc">所有写作、终端与打印等操作都需你确认后才执行</string>
+    <string name="ai_permission_outside_title">工作区外审批</string>
+    <string name="ai_permission_outside_desc">工作区内读写自动执行，越界或危险操作需你确认</string>
+    <string name="ai_permission_autonomous_title">自主模式（危险）</string>
+    <string name="ai_permission_autonomous_desc">所有操作自动放行，AI 连续自主执行，请自行承担风险</string>
+
+    <!-- 挂载区 -->
+    <string name="ai_attachment_title">待发送附件（%1$d）</string>
+    <string name="ai_attachment_image">图片</string>
+    <string name="ai_attachment_file">文件</string>
+    <string name="ai_attachment_remove">移除附件</string>
+
+    <!-- 错误提示 -->
+    <string name="ai_error_missing_config">尚未配置可用的 AI 模型</string>
+    <string name="ai_error_network">网络连接失败</string>
+    <string name="ai_error_http">服务端返回错误</string>
+    <string name="ai_error_protocol">响应格式异常</string>
+    <string name="ai_error_tool">工具执行失败</string>
+    <string name="ai_error_cancelled">任务已取消</string>
+    <string name="ai_error_unknown">发生未知错误</string>
+    <string name="ai_retry">重新生成</string>
+
+    <!-- 未配置引导 -->
+    <string name="ai_no_model_title">尚未配置 AI 模型</string>
+    <string name="ai_no_model_desc">前往「设置 → AI 配置设置」填写服务链接、模型名称与密钥后即可使用。</string>
+    <string name="ai_no_model_action">去配置</string>
+
+    <!-- 打印机状态提示 -->
+    <string name="ai_printer_off_hint">打印机未连接，打印类任务将无法完成</string>
+
+    <!-- 删除会话 -->
+    <string name="ai_delete_conversation_title">删除对话</string>
+    <string name="ai_delete_conversation_message">删除后无法恢复，确定要删除「%1$s」吗？</string>
+
+    <!-- AI 配置设置 -->
+    <string name="ai_config_title">AI 配置设置</string>
+    <string name="ai_config_intro">兼容 OpenAI 格式接口。填写服务链接、模型名称、模型显示名称与密钥即可接入，支持同时保存多个模型并随时切换。</string>
+    <string name="ai_config_models_label">已配置模型</string>
+    <string name="ai_config_empty">还没有配置模型，先添加一个吧</string>
+    <string name="ai_config_add">添加模型</string>
+    <string name="ai_config_active">当前使用</string>
+    <string name="ai_config_set_active">设为当前</string>
+    <string name="ai_config_edit">编辑</string>
+    <string name="ai_config_delete">删除</string>
+    <string name="ai_config_delete_title">删除模型配置</string>
+    <string name="ai_config_delete_message">确定要删除「%1$s」吗？</string>
+    <string name="ai_config_field_base_url">服务链接</string>
+    <string name="ai_config_field_base_url_hint">https://api.example.com/v1</string>
+    <string name="ai_config_field_model">模型名称</string>
+    <string name="ai_config_field_model_hint">gpt-4o-mini</string>
+    <string name="ai_config_field_display">模型显示名称</string>
+    <string name="ai_config_field_display_hint">我的模型（可选）</string>
+    <string name="ai_config_field_api_key">密钥</string>
+    <string name="ai_config_field_api_key_hint">sk-…</string>
+    <string name="ai_config_dialog_new">新增模型</string>
+    <string name="ai_config_dialog_edit">编辑模型</string>
+    <string name="ai_config_required_hint">「服务链接」与「模型名称」为必填项</string>
+    <string name="ai_config_test">测试连接</string>
+    <string name="ai_config_testing">正在测试连接…</string>
+    <string name="ai_config_test_success">连接成功，可以正常使用</string>
+    <string name="ai_config_test_failed">连接失败：%1$s</string>
+
+    <!-- 内容描述 -->
+    <string name="ai_desc_send">发送</string>
+    <string name="ai_desc_stop">停止生成</string>
+    <string name="ai_desc_new">新建对话</string>
+    <string name="ai_desc_history">历史对话</string>
+    <string name="ai_desc_close">关闭</string>
+</resources>

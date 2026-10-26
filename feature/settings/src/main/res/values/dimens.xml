@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 调色盘网格间距 -->
+    <dimen name="settings_palette_gap">4dp</dimen>
+    <!-- 色块选中描边宽度 -->
+    <dimen name="settings_swatch_border">2dp</dimen>
+    <!-- 边角类型预览块尺寸 -->
+    <dimen name="settings_corner_preview_size">44dp</dimen>
+    <!-- 边角类型预览块的基础边距（满档圆角/切角/齿深） -->
+    <dimen name="settings_corner_preview_base">14dp</dimen>
+    <!-- 当前颜色块尺寸 -->
+    <dimen name="settings_current_color_size">40dp</dimen>
+</resources>

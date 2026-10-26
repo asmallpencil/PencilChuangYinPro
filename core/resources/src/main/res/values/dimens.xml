@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 全局布局尺寸 -->
+    <dimen name="dimen_global_padding_s">8dp</dimen>
+    <dimen name="dimen_global_padding_m">16dp</dimen>
+    <dimen name="dimen_global_padding_l">24dp</dimen>
+    <dimen name="dimen_global_padding_xl">32dp</dimen>
+
+    <!-- 全局圆角 -->
+    <dimen name="dimen_global_radius_s">12dp</dimen>
+    <dimen name="dimen_global_radius_m">16dp</dimen>
+    <dimen name="dimen_global_radius_l">24dp</dimen>
+
+    <!-- 按钮最小高度 -->
+    <dimen name="dimen_global_btn_height_min">56dp</dimen>
+    <dimen name="dimen_global_touch_target">48dp</dimen>
+
+    <!-- 全局分段选择行：chip 间距/高度 -->
+    <dimen name="dimen_global_segment_gap">6dp</dimen>
+    <dimen name="dimen_global_segment_height">44dp</dimen>
+
+    <!-- 全局开关：固定轨道尺寸（M3 规范 52x32dp），描边沿轨道而非触摸目标绘制 -->
+    <dimen name="dimen_global_switch_track_w">52dp</dimen>
+    <dimen name="dimen_global_switch_track_h">32dp</dimen>
+
+    <!-- 通用细描边宽度（未开启主题描边时控件恢复 M3 原生观感用） -->
+    <dimen name="dimen_global_border">1dp</dimen>
+
+    <!-- 打印纸预览宽度（58mm 对应 384 点） -->
+    <dimen name="dimen_print_width_px">384dp</dimen>
+
+    <!-- 形状预设圆角档位（界于锐利/圆润之间调节） -->
+    <dimen name="dimen_shape_corner_sharp">4dp</dimen>
+    <dimen name="dimen_shape_corner_s">8dp</dimen>
+    <dimen name="dimen_shape_corner_m">16dp</dimen>
+    <dimen name="dimen_shape_corner_l">28dp</dimen>
+    <dimen name="dimen_shape_corner_xl">36dp</dimen>
+
+    <!-- 文本编辑：收缩态输入框固定高度、预览区最大高度（均内部滚动，不撑长页面） -->
+    <dimen name="dimen_text_editor_collapsed_height">160dp</dimen>
+    <dimen name="dimen_text_preview_max_height">280dp</dimen>
+
+    <!-- 图片打印：预览区固定高度（白底纸张区，不撑长页面） -->
+    <dimen name="dimen_image_preview_height">380dp</dimen>
+
+    <!-- RGB 调色盘：色相条高度、选择器圆点半径/描边、当前色预览尺寸 -->
+    <dimen name="dimen_color_picker_hue_bar_height">24dp</dimen>
+    <dimen name="dimen_color_picker_selector_radius">10dp</dimen>
+    <dimen name="dimen_color_picker_selector_stroke">3dp</dimen>
+    <dimen name="dimen_color_picker_preview_size">48dp</dimen>
+
+    <!-- 悬浮底部导航栏：外边距/圆角/高度/阴影/内边距/图标 -->
+    <dimen name="dimen_floating_nav_horizontal">16dp</dimen>
+    <dimen name="dimen_floating_nav_bottom_gap">12dp</dimen>
+    <dimen name="dimen_floating_nav_corner">28dp</dimen>
+    <dimen name="dimen_floating_nav_height">72dp</dimen>
+    <dimen name="dimen_floating_nav_tonal_elevation">3dp</dimen>
+    <dimen name="dimen_floating_nav_shadow_elevation">8dp</dimen>
+    <dimen name="dimen_floating_nav_content_padding_h">8dp</dimen>
+    <dimen name="dimen_floating_nav_item_padding_v">6dp</dimen>
+    <dimen name="dimen_floating_nav_indicator_padding_h">18dp</dimen>
+    <dimen name="dimen_floating_nav_indicator_padding_v">6dp</dimen>
+    <dimen name="dimen_floating_nav_icon_size">24dp</dimen>
+
+    <!-- 拍照打印：快门/模式栏/取景叠加/结果页操作 -->
+    <dimen name="dimen_camera_shutter_size">76dp</dimen>
+    <dimen name="dimen_camera_shutter_ring">4dp</dimen>
+    <dimen name="dimen_camera_shutter_inner">58dp</dimen>
+    <dimen name="dimen_camera_side_btn_size">48dp</dimen>
+    <dimen name="dimen_camera_mode_bar_width">300dp</dimen>
+    <dimen name="dimen_camera_top_padding">20dp</dimen>
+    <dimen name="dimen_camera_bottom_padding">28dp</dimen>
+    <dimen name="dimen_camera_controls_padding">16dp</dimen>
+    <dimen name="dimen_camera_grid_stroke">1dp</dimen>
+    <dimen name="dimen_camera_quad_stroke">3dp</dimen>
+    <dimen name="dimen_camera_quad_corner">14dp</dimen>
+    <dimen name="dimen_camera_result_action_size">72dp</dimen>
+    <dimen name="dimen_camera_whiteout_brush">26dp</dimen>
+    <dimen name="dimen_camera_crop_handle">18dp</dimen>
+    <dimen name="dimen_camera_crop_touch_radius">22dp</dimen>
+    <dimen name="dimen_camera_crop_stroke">2dp</dimen>
+    <dimen name="dimen_camera_permission_icon">72dp</dimen>
+    <dimen name="dimen_camera_process_padding">32dp</dimen>
+    <dimen name="dimen_camera_process_indicator_stroke">3dp</dimen>
+    <dimen name="dimen_camera_process_text_gap">24dp</dimen>
+
+    <!-- P站自研客户端：网格/芯片/头像尺寸 -->
+    <dimen name="dimen_pixiv_grid_padding">12dp</dimen>
+    <dimen name="dimen_pixiv_grid_spacing">10dp</dimen>
+    <dimen name="dimen_pixiv_chip_spacing">8dp</dimen>
+    <dimen name="dimen_pixiv_avatar_size">40dp</dimen>
+    <dimen name="dimen_pixiv_detail_media_min">260dp</dimen>
+    <dimen name="dimen_pixiv_detail_media_max">460dp</dimen>
+    <dimen name="dimen_pixiv_related_card_width">150dp</dimen>
+    <!-- 图片管理多图封面右下角「多图」角标尺寸 -->
+    <dimen name="dimen_pixiv_gallery_badge_size">22dp</dimen>
+    <dimen name="dimen_pixiv_gallery_badge_corner">8dp</dimen>
+
+    <!-- P站二期：侧边栏 -->
+    <dimen name="dimen_pixiv_drawer_avatar_size">72dp</dimen>
+    <dimen name="dimen_pixiv_drawer_icon_size">24dp</dimen>
+    <dimen name="dimen_pixiv_drawer_item_height">52dp</dimen>
+    <dimen name="dimen_pixiv_drawer_header_min_height">168dp</dimen>
+    <!-- REQ3：抽屉打开时左拖收起的触发距离阈值 -->
+    <dimen name="dimen_pixiv_drawer_dismiss_threshold">96dp</dimen>
+
+    <!-- P站：内置浏览器（Edge 风格） -->
+    <dimen name="dimen_pixiv_browser_bar_height">52dp</dimen>
+    <dimen name="dimen_pixiv_browser_bottom_bar_height">56dp</dimen>
+    <dimen name="dimen_pixiv_browser_url_radius">26dp</dimen>
+    <dimen name="dimen_pixiv_browser_menu_icon_size">26dp</dimen>
+    <dimen name="dimen_pixiv_browser_menu_item_min_height">76dp</dimen>
+    <dimen name="dimen_pixiv_browser_tab_badge_size">30dp</dimen>
+    <dimen name="dimen_pixiv_browser_fab_elevation">4dp</dimen>
+
+    <!-- P站二期：小说/工具页 -->
+    <dimen name="dimen_pixiv_novel_cover_width">96dp</dimen>
+    <dimen name="dimen_pixiv_novel_cover_height">128dp</dimen>
+    <dimen name="dimen_pixiv_walkthrough_info_scrim">120dp</dimen>
+    <dimen name="dimen_pixiv_thumb_corner">8dp</dimen>
+
+    <!-- 启动引导：P 站登录 WebView 视口高度 -->
+    <dimen name="dimen_onboarding_login_webview_height">380dp</dimen>
+
+    <!--
+      液态玻璃（纯 Compose 自研控件）渲染令牌。
+      轨道宽度/高度复用 dimen_global_switch_track_w/h，描边复用 dimen_global_border，
+      此处仅补充自研控件独有的尺寸，避免重复定义。
+    -->
+    <dimen name="dimen_liquid_glass_switch_thumb">24dp</dimen>
+    <dimen name="dimen_liquid_glass_switch_thumb_pad">4dp</dimen>
+    <dimen name="dimen_liquid_glass_switch_thumb_elevation">2dp</dimen>
+    <dimen name="dimen_liquid_glass_slider_height">40dp</dimen>
+    <dimen name="dimen_liquid_glass_slider_track_height">12dp</dimen>
+    <dimen name="dimen_liquid_glass_slider_thumb">26dp</dimen>
+    <dimen name="dimen_liquid_glass_segment_indicator_inset">3dp</dimen>
+    <dimen name="dimen_liquid_glass_shadow_elevation">6dp</dimen>
+    <dimen name="dimen_liquid_glass_border_width">1dp</dimen>
+
+    <!--
+      原生玻璃开关的**占位框**尺寸。原生层（lg/Toggle.cpp）以
+      GlassConfig.h 的 TOGGLE_TRACK_W_DP(64) / TOGGLE_TRACK_H_DP(28) 绘制轨道，
+      并把它**在占位框内居中**；占位框同时是原生命中区域，故宽度需 ≥ 轨道宽度、
+      高度留出少量纵向余量。集中为资源，避免各调用点散落的魔法数字。
+    -->
+    <dimen name="dimen_liquid_glass_toggle_w">64dp</dimen>
+    <dimen name="dimen_liquid_glass_toggle_h">32dp</dimen>
+</resources>
