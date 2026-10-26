@@ -121,7 +121,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 
 | 平台 | 文件 | 说明 |
 | --- | --- | --- |
-| Windows 10/11 x64 | [`铅笔创印Pro_桌面版_v2.0.0.0.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.0/%E9%93%85%E7%AC%94%E5%88%9B%E5%8D%B0Pro_%E6%A1%8C%E9%9D%A2%E7%89%88_v2.0.0.0.zip) | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装 |
+| Windows 10/11 x64 | [`PencilChuangYinPro-2.0.0.0-windows-x64.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.0/PencilChuangYinPro-2.0.0.0-windows-x64.zip) | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装 |
 | Android 7.0+（arm64-v8a / armeabi-v7a） | [`PencilChuangYinPro-2.0.0.0-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.0/PencilChuangYinPro-2.0.0.0-debug.apk) | debug 签名包，安装前需允许「未知来源」 |
 
 > APK 使用 debug 签名，仅供测试与自用；如需分发请自行配置 release 签名。
