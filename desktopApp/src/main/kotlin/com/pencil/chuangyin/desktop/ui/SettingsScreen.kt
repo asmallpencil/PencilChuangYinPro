@@ -735,6 +735,205 @@ private fun LiquidGlassPreview() {
 
 // ===================== 开源许可 =====================
 
+/**
+ * 开源项目清单：按名称字母序，排名不分先后。
+ * 无论参与方式是「源码 vendor」「Gradle 依赖」还是「移植/仿写/参照」，
+ * 所有项目一视同仁，贡献同等重要。与安卓端 feature:settings 及仓库 README 保持一致。
+ */
+private data class OpenSourceEntry(
+    val name: String,
+    val author: String,
+    val license: String,
+    val contribution: String,
+)
+
+private val OPEN_SOURCE_LIST: List<OpenSourceEntry> = listOf(
+    OpenSourceEntry(
+        "Accompanist Permissions", "Google", "Apache-2.0",
+        "相机、相册、蓝牙等运行时权限的封装，是拍照扫描与打印入口的前置门。",
+    ),
+    OpenSourceEntry(
+        "Android Gradle Plugin", "Google", "Apache-2.0",
+        "Android 构建插件：多模块工程、CMake 原生构建、R8 混淆与资源压缩均由其驱动。",
+    ),
+    OpenSourceEntry(
+        "AndroidLiquidGlass", "Kyant0", "Apache-2.0",
+        "液态玻璃的起点。core:backdrop 即其裁剪移植版，提供模糊、透镜折射、边缘高光、噪点与弹簧动画的完整参数体系。",
+    ),
+    OpenSourceEntry(
+        "AndroidX Activity Compose", "Google", "Apache-2.0",
+        "Compose 宿主 Activity，以及启动系统相机与文件选择器的通道。",
+    ),
+    OpenSourceEntry(
+        "AndroidX CameraX", "Google", "Apache-2.0",
+        "拍照扫描的取景与图像采集管线，实时把帧交给 OpenCV 做文档识别。",
+    ),
+    OpenSourceEntry(
+        "AndroidX Core KTX", "Google", "Apache-2.0",
+        "Kotlin 扩展与基础能力，全模块通用底座。",
+    ),
+    OpenSourceEntry(
+        "AndroidX DataStore", "Google", "Apache-2.0",
+        "设置项、AI 模型配置、P 站账号令牌的键值持久化。",
+    ),
+    OpenSourceEntry(
+        "AndroidX ExifInterface", "Google", "Apache-2.0",
+        "相册照片的 EXIF 方向归一，避免导入图片打印出来是躺倒的。",
+    ),
+    OpenSourceEntry(
+        "AndroidX Fragment KTX", "Google", "Apache-2.0",
+        "P 站模块承载 MainHostFragment 的宿主结构所需的编译基础。",
+    ),
+    OpenSourceEntry(
+        "AndroidX Hilt Navigation Compose", "Google", "Apache-2.0",
+        "把注入的 ViewModel 绑定到导航图，各页面状态持有者的接线方式。",
+    ),
+    OpenSourceEntry(
+        "AndroidX Lifecycle", "Google", "Apache-2.0",
+        "ViewModel 与生命周期感知，全部页面状态流的承载者。",
+    ),
+    OpenSourceEntry(
+        "AndroidX Navigation Compose", "Google", "Apache-2.0",
+        "三个顶级 Tab（首页 / P 站 / AI）与各功能页之间的导航图与返回栈。",
+    ),
+    OpenSourceEntry(
+        "AndroidX Test Ext JUnit", "Google", "Apache-2.0",
+        "扫描管线的仪器测试运行器（androidTest），用来验证文档边缘检测在斜拍、出界、暗光下的鲁棒性。",
+    ),
+    OpenSourceEntry(
+        "Apache PDFBox", "Apache 基金会", "Apache-2.0",
+        "桌面端 PDF 导入：取页数、按页栅格化（桌面端没有 Android 的 PdfRenderer）。",
+    ),
+    OpenSourceEntry(
+        "BaseRecyclerViewAdapterHelper (BRVAH)", "CymChad", "MIT",
+        "列表适配与多类型 Item 的组织方式。P 站模块移植自 Pix-EzViewer，而它以 include(\":BRVAH\") 源码子模块内建本库，本项目沿用同一套列表与分页思路。",
+    ),
+    OpenSourceEntry(
+        "Coil", "coil-kt 团队", "Apache-2.0",
+        "图片加载与内存/磁盘缓存，P 站插图、图库缩略图与打印预览全靠它。",
+    ),
+    OpenSourceEntry(
+        "Compose Multiplatform", "JetBrains", "Apache-2.0",
+        "桌面端整套 UI 运行时，与 Android 共用同一套 Composition 与绘制模型，才可能做到双端 UI 统一。",
+    ),
+    OpenSourceEntry(
+        "Dear ImGui", "Omar Cornut & 全体贡献者", "MIT",
+        "Android 端 C++ 即时模式 UI 框架，承载液态玻璃的光学实验与调试面板。",
+    ),
+    OpenSourceEntry(
+        "Google ADK for Kotlin", "Google", "Apache-2.0",
+        "AI 打印助手的工具协议内核：注解 + KSP 在编译期生成工具包装器。",
+    ),
+    OpenSourceEntry(
+        "Gradle", "Gradle Inc.", "Apache-2.0",
+        "构建系统本体；仓库自带 wrapper 8.13，克隆即可构建。",
+    ),
+    OpenSourceEntry(
+        "Hilt / Dagger", "Google / Square", "Apache-2.0",
+        "全项目依赖注入：打印控制器、P 站会话、AI 引擎、各 ViewModel 均由它装配。",
+    ),
+    OpenSourceEntry(
+        "ImageCorrection", "jtwws", "上游未声明",
+        "文档扫描的双路径思路来源：路径 A（Otsu 分离白纸 + 形态学清理 + 最大外轮廓）与路径 B（Otsu 派生双阈值 Canny + 轮廓四边形近似）。core:scanner 的 PageDetector 按这两条路径实现。",
+    ),
+    OpenSourceEntry(
+        "JNA (Java Native Access)", "JNA 社区", "Apache-2.0 / LGPL-2.1",
+        "桌面端绕过 Java 蓝牙栈限制，直接调用 Winsock AF_BTH 做 RFCOMM 直连打印机。",
+    ),
+    OpenSourceEntry(
+        "javax.inject", "JSR-330", "Apache-2.0",
+        "@Inject 标准注解；桌面端复用 Android 侧会话类时保持两边注入写法一致。",
+    ),
+    OpenSourceEntry(
+        "JetBrains Annotations", "JetBrains", "Apache-2.0",
+        "编译期空值注解，液态玻璃与形状库的 API 契约标注。",
+    ),
+    OpenSourceEntry(
+        "Jetpack Compose", "Google / JetBrains", "Apache-2.0",
+        "全部声明式 UI。液态玻璃组件、打印预览、P 站图廊、AI 对话流全是 Compose。",
+    ),
+    OpenSourceEntry(
+        "jSerialComm", "Fazecast", "LGPL-3.0 / Apache-2.0",
+        "桌面端读写「蓝牙链接上的标准串行 (COMx)」虚拟串口；无 COM 口时退回 RFCOMM 直连。",
+    ),
+    OpenSourceEntry(
+        "JUnit 4", "JUnit 团队", "EPL-1.0",
+        "测试框架本体，扫描管线测试用例的断言与运行器基础。",
+    ),
+    OpenSourceEntry(
+        "Ketch", "khushpanchal", "上游未声明",
+        "图片下载管线的组织方式（队列、暂停/恢复、进度回调）。P 站模块移植自 Pix-EzViewer，而它以 include(\":ketch\") 源码子模块内建本库，本项目的下载与缓存流程沿用同一套分层：队列 → 进度 → 落盘 → 通知 UI。",
+    ),
+    OpenSourceEntry(
+        "Kotlin", "JetBrains", "Apache-2.0",
+        "全项目开发语言（Android + 桌面端 + Gradle 脚本）。",
+    ),
+    OpenSourceEntry(
+        "kotlinx.coroutines", "JetBrains", "Apache-2.0",
+        "协程与 Flow。打印分包节流、AI 的 SSE 流式读取、P 站分页加载全靠它。",
+    ),
+    OpenSourceEntry(
+        "kotlinx.serialization", "JetBrains", "Apache-2.0",
+        "JSON 序列化：P 站接口响应、AI 工具参数、会话与配置持久化。",
+    ),
+    OpenSourceEntry(
+        "KSP (Kotlin Symbol Processing)", "Google / JetBrains", "Apache-2.0",
+        "编译期代码生成：Hilt 的依赖图、ADK 的工具包装器都由它在构建期生成。",
+    ),
+    OpenSourceEntry(
+        "Kyant0/shapes", "Kyant0", "Apache-2.0",
+        "圆角矩形与连续曲率形状 API，是液态玻璃透镜折射的几何基础。",
+    ),
+    OpenSourceEntry(
+        "LiquidGlass-Cpp", "默檐 (SilentEaves)", "Apache-2.0",
+        "Android 端 C++ 玻璃渲染管线的来源实现，提供完整的渲染顺序、采样与高光参数。",
+    ),
+    OpenSourceEntry(
+        "Material 3（含 Expressive）", "Google / JetBrains", "Apache-2.0",
+        "组件与设计语言，Expressive 提供动态形状与色彩过渡。",
+    ),
+    OpenSourceEntry(
+        "Material Components for Android", "Google", "Apache-2.0",
+        "传统视图体系的组件基座；承载 MainHostFragment 时需本库在 classpath 可见。",
+    ),
+    OpenSourceEntry(
+        "Material Icons Extended", "Google", "Apache-2.0",
+        "扩展图标集，各页面的动作图标来源。",
+    ),
+    OpenSourceEntry(
+        "MaterialKolor", "Jordond", "MIT",
+        "由壁纸/图片生成动态配色，是壁纸取色与自适应主题的算法来源。",
+    ),
+    OpenSourceEntry(
+        "OkHttp", "Square", "Apache-2.0",
+        "HTTP/2、连接池与 SSE 流式读取；P 站接口、图片下载、AI 流式响应都跑在它上面。",
+    ),
+    OpenSourceEntry(
+        "OpenCV", "OpenCV 团队", "Apache-2.0",
+        "文档扫描的算法引擎：自适应二值、Otsu、Canny、四边形近似、透视变换与去阴影。",
+    ),
+    OpenSourceEntry(
+        "Operit AI", "AAswordman", "LGPL-3.0",
+        "AI Agent 运行时的架构范本：工具调用的确认门（不可逆操作先问用户）、分档权限模式（总是询问 / 仅危险操作 / 放行）、上下文折叠与工具结果回灌。core:agent 的 ToolConfirmationGate、AgentPermission、ContextFolder 按这套模型实现。",
+    ),
+    OpenSourceEntry(
+        "PiPixiv", "darriousliu", "Apache-2.0",
+        "P 站 App API 的接口定义与请求签名方式。评论接口的必填参数与 header 组合即参照其实现对齐，否则会表现为「评论区永远显示暂无评论」。",
+    ),
+    OpenSourceEntry(
+        "Pix-EzViewer", "Ultranity / Perol_Notsfsssf", "MIT",
+        "P 站功能的直接来源：① PixivConfig 的 client_id / client_secret / UA / X-Client-Hash 盐值复刻自其 RestClient；② Pkce.kt 直接移植自其 Pkce 实现；③ PixivApi 接口清单与小说解析参照其 PixivApiService 与 NovelViewModel.parseWebNovel；④ 账号持久化替代了它的 Room 用户表；⑤ 页面信息架构与 UI 组织方式也以它为蓝本。",
+    ),
+    OpenSourceEntry(
+        "Retrofit", "Square", "Apache-2.0",
+        "P 站 App API 的声明式 HTTP 封装，接口定义即文档。",
+    ),
+    OpenSourceEntry(
+        "Skia / Skiko", "Google / JetBrains", "BSD-3-Clause",
+        "桌面端的位图绘制与栅格化后端；文本逐行位图、图片抖动与预览都经由它。",
+    ),
+)
+
 @Composable
 private fun AboutPage(onBack: () -> Unit) {
     SettingsPage(title = "开源许可", onBack = onBack) {
@@ -752,85 +951,38 @@ private fun AboutPage(onBack: () -> Unit) {
 
         SettingsDivider()
 
-        SectionLabel("界面与液态玻璃")
-        OpenSourceRows(
-            listOf(
-                "AndroidLiquidGlass" to "Apache License 2.0",
-                "Kyant0/shapes" to "Apache License 2.0",
-                "LiquidGlass-Cpp" to "Apache License 2.0",
-                "Dear ImGui" to "MIT License",
-                "MaterialKolor" to "MIT License",
-            )
+        Text(
+            text = "以下 ${OPEN_SOURCE_LIST.size} 个项目按名称字母序排列，排名不分先后。" +
+                "无论参与方式是源码移植、构建依赖还是实现参照，贡献同等重要，共同鸣谢。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         SettingsDivider()
 
-        SectionLabel("UI 与运行时")
-        OpenSourceRows(
-            listOf(
-                "Kotlin / Kotlin Coroutines" to "Apache License 2.0",
-                "kotlinx.serialization" to "Apache License 2.0",
-                "Jetpack Compose / Material 3" to "Apache License 2.0",
-                "Compose Multiplatform" to "Apache License 2.0",
-                "Skiko (Skia)" to "BSD 3-Clause",
-            )
-        )
-
-        SettingsDivider()
-
-        SectionLabel("网络与图像")
-        OpenSourceRows(
-            listOf(
-                "OkHttp" to "Apache License 2.0",
-                "Retrofit" to "Apache License 2.0",
-                "Coil" to "Apache License 2.0",
-                "OpenCV" to "Apache License 2.0",
-                "Apache PDFBox" to "Apache License 2.0",
-            )
-        )
-
-        SettingsDivider()
-
-        SectionLabel("蓝牙打印")
-        OpenSourceRows(
-            listOf(
-                "JNA (Java Native Access)" to "Apache-2.0 / LGPL-2.1",
-                "jSerialComm" to "LGPL-3.0 / Apache-2.0",
-            )
-        )
-
-        SettingsDivider()
-
-        SectionLabel("其他")
-        OpenSourceRows(
-            listOf(
-                "javax.inject" to "Apache License 2.0",
-                "Google ADK for Kotlin" to "Apache License 2.0",
-                "Gradle" to "Apache License 2.0",
-            )
-        )
+        OPEN_SOURCE_LIST.forEach { entry ->
+            Column(Modifier.padding(vertical = 8.dp)) {
+                Text(text = entry.name, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = "${entry.author} · ${entry.license}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = entry.contribution,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
 
         SettingsDivider()
 
         Text(
-            text = "完整清单与上游链接见仓库 README 的「开源致谢」一节。",
+            text = "完整清单、上游链接与许可原文见仓库 README 的「开源致谢」一节与 licenses/ 目录。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-    }
-}
-
-@Composable
-private fun OpenSourceRows(items: List<Pair<String, String>>) {
-    items.forEach { (name, license) ->
-        Column(Modifier.padding(vertical = 8.dp)) {
-            Text(text = name, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                text = license,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 

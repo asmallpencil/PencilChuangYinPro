@@ -112,5 +112,5 @@
 
     <!-- 开源许可 -->
     <string name="settings_licenses_title">开放源代码许可</string>
-    <string name="settings_licenses_intro">本应用在开发过程中使用了以下开源项目，向其作者致以感谢。点击可跳转至项目主页查看许可证详情。</string>
+    <string name="settings_licenses_intro">本应用建立在这些开源项目之上，每一项都不可或缺。以下按名称字母序排列，排名不分先后；无论参与方式是源码移植、构建依赖还是实现参照，贡献同等重要，共同鸣谢。点击可跳转至项目主页查看许可证详情。</string>
 </resources>

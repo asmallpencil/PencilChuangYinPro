@@ -115,6 +115,12 @@ fun LicensesScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        AppText(
+                            text = project.contribution,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = dimensionResource(ResR.dimen.dimen_global_padding_s)),
+                        )
                     }
                     Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
                     Icon(
