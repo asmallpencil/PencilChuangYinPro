@@ -744,24 +744,92 @@ private fun AboutPage(onBack: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Text(
+            text = "本项目由 AI 编程助手构建：Trae + DeepSeek V4.1F。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         SettingsDivider()
 
-        SectionLabel("开源组件")
-        listOf(
-            "Kotlin / Kotlin Coroutines" to "Apache License 2.0",
-            "Compose Multiplatform" to "Apache License 2.0",
-            "OkHttp" to "Apache License 2.0",
-            "kotlinx.serialization" to "Apache License 2.0",
-        ).forEach { (name, license) ->
-            Column(Modifier.padding(vertical = 8.dp)) {
-                Text(text = name, style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    text = license,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+        SectionLabel("界面与液态玻璃")
+        OpenSourceRows(
+            listOf(
+                "AndroidLiquidGlass" to "Apache License 2.0",
+                "Kyant0/shapes" to "Apache License 2.0",
+                "LiquidGlass-Cpp" to "Apache License 2.0",
+                "Dear ImGui" to "MIT License",
+                "MaterialKolor" to "MIT License",
+            )
+        )
+
+        SettingsDivider()
+
+        SectionLabel("UI 与运行时")
+        OpenSourceRows(
+            listOf(
+                "Kotlin / Kotlin Coroutines" to "Apache License 2.0",
+                "kotlinx.serialization" to "Apache License 2.0",
+                "Jetpack Compose / Material 3" to "Apache License 2.0",
+                "Compose Multiplatform" to "Apache License 2.0",
+                "Skiko (Skia)" to "BSD 3-Clause",
+            )
+        )
+
+        SettingsDivider()
+
+        SectionLabel("网络与图像")
+        OpenSourceRows(
+            listOf(
+                "OkHttp" to "Apache License 2.0",
+                "Retrofit" to "Apache License 2.0",
+                "Coil" to "Apache License 2.0",
+                "OpenCV" to "Apache License 2.0",
+                "Apache PDFBox" to "Apache License 2.0",
+            )
+        )
+
+        SettingsDivider()
+
+        SectionLabel("蓝牙打印")
+        OpenSourceRows(
+            listOf(
+                "JNA (Java Native Access)" to "Apache-2.0 / LGPL-2.1",
+                "jSerialComm" to "LGPL-3.0 / Apache-2.0",
+            )
+        )
+
+        SettingsDivider()
+
+        SectionLabel("其他")
+        OpenSourceRows(
+            listOf(
+                "javax.inject" to "Apache License 2.0",
+                "Google ADK for Kotlin" to "Apache License 2.0",
+                "Gradle" to "Apache License 2.0",
+            )
+        )
+
+        SettingsDivider()
+
+        Text(
+            text = "完整清单与上游链接见仓库 README 的「开源致谢」一节。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun OpenSourceRows(items: List<Pair<String, String>>) {
+    items.forEach { (name, license) ->
+        Column(Modifier.padding(vertical = 8.dp)) {
+            Text(text = name, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = license,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
