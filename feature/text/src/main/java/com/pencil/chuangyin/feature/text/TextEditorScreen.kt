@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -75,6 +76,7 @@ import com.pencil.chuangyin.core.ui.components.AppSlider
 import com.pencil.chuangyin.core.ui.components.AppSwitch
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextButton
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.core.ui.components.AppTextField
 import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
@@ -957,19 +959,27 @@ private fun PrintProgressLine(progress: PrintProgress?) {
         },
     )
     if (phase == PrintPhase.Printing || phase == PrintPhase.CoolingDown) {
+        val target = if (phase == PrintPhase.CoolingDown) {
+            1f
+        } else {
+            progress?.let {
+                val total = (it.segmentCount.coerceAtLeast(1))
+                val segRatio = 1f / total
+                val pageRatio = if (it.pageCountInSegment > 0) {
+                    it.pageDone.toFloat() / it.pageCountInSegment
+                } else {
+                    0f
+                }
+                ((it.segmentIndex + pageRatio) * segRatio).coerceIn(0f, 1f)
+            } ?: 0f
+        }
+        val animated by animateFloatAsState(
+            targetValue = target,
+            animationSpec = rememberAppMotion().spatialSpec(),
+            label = "textPrintProgress",
+        )
         LinearProgressIndicator(
-            progress = {
-                if (phase == PrintPhase.CoolingDown) 1f else progress?.let {
-                    val total = (it.segmentCount.coerceAtLeast(1))
-                    val segRatio = 1f / total
-                    val pageRatio = if (it.pageCountInSegment > 0) {
-                        it.pageDone.toFloat() / it.pageCountInSegment
-                    } else {
-                        0f
-                    }
-                    ((it.segmentIndex + pageRatio) * segRatio).coerceIn(0f, 1f)
-                } ?: 0f
-            },
+            progress = { animated },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = dimensionResource(ResR.dimen.dimen_global_padding_s)),

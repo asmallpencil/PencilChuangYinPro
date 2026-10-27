@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Store
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -85,6 +86,7 @@ import com.pencil.chuangyin.core.ui.components.AppSwitch
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.feature.pixiv.core.network.PixivConfig
 import com.pencil.chuangyin.feature.pixiv.ui.login.PixivLoginUiState
 import com.pencil.chuangyin.feature.pixiv.ui.login.PixivLoginViewModel
@@ -191,8 +193,13 @@ fun OnboardingScreen(
                 .fillMaxSize()
                 .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
         ) {
+            val stepProgress by animateFloatAsState(
+                targetValue = (state.step + 1f) / state.totalSteps,
+                animationSpec = rememberAppMotion().spatialSpec(),
+                label = "onboardingStepProgress",
+            )
             LinearProgressIndicator(
-                progress = { (state.step + 1f) / state.totalSteps },
+                progress = { stepProgress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(dimensionResource(ResR.dimen.dimen_shape_corner_s)),

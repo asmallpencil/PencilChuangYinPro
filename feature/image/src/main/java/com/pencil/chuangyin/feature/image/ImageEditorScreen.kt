@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -80,6 +81,7 @@ import com.pencil.chuangyin.core.ui.components.AppSwitch
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextButton
 import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.pseudoGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
@@ -854,16 +856,20 @@ private fun ImagePrintProgressLine(progress: PrintProgress?) {
         },
     )
     if (phase == PrintPhase.Printing || phase == PrintPhase.CoolingDown) {
+        val target = if (phase == PrintPhase.CoolingDown) {
+            1f
+        } else {
+            progress?.let {
+                ((it.segmentIndex + 1f) / it.segmentCount.coerceAtLeast(1)).coerceIn(0f, 1f)
+            } ?: 0f
+        }
+        val animated by animateFloatAsState(
+            targetValue = target,
+            animationSpec = rememberAppMotion().spatialSpec(),
+            label = "imagePrintProgress",
+        )
         LinearProgressIndicator(
-            progress = {
-                if (phase == PrintPhase.CoolingDown) {
-                    1f
-                } else {
-                    progress?.let {
-                        ((it.segmentIndex + 1f) / it.segmentCount.coerceAtLeast(1)).coerceIn(0f, 1f)
-                    } ?: 0f
-                }
-            },
+            progress = { animated },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = dimensionResource(ResR.dimen.dimen_global_padding_s)),
