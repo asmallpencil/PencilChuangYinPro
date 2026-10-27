@@ -31,7 +31,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -70,7 +69,11 @@ import com.pencil.chuangyin.desktop.support.rememberRemoteImage
 import com.pencil.chuangyin.desktop.theme.LocalLiquidGlassControlsEnabled
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.DesktopLoadingIndicator
+import com.pencil.chuangyin.desktop.ui.motion.DesktopMotion
+import com.pencil.chuangyin.desktop.ui.motion.animateItemMotion
 import java.io.File
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -414,9 +417,11 @@ private fun DetailContent(
                     horizontalArrangement = Arrangement.spacedBy(gap),
                 ) {
                     items(count = related.size, key = { related[it].id }) { index ->
-                        Box(Modifier.width(150.dp)) {
-                            IllustCard(item = related[index], onClick = {})
-                        }
+                        IllustCard(
+                            item = related[index],
+                            onClick = {},
+                            modifier = animateItemMotion().width(150.dp),
+                        )
                     }
                 }
             }
@@ -487,10 +492,9 @@ private fun MediaPager(illust: PixivIllust, onOpenFullscreen: (Int) -> Unit) {
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
-                    CircularProgressIndicator(
+                    DesktopLoadingIndicator(
                         color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(28.dp),
+                        size = 28.dp,
                     )
                 }
             }
@@ -660,7 +664,7 @@ private fun ZoomableImage(url: String?) {
                     },
             )
         } else {
-            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(32.dp))
+            DesktopLoadingIndicator(color = Color.White, size = 36.dp)
         }
     }
 }
@@ -779,10 +783,9 @@ private fun CommentsSection(
                     .padding(vertical = gap),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(
+                DesktopLoadingIndicator(
                     color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(24.dp),
+                    size = 26.dp,
                 )
             }
 
@@ -807,8 +810,10 @@ private fun CommentsSection(
                 modifier = Modifier.padding(vertical = gap),
             )
 
-            else -> comments.forEach { comment ->
-                CommentRow(comment = comment, modifier = Modifier.padding(vertical = gap))
+            else -> comments.forEachIndexed { index, comment ->
+                AnimatedComment(index = index) {
+                    CommentRow(comment = comment, modifier = Modifier.padding(vertical = gap))
+                }
             }
         }
 
@@ -819,6 +824,26 @@ private fun CommentsSection(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+/**
+ * 评论逐条入场：错峰展开 + 淡入，对齐安卓端 `AppearingComment`。
+ * 评论容器不是 Lazy 列表，拿不到 `animateItem`，用 expandVertically 的 spatial spring 顶上。
+ */
+@Composable
+private fun AnimatedComment(index: Int, content: @Composable () -> Unit) {
+    var visible by remember(index) { mutableStateOf(false) }
+    LaunchedEffect(index) {
+        delay((index.coerceAtMost(8) * 45).toLong())
+        visible = true
+    }
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        enter = androidx.compose.animation.fadeIn(DesktopMotion.effectFast()) +
+            androidx.compose.animation.expandVertically(DesktopMotion.spatial()),
+    ) {
+        content()
     }
 }
 
@@ -892,9 +917,9 @@ private fun PrintingOverlay(done: Int, total: Int) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            CircularProgressIndicator(
+            DesktopLoadingIndicator(
                 color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 2.dp,
+                size = 36.dp,
             )
             Text(
                 text = "正在下载原图并准备打印…（$done/$total）",

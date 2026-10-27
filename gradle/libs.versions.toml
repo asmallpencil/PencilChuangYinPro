@@ -29,6 +29,8 @@ coil = "2.7.0"
 jetbrainsAnnotations = "26.1.0"
 # Google ADK for Kotlin（AI 工具链 @Tool/@Param 注解 + KSP 生成器）
 googleAdk = "0.2.0"
+# androidx.graphics.shapes：RoundedPolygon / Morph —— 真实形状形变（M3 Expressive 加载指示器）
+graphicsShapes = "1.0.1"
 
 [libraries]
 # Google ADK for Kotlin
@@ -54,6 +56,9 @@ androidx-compose-icons-extended = { module = "androidx.compose.material:material
 
 # Material 3 Expressive generation
 material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
+
+# 形状形变（M3 Expressive LoadingIndicator 的 morph 能力）
+androidx-graphics-shapes = { module = "androidx.graphics:graphics-shapes", version.ref = "graphicsShapes" }
 
 # Persistence
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }

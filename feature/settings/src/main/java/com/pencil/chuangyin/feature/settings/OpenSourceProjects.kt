@@ -83,6 +83,13 @@ internal val OPEN_SOURCE_PROJECTS: List<OpenSourceProject> = listOf(
         contribution = "P 站模块采用「Compose 宿主 + FragmentContainerView 承载 MainHostFragment」的混合结构，本依赖是该宿主结构的编译基础。",
     ),
     OpenSourceProject(
+        name = "AndroidX Graphics Shapes",
+        author = "Google",
+        license = "Apache-2.0",
+        url = "https://developer.android.com/jetpack/androidx/releases/graphics",
+        contribution = "RoundedPolygon 与 Morph 的形状插值能力，是加载指示器在七种 M3 形状之间连续 morph、以及液态玻璃连续曲率几何的基础。",
+    ),
+    OpenSourceProject(
         name = "AndroidX Hilt Navigation Compose",
         author = "Google",
         license = "Apache-2.0",
@@ -109,6 +116,13 @@ internal val OPEN_SOURCE_PROJECTS: List<OpenSourceProject> = listOf(
         license = "Apache-2.0",
         url = "https://developer.android.com/jetpack/androidx/releases/test",
         contribution = "扫描管线的仪器测试运行器。",
+    ),
+    OpenSourceProject(
+        name = "Animeko",
+        author = "open-ani / him188",
+        license = "GPL-3.0",
+        url = "https://github.com/open-ani/animeko",
+        contribution = "UI 活性革新的体感标尺。列表增删重排的物理惯性、页面转场的空间层次、加载指示器的形变节奏，均以它的交互手感为对照目标；本项目未复用其源码，仅作为设计参照与质量基准。",
     ),
     OpenSourceProject(
         name = "Apache PDFBox",

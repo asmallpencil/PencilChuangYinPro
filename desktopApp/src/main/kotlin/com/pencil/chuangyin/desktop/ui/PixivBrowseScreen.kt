@@ -33,7 +33,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -68,6 +67,9 @@ import com.pencil.chuangyin.desktop.pixiv.PixivNovel
 import com.pencil.chuangyin.desktop.theme.LocalLiquidGlassControlsEnabled
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.DesktopLoadingIndicator
+import com.pencil.chuangyin.desktop.ui.motion.animateGridItemMotion
+import com.pencil.chuangyin.desktop.ui.motion.animateItemMotion
 import java.awt.Desktop
 import java.net.URI
 import kotlinx.coroutines.launch
@@ -580,6 +582,7 @@ private fun SectionChipRow(
                 label = label,
                 selected = key == selected,
                 onClick = { onSelect(key) },
+                modifier = animateItemMotion(),
             )
         }
     }
@@ -608,7 +611,11 @@ private fun IllustGrid(
     ) {
         items(count = items.size, key = { items[it].id }) { index ->
             val item = items[index]
-            IllustCard(item = item, onClick = { onClick(item.id) })
+            IllustCard(
+                item = item,
+                onClick = { onClick(item.id) },
+                modifier = animateGridItemMotion(),
+            )
         }
         if (loadingMore) {
             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -618,10 +625,9 @@ private fun IllustGrid(
                         .padding(vertical = 16.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator(
+                    DesktopLoadingIndicator(
                         color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 3.dp,
-                        modifier = Modifier.size(28.dp),
+                        size = 28.dp,
                     )
                 }
             }
@@ -643,7 +649,11 @@ private fun NovelFeed(
     ) {
         items(count = novels.size, key = { novels[it].id }) { index ->
             val novel = novels[index]
-            NovelRow(novel = novel, onClick = { onClick(novel.id) })
+            NovelRow(
+                novel = novel,
+                onClick = { onClick(novel.id) },
+                modifier = animateItemMotion(),
+            )
         }
         item(key = "novel_loading") {
             LaunchedEffect(novels.size) {
@@ -656,10 +666,9 @@ private fun NovelFeed(
                 contentAlignment = Alignment.Center,
             ) {
                 if (novelNextUrl != null) {
-                    CircularProgressIndicator(
+                    DesktopLoadingIndicator(
                         color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 3.dp,
-                        modifier = Modifier.size(28.dp),
+                        size = 28.dp,
                     )
                 }
             }

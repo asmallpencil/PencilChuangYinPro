@@ -4,22 +4,20 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
-import com.pencil.chuangyin.resources.R as ResR
+import com.pencil.chuangyin.core.ui.components.AppSkeletonBox
 
 /**
  * P 站列表统一封面图：[rememberAsyncImagePainter] + 普通 [Image]。
@@ -53,8 +51,11 @@ fun PixivCoverImage(
             modifier = Modifier.fillMaxSize(),
         )
         when (painter.state) {
-            is AsyncImagePainter.State.Loading -> CircularProgressIndicator(
-                modifier = Modifier.size(dimensionResource(ResR.dimen.dimen_pixiv_drawer_icon_size)),
+            // 图片占位不用转圈：整块 shimmer 更能表达"图片正在填充"，且不会在网格里
+            // 几十个 spinner 同时转导致视觉噪音与掉帧。
+            is AsyncImagePainter.State.Loading -> AppSkeletonBox(
+                modifier = Modifier.fillMaxSize(),
+                shape = RectangleShape,
             )
             is AsyncImagePainter.State.Error,
             AsyncImagePainter.State.Empty -> Icon(

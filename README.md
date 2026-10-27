@@ -169,10 +169,12 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 | **AndroidX DataStore** | Google | Apache-2.0 | 设置项、AI 模型配置、P 站账号令牌的键值持久化 | https://developer.android.com/jetpack/androidx/releases/datastore |
 | **AndroidX ExifInterface** | Google | Apache-2.0 | 相册照片的 EXIF 方向归一，避免导入图片打印出来是躺倒的 | https://developer.android.com/jetpack/androidx/releases/exifinterface |
 | **AndroidX Fragment KTX** | Google | Apache-2.0 | P 站模块采用「Compose 宿主 + `FragmentContainerView` 承载 `MainHostFragment`」的混合结构，本依赖是该宿主结构的编译基础 | https://developer.android.com/jetpack/androidx/releases/fragment |
+| **AndroidX Graphics Shapes** | Google | Apache-2.0 | `RoundedPolygon` / `Morph` 的形状插值能力：加载指示器在七种 M3 形状之间连续 morph、液态玻璃的连续曲率几何，都建立在这套形状系统之上 | https://developer.android.com/jetpack/androidx/releases/graphics |
 | **AndroidX Hilt Navigation Compose** | Google | Apache-2.0 | `hiltViewModel()` 把 Hilt 注入的 ViewModel 绑定到导航图，各页面状态持有者的接线方式 | https://developer.android.com/jetpack/androidx/releases/hilt |
 | **AndroidX Lifecycle** | Google | Apache-2.0 | ViewModel、`collectAsStateWithLifecycle` 与生命周期感知，全部页面状态流的承载者 | https://developer.android.com/jetpack/androidx/releases/lifecycle |
 | **AndroidX Navigation Compose** | Google | Apache-2.0 | 三个顶级 Tab（首页 / P 站 / AI）与各功能页之间的导航图与返回栈 | https://developer.android.com/jetpack/androidx/releases/navigation |
 | **AndroidX Test Ext JUnit** | Google | Apache-2.0 | 扫描管线的仪器测试运行器（`androidTest`） | https://developer.android.com/jetpack/androidx/releases/test |
+| **Animeko** | open-ani / him188 | GPL-3.0 | **UI 活性革新的体感标尺**。列表增删重排的物理惯性、页面转场的空间层次、加载指示器的形变节奏，均以它的交互手感作为对照目标；本项目未复用其源码，仅作设计参照与质量基准 | https://github.com/open-ani/animeko |
 | **Apache PDFBox** | Apache 基金会 | Apache-2.0 | 桌面端 PDF 导入：取页数、按页栅格化（桌面端没有 Android 的 `PdfRenderer`，这是唯一可行路线） | https://github.com/apache/pdfbox |
 | **BaseRecyclerViewAdapterHelper (BRVAH)** | CymChad | MIT | 列表适配与多类型 Item 的组织方式。本项目 P 站模块移植自 Pix-EzViewer，而 Pix-EzViewer 以 `include(":BRVAH")` 源码子模块内建它，本项目沿用了同一套列表适配思路来实现 Compose 侧的列表与分页 | https://github.com/CymChad/BaseRecyclerViewAdapterHelper |
 | **Coil** | coil-kt 团队 | Apache-2.0 | 图片加载与内存/磁盘缓存，P 站插图、图库缩略图与打印预览全靠它 | https://github.com/coil-kt/coil |
@@ -209,7 +211,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 
 ### 共同鸣谢
 
-以上 46 个项目，参与方式各不相同 —— 有的是被 vendor 进仓库的源码，有的是 Gradle 坐标引入的依赖，有的是被移植、仿写、参照过的实现。但它们对项目的贡献是**同等**的：少了任何一个，这个项目都不会是现在的样子。
+以上 48 个项目，参与方式各不相同 —— 有的是被 vendor 进仓库的源码，有的是 Gradle 坐标引入的依赖，有的是被移植、仿写、参照过的实现。但它们对项目的贡献是**同等**的：少了任何一个，这个项目都不会是现在的样子。
 
 - 没有 **AndroidLiquidGlass** 与 **Kyant0/shapes**，就没有液态玻璃；
 - 没有 **LiquidGlass-Cpp** 与 **Dear ImGui**，C++ 侧的光学实验无从谈起；

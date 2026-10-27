@@ -3,14 +3,14 @@ package com.pencil.chuangyin.pro.navigation
 import android.graphics.Bitmap
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitHorizontalDragOrCancellation
 import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +74,8 @@ import com.pencil.chuangyin.core.theme.glassAwareOutline
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassPanelActive
 import com.pencil.chuangyin.core.ui.components.rememberNativeGlassIcon
+import com.pencil.chuangyin.core.ui.motion.pressScale
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.core.ui.navigation.AppDestination
 import com.pencil.chuangyin.core.ui.navigation.AppNavCommand
 import com.pencil.chuangyin.core.ui.navigation.AppNavigationBus
@@ -317,6 +319,9 @@ fun AppNavHost(
 
     // 液态玻璃导航栏开启时，底部导航栏改由原生覆盖层（LiquidGlassView）绘制，
     // 此处隐藏 Compose 悬浮导航栏避免重复；内容区底部留白仍由 MainTabPager 保留。
+    // 页面转场统一走全局动效体系：进入=轻微上浮+淡入，退出=轻微下沉+淡出，
+    // 取代 NavHost 默认的「硬切/统一 fade」，让每次跳页都有空间层次的物理感。
+    val motion = rememberAppMotion()
     Scaffold(
         modifier = modifier,
         bottomBar = {
@@ -330,6 +335,10 @@ fun AppNavHost(
                 navController = navController,
                 startDestination = startDestination,
                 modifier = Modifier.fillMaxSize(),
+                enterTransition = { motion.pageEnter() },
+                exitTransition = { motion.pageExit() },
+                popEnterTransition = { motion.pageEnter() },
+                popExitTransition = { motion.pageExit() },
             ) {
             composable(AppRoutes.ONBOARDING) {
                 OnboardingRoute(
@@ -760,13 +769,18 @@ private fun FloatingNavItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val motion = rememberAppMotion()
+    val interactionSource = remember { MutableInteractionSource() }
+    // MD3 的 Spatial / Effect 二分：
+    // - 图标/标签颜色、胶囊底色属于 Effect，必须零过冲（过冲会让颜色闪烁）；
+    // - 胶囊与图标的缩放属于 Spatial，用带过冲的 spring 制造"物理回应"。
     val contentColor by animateColorAsState(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.primary
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
         },
-        animationSpec = tween(NAV_ITEM_ANIMATION_MS),
+        animationSpec = motion.effectSpec(),
         label = "floatingNavContentColor",
     )
     val indicatorColor by animateColorAsState(
@@ -775,20 +789,32 @@ private fun FloatingNavItem(
         } else {
             Color.Transparent
         },
-        animationSpec = tween(NAV_ITEM_ANIMATION_MS),
+        animationSpec = motion.effectSpec(),
         label = "floatingNavIndicatorColor",
     )
     val iconScale by animateFloatAsState(
         targetValue = if (selected) NAV_ICON_SELECTED_SCALE else 1f,
-        animationSpec = spring(),
+        animationSpec = motion.bouncySpec(),
         label = "floatingNavIconScale",
+    )
+    // 选中胶囊「弹」出来（0.72 → 1）而不是原地换色，切换 Tab 时多一层形状层面的反馈。
+    val indicatorScale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.72f,
+        animationSpec = motion.bouncySpec(),
+        label = "floatingNavIndicatorScale",
     )
 
     Column(
         modifier = modifier
             .fillMaxHeight()
             .clip(CircleShape)
-            .clickable(onClick = onClick)
+            // 按压反馈：按下微缩、松开弹性回弹（Effect 主导的触感补强）。
+            .pressScale(interactionSource, enabled = true)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
             .padding(
                 vertical = dimensionResource(ResR.dimen.dimen_floating_nav_item_padding_v),
             ),
@@ -797,6 +823,10 @@ private fun FloatingNavItem(
     ) {
         Box(
             modifier = Modifier
+                .graphicsLayer {
+                    scaleX = indicatorScale
+                    scaleY = indicatorScale
+                }
                 .clip(CircleShape)
                 .background(indicatorColor)
                 .padding(
@@ -825,8 +855,5 @@ private fun FloatingNavItem(
     }
 }
 
-/** 导航项颜色补间时长（毫秒）。 */
-private const val NAV_ITEM_ANIMATION_MS = 250
-
-/** 选中时图标放大幅度。 */
+/** 选中时图标放大幅度（配合 Spatial spring，过冲后自然回落）。 */
 private const val NAV_ICON_SELECTED_SCALE = 1.12f

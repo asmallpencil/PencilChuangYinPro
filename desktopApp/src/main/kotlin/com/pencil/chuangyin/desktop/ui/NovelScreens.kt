@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -44,6 +43,7 @@ import com.pencil.chuangyin.desktop.pixiv.PixivNovel
 import com.pencil.chuangyin.desktop.support.rememberRemoteImage
 import com.pencil.chuangyin.desktop.text.TextEditorStore
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
+import com.pencil.chuangyin.desktop.ui.motion.DesktopLoadingIndicator
 import java.awt.Desktop
 import java.net.URI
 import kotlinx.coroutines.launch
@@ -338,10 +338,9 @@ private fun NovelContent(novel: PixivNovel, text: String, bottomBarSpace: Dp) {
                     .padding(top = 32.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(
+                DesktopLoadingIndicator(
                     color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.width(24.dp).height(24.dp),
+                    size = 26.dp,
                 )
             }
         }

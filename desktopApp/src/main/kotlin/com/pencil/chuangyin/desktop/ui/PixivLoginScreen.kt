@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -28,6 +27,8 @@ import com.pencil.chuangyin.desktop.glass.GlassCard
 import com.pencil.chuangyin.desktop.pixiv.PixivGraph
 import com.pencil.chuangyin.desktop.pixiv.Pkce
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
+import com.pencil.chuangyin.desktop.ui.motion.DesktopLoadingIndicator
+import com.pencil.chuangyin.desktop.ui.motion.DesktopMotion
 import java.awt.Desktop
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
@@ -174,15 +175,20 @@ fun PixivLoginScreen(onBack: () -> Unit, onLoggedIn: () -> Unit) {
                             onClick = { submit() },
                             modifier = Modifier.weight(1f),
                         )
-                        if (busy) {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = busy,
+                            enter = androidx.compose.animation.fadeIn(DesktopMotion.effectFast()) +
+                                androidx.compose.animation.expandHorizontally(DesktopMotion.spatialFast()),
+                            exit = androidx.compose.animation.fadeOut(DesktopMotion.effectFast()) +
+                                androidx.compose.animation.shrinkHorizontally(DesktopMotion.spatialFast()),
+                        ) {
                             Box(
                                 modifier = Modifier.widthIn(min = 44.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                CircularProgressIndicator(
+                                DesktopLoadingIndicator(
                                     color = MaterialTheme.colorScheme.primary,
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.padding(8.dp),
+                                    size = 22.dp,
                                 )
                             }
                         }

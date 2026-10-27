@@ -1,5 +1,6 @@
 package com.pencil.chuangyin.desktop.ui
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -60,6 +61,9 @@ import com.pencil.chuangyin.desktop.support.rememberLocalFileImage
 import com.pencil.chuangyin.desktop.support.rememberRemoteImage
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.DesktopMotion
+import com.pencil.chuangyin.desktop.ui.motion.animateGridItemMotion
+import com.pencil.chuangyin.desktop.ui.motion.animateItemMotion
 import java.awt.Desktop
 import java.io.File
 import java.util.Locale
@@ -318,7 +322,7 @@ fun PixivHistoryScreen(onBack: () -> Unit, onOpenDetail: (Long) -> Unit) {
                 items(count = history.size, key = { index -> history[index].illustId }) { index ->
                     val entry = history[index]
                     Row(
-                        modifier = Modifier
+                        modifier = animateItemMotion()
                             .fillMaxWidth()
                             .clickable { onOpenDetail(entry.illustId) }
                             .padding(PaddingM),
@@ -424,7 +428,7 @@ fun PixivBookmarksScreen(
                             items(count = works.size, key = { index -> works[index].illustId }) { index ->
                                 val entry = works[index]
                                 Row(
-                                    modifier = Modifier
+                                    modifier = animateItemMotion()
                                         .fillMaxWidth()
                                         .clickable { onOpenDetail(entry.illustId) }
                                         .padding(PaddingM),
@@ -474,6 +478,7 @@ fun PixivBookmarksScreen(
                                     entry = entry,
                                     onClick = { onOpenNovel(entry.novelId) },
                                     onRemove = { novelStore.remove(entry.novelId) },
+                                    modifier = animateItemMotion(),
                                 )
                             }
                         }
@@ -506,9 +511,10 @@ private fun NovelBookmarkRow(
     entry: NovelBookmarkEntry,
     onClick: () -> Unit,
     onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(PaddingM),
@@ -573,8 +579,20 @@ fun PixivDownloadsScreen(onBack: () -> Unit) {
             ) {
                 items(count = tasks.size, key = { index -> tasks[index].illustId }) { index ->
                     val task = tasks[index]
+                    val progressTarget = when (task.status) {
+                        PixivDownloadStatus.RUNNING ->
+                            if (task.total <= 0) 0f else task.done.toFloat() / task.total
+                        PixivDownloadStatus.DONE -> 1f
+                        PixivDownloadStatus.FAILED -> 0f
+                    }
+                    // 进度条用弹簧追赶，避免 1/200 → 2/200 这种一格一格硬跳。
+                    val animatedProgress by animateFloatAsState(
+                        targetValue = progressTarget,
+                        animationSpec = DesktopMotion.spatial(),
+                        label = "downloadTaskProgress",
+                    )
                     Column(
-                        modifier = Modifier
+                        modifier = animateItemMotion()
                             .fillMaxWidth()
                             .padding(horizontal = PaddingL, vertical = PaddingM),
                     ) {
@@ -612,14 +630,7 @@ fun PixivDownloadsScreen(onBack: () -> Unit) {
                         }
                         Spacer(Modifier.height(PaddingS))
                         LinearProgressIndicator(
-                            progress = {
-                                when (task.status) {
-                                    PixivDownloadStatus.RUNNING ->
-                                        if (task.total <= 0) 0f else task.done.toFloat() / task.total
-                                    PixivDownloadStatus.DONE -> 1f
-                                    PixivDownloadStatus.FAILED -> 0f
-                                }
-                            },
+                            progress = { animatedProgress },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
@@ -689,7 +700,11 @@ fun PixivGalleryScreen(onBack: () -> Unit) {
                             key = { index -> filtered[index].file.absolutePath },
                         ) { index ->
                             val image = filtered[index]
-                            GalleryTile(image = image, onClick = { selected = image })
+                            GalleryTile(
+                                image = image,
+                                onClick = { selected = image },
+                                modifier = animateGridItemMotion(),
+                            )
                         }
                     }
                 }
@@ -746,10 +761,10 @@ fun PixivGalleryScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun GalleryTile(image: PixivSavedImage, onClick: () -> Unit) {
+private fun GalleryTile(image: PixivSavedImage, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = MaterialTheme.shapes.small
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(150.dp)
             .clip(shape)
@@ -1123,7 +1138,7 @@ fun PixivBlockedTagsScreen(onBack: () -> Unit) {
                     items(count = list.size, key = { index -> list[index] }) { index ->
                         val tag = list[index]
                         Row(
-                            modifier = Modifier
+                            modifier = animateItemMotion()
                                 .fillMaxWidth()
                                 .padding(vertical = PaddingS),
                             verticalAlignment = Alignment.CenterVertically,

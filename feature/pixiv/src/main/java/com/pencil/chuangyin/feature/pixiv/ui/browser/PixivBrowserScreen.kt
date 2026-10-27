@@ -12,6 +12,8 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -109,6 +111,8 @@ import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.pseudoGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
+import com.pencil.chuangyin.core.ui.motion.animateItemMotion
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.feature.pixiv.data.local.BrowserBookmarkEntry
 import com.pencil.chuangyin.feature.pixiv.data.local.BrowserHistoryEntry
 import com.pencil.chuangyin.resources.R as ResR
@@ -272,6 +276,13 @@ fun PixivBrowserRoute(
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+    val motion = rememberAppMotion()
+    // 网页加载进度用弹簧追赶，避免 0→12%→37% 一格一格硬跳。
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress / 100f,
+        animationSpec = motion.spatialSpec(),
+        label = "browserPageProgress",
+    )
 
     Box(
         modifier = modifier
@@ -296,9 +307,13 @@ fun PixivBrowserRoute(
                         .fillMaxWidth()
                         .padding(statusBarPadding),
                 )
-                if (progress in 1..99) {
+                AnimatedVisibility(
+                    visible = progress in 1..99,
+                    enter = motion.expandHorizontalEnter(),
+                    exit = motion.shrinkHorizontalExit(),
+                ) {
                     LinearProgressIndicator(
-                        progress = { progress / 100f },
+                        progress = { animatedProgress },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -1059,10 +1074,11 @@ private fun BrowserTabsSheet(
             actionDescription = stringResource(ResR.string.pixiv_browser_new_tab),
             onAction = onNewTab,
         )
+        val motion = rememberAppMotion()
         LazyColumn(modifier = Modifier.fillMaxWidth()) {
             items(tabs, key = { it.id }) { tab ->
                 Row(
-                    modifier = Modifier
+                    modifier = animateItemMotion(motion)
                         .fillMaxWidth()
                         .clickable { onSelect(tab) }
                         .padding(
@@ -1124,10 +1140,11 @@ private fun BrowserBookmarkListSheet(
         if (bookmarks.isEmpty()) {
             SheetEmpty(text = stringResource(ResR.string.pixiv_browser_empty_bookmarks))
         } else {
+            val motion = rememberAppMotion()
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 items(bookmarks, key = { it.url }) { entry ->
                     Row(
-                        modifier = Modifier
+                        modifier = animateItemMotion(motion)
                             .fillMaxWidth()
                             .clickable { onOpen(entry) }
                             .padding(
@@ -1193,10 +1210,11 @@ private fun BrowserHistoryListSheet(
         if (history.isEmpty()) {
             SheetEmpty(text = stringResource(ResR.string.pixiv_browser_empty_history))
         } else {
+            val motion = rememberAppMotion()
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 items(history, key = { it.url + it.visitedAt }) { entry ->
                     Row(
-                        modifier = Modifier
+                        modifier = animateItemMotion(motion)
                             .fillMaxWidth()
                             .clickable { onOpen(entry) }
                             .padding(

@@ -53,7 +53,6 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -94,6 +93,7 @@ import com.pencil.chuangyin.core.agent.runtime.AgentPermissionMode
 import com.pencil.chuangyin.core.ui.components.AppAlertDialog
 import com.pencil.chuangyin.core.ui.components.AppDivider
 import com.pencil.chuangyin.core.ui.components.AppIconButton
+import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextButton
@@ -102,6 +102,8 @@ import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.pseudoGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
+import com.pencil.chuangyin.core.ui.motion.animateItemMotion
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.feature.ai.R
 import com.pencil.chuangyin.feature.ai.data.ConversationSummary
 import com.pencil.chuangyin.feature.ai.tools.ToolNames
@@ -388,6 +390,7 @@ private fun AiConversationList(
     modifier: Modifier = Modifier,
 ) {
     val padM = dimensionResource(ResR.dimen.dimen_global_padding_m)
+    val motion = rememberAppMotion()
     // 纯工具调用载体的空助手消息不渲染，避免出现空白气泡。
     val messages = remember(state.messages) { state.messages.filter { it.isRenderable() } }
     val showWelcome = messages.isEmpty() && state.toolActivities.isEmpty()
@@ -421,10 +424,15 @@ private fun AiConversationList(
             item(key = KEY_WELCOME) { AiWelcomeCard() }
         }
         items(messages, key = { MESSAGE_KEY_PREFIX + it.id }) { message ->
-            AiMessageBubble(message = message, resolveImage = resolveImage)
+            // 新气泡带着弹簧就位，流式增长时下方内容会平滑让位。
+            Box(modifier = animateItemMotion(motion)) {
+                AiMessageBubble(message = message, resolveImage = resolveImage)
+            }
         }
         items(state.toolActivities, key = { TOOL_KEY_PREFIX + it.toolCallId }) { activity ->
-            AiToolActivityRow(activity = activity)
+            Box(modifier = animateItemMotion(motion)) {
+                AiToolActivityRow(activity = activity)
+            }
         }
         state.error?.let { error ->
             item(key = KEY_ERROR) {
@@ -708,7 +716,7 @@ private fun AiToolActivityRow(activity: AiToolActivity, modifier: Modifier = Mod
             .padding(dimensionResource(R.dimen.ai_bubble_padding)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CircularProgressIndicator(modifier = Modifier.size(dimensionResource(ResR.dimen.dimen_global_padding_l)))
+        AppLoadingIndicator(size = 22.dp)
         Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
         Column(modifier = Modifier.weight(1f)) {
             AppText(
@@ -1342,6 +1350,7 @@ private fun AiHistorySheet(
     onDelete: (ConversationSummary) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val motion = rememberAppMotion()
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -1378,12 +1387,14 @@ private fun AiHistorySheet(
                 verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
             ) {
                 items(summaries, key = { it.id }) { summary ->
-                    AiHistoryRow(
-                        summary = summary,
-                        selected = summary.id == currentId,
-                        onOpen = { onOpen(summary.id) },
-                        onDelete = { onDelete(summary) },
-                    )
+                    Box(modifier = animateItemMotion(motion)) {
+                        AiHistoryRow(
+                            summary = summary,
+                            selected = summary.id == currentId,
+                            onOpen = { onOpen(summary.id) },
+                            onDelete = { onDelete(summary) },
+                        )
+                    }
                 }
             }
         }

@@ -8,18 +8,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import com.pencil.chuangyin.core.ui.components.AppText
+import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
+import com.pencil.chuangyin.core.ui.motion.animateItemMotion
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.feature.pixiv.data.PixivRepository
 import com.pencil.chuangyin.feature.pixiv.domain.PixivNovel
 import com.pencil.chuangyin.feature.pixiv.ui.PixivImageProvider
@@ -117,6 +120,7 @@ fun PixivNovelListRoute(
                             message = stringResource(ResR.string.pixiv_novel_empty),
                         )
                         else -> {
+                            val motion = rememberAppMotion()
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
                                 verticalArrangement = Arrangement.spacedBy(
@@ -124,21 +128,25 @@ fun PixivNovelListRoute(
                                 ),
                             ) {
                                 items(state.items, key = { it.id }) { novel ->
-                                    NovelRow(novel = novel, onClick = { onOpenNovel(novel.id) })
+                                    NovelRow(
+                                        novel = novel,
+                                        onClick = { onOpenNovel(novel.id) },
+                                        modifier = animateItemMotion(motion),
+                                    )
                                 }
                                 item {
                                     LaunchedEffect(state.items.size) {
                                         if (state.nextUrl != null) viewModel.loadMore()
                                     }
                                     if (state.loadingMore) {
-                                        AppText(
-                                            text = stringResource(ResR.string.pixiv_loading_more),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
-                                        )
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            AppLoadingIndicator(size = 28.dp)
+                                        }
                                     }
                                 }
                             }

@@ -48,6 +48,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.compose.icons.extended)
+    // RoundedPolygon + Morph：M3 Expressive 风格的形状形变加载指示器
+    implementation(libs.androidx.graphics.shapes)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

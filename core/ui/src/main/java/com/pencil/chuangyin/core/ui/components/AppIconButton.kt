@@ -1,5 +1,8 @@
 package com.pencil.chuangyin.core.ui.components
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.IconButton
@@ -7,8 +10,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.Dp
 import com.pencil.chuangyin.core.theme.LiquidGlassButtonVariant
 import com.pencil.chuangyin.core.theme.LiquidGlassWidgetKind
 import com.pencil.chuangyin.core.theme.LocalLiquidGlassWidgetHost
+import com.pencil.chuangyin.core.ui.motion.pressScale
 import com.pencil.chuangyin.resources.R as ResR
 
 /**
@@ -58,10 +60,14 @@ fun AppIconButton(
         )
         return
     }
+    val interactionSource = remember { MutableInteractionSource() }
     IconButton(
         onClick = onClick,
-        modifier = modifier.size(size),
+        modifier = modifier
+            .size(size)
+            .pressScale(interactionSource, enabled),
         enabled = enabled,
+        interactionSource = interactionSource,
     ) {
         AppIcon(
             imageVector = imageVector,

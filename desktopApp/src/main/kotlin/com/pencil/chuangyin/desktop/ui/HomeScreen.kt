@@ -1,6 +1,7 @@
 package com.pencil.chuangyin.desktop.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +36,8 @@ import com.pencil.chuangyin.desktop.text.PrinterStatus
 import com.pencil.chuangyin.desktop.theme.ThemeState
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.StaggerIn
+import com.pencil.chuangyin.desktop.ui.motion.pressScale
 
 /**
  * 首页 —— 与安卓端 feature/dashboard/HomeScreen.kt 结构 1:1 对齐：
@@ -81,18 +84,22 @@ fun HomeScreen(
                 .padding(bottom = bottomBarSpace),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            PrinterStatusCapsule(onClick = onOpenConnect)
-            CreativeToolsCard(
-                onToolClick = { name ->
-                    // 与安卓端导航一致：文本/图片/AI 打印进入各自编辑器；其余入口桌面端暂未接入。
-                    when (name) {
-                        "文本打印" -> onOpenTextPrint()
-                        "图片打印" -> onOpenImagePrint()
-                        "AI 打印" -> onOpenAiChat()
-                        else -> hint = name
-                    }
-                },
-            )
+            StaggerIn(index = 0) {
+                PrinterStatusCapsule(onClick = onOpenConnect)
+            }
+            StaggerIn(index = 1) {
+                CreativeToolsCard(
+                    onToolClick = { name ->
+                        // 与安卓端导航一致：文本/图片/AI 打印进入各自编辑器；其余入口桌面端暂未接入。
+                        when (name) {
+                            "文本打印" -> onOpenTextPrint()
+                            "图片打印" -> onOpenImagePrint()
+                            "AI 打印" -> onOpenAiChat()
+                            else -> hint = name
+                        }
+                    },
+                )
+            }
         }
     }
 
@@ -117,6 +124,7 @@ fun HomeScreen(
 /** 电量低于该百分比视为低电（与安卓端 BATTERY_LOW_PERCENT 一致）。 */
 private const val BATTERY_LOW_PERCENT = 20
 
+
 /**
  * 打印机状态胶囊：左侧打印机图标 + 标题/连接状态行，右侧 2×2 迷你状态项
  * （电量 / 合盖 / 纸张 / 连接，过热时追加第五项），整卡点击进入连接页。
@@ -129,11 +137,17 @@ private fun PrinterStatusCapsule(onClick: () -> Unit) {
     val connectedName = (connection as? ConnectionState.Connected)?.device?.displayName
     val isConnecting = connection is ConnectionState.Connecting
     val connected = connectedName != null
+    val interaction = remember { MutableInteractionSource() }
 
     GlassCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .pressScale(interaction, pressedScale = 0.98f)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick,
+            ),
         shape = MaterialTheme.shapes.medium,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -284,55 +298,69 @@ private fun CreativeToolsCard(onToolClick: (String) -> Unit) {
             // 与安卓端一致：标签打印未开放，显示「敬请期待」徽标且不可点击。
             ToolEntry(AppIcon.TagTool, "标签打印", null, "敬请期待"),
         )
-        tools.forEach { tool ->
+        tools.forEachIndexed { index, tool ->
             val enabled = tool.badge == null
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(if (enabled) Modifier.clickable { onToolClick(tool.title) } else Modifier)
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AppIconView(
-                    icon = tool.icon,
-                    size = 24.dp,
-                    tint = if (enabled) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.outline
-                    },
-                )
-                Spacer(Modifier.width(16.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = tool.title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (enabled) {
-                            MaterialTheme.colorScheme.onSurface
+            val interaction = remember(tool.title) { MutableInteractionSource() }
+            StaggerIn(index = index + 2, step = 45, offsetDivisor = 40) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (enabled) {
+                                Modifier
+                                    .pressScale(interaction, pressedScale = 0.97f)
+                                    .clickable(
+                                        interactionSource = interaction,
+                                        indication = null,
+                                    ) { onToolClick(tool.title) }
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AppIconView(
+                        icon = tool.icon,
+                        size = 24.dp,
+                        tint = if (enabled) {
+                            MaterialTheme.colorScheme.primary
                         } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                            MaterialTheme.colorScheme.outline
                         },
                     )
-                    if (tool.subtitle != null) {
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) {
                         Text(
-                            text = tool.subtitle,
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = tool.title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (enabled) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                        if (tool.subtitle != null) {
+                            Text(
+                                text = tool.subtitle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    if (tool.badge != null) {
+                        Text(
+                            text = tool.badge,
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    } else {
+                        AppIconView(
+                            icon = AppIcon.ChevronRight,
+                            size = 20.dp,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                }
-                if (tool.badge != null) {
-                    Text(
-                        text = tool.badge,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    AppIconView(
-                        icon = AppIcon.ChevronRight,
-                        size = 20.dp,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
         }

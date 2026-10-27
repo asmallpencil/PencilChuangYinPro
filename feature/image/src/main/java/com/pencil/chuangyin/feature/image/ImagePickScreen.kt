@@ -1,9 +1,14 @@
 package com.pencil.chuangyin.feature.image
 
 import android.graphics.Bitmap
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,8 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +38,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,11 +51,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pencil.chuangyin.core.ui.components.AppIconButton
+import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppOutlinedButton
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextButton
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
+import com.pencil.chuangyin.core.ui.motion.animateGridItemMotion
+import com.pencil.chuangyin.core.ui.motion.pressScale
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.resources.R as ResR
 
 /**
@@ -143,6 +153,7 @@ fun ImagePickScreen(
             }
         },
     ) { innerPadding ->
+        val motion = rememberAppMotion()
         LazyVerticalGrid(
             columns = GridCells.Fixed(PICK_GRID_COLUMNS),
             modifier = Modifier
@@ -159,6 +170,7 @@ fun ImagePickScreen(
                     thumbnail = pick.thumbnails[item.key],
                     onToggle = { onToggle(item.key) },
                     onEnsureThumbnail = { onEnsureThumbnail(item.key) },
+                    modifier = animateGridItemMotion(motion),
                 )
             }
         }
@@ -172,16 +184,20 @@ private fun PickCell(
     thumbnail: Bitmap?,
     onToggle: () -> Unit,
     onEnsureThumbnail: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(item.key) { onEnsureThumbnail() }
-    Column {
+    val motion = rememberAppMotion()
+    val interactionSource = remember { MutableInteractionSource() }
+    Column(modifier = modifier) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_s)))
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .clickable(onClick = onToggle),
+                .pressScale(interactionSource)
+                .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { onToggle() },
             contentAlignment = Alignment.Center,
         ) {
             if (thumbnail != null) {
@@ -192,16 +208,23 @@ private fun PickCell(
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(dimensionResource(ResR.dimen.dimen_global_touch_target) * 0.6f),
+                AppLoadingIndicator(
+                    size = dimensionResource(ResR.dimen.dimen_global_touch_target) * 0.6f,
                 )
             }
-            // 选中角标（截图同款：右上角紫底白勾）。
-            if (selected) {
+            // 选中角标（截图同款：右上角紫底白勾）；勾选时从小弹到完整大小。
+            androidx.compose.animation.AnimatedVisibility(
+                visible = selected,
+                enter = scaleIn(initialScale = 0.4f, animationSpec = motion.bouncySpec()) +
+                    fadeIn(animationSpec = motion.effectFastSpec()),
+                exit = scaleOut(targetScale = 0.6f, animationSpec = motion.spatialFastSpec()) +
+                    fadeOut(animationSpec = motion.effectFastSpec()),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(dimensionResource(ResR.dimen.dimen_global_padding_s)),
+            ) {
                 Box(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(dimensionResource(ResR.dimen.dimen_global_padding_s))
                         .size(dimensionResource(ResR.dimen.dimen_global_touch_target) * 0.6f)
                         .clip(RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_s)))
                         .background(MaterialTheme.colorScheme.primary),

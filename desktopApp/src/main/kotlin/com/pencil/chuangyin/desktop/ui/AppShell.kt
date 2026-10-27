@@ -1,10 +1,11 @@
 package com.pencil.chuangyin.desktop.ui
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -53,6 +54,8 @@ import com.pencil.chuangyin.desktop.theme.ThemeState
 import com.pencil.chuangyin.desktop.theme.cornerSafeInset
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.DesktopMotion
+import com.pencil.chuangyin.desktop.ui.motion.pressScale
 import androidx.compose.runtime.collectAsState
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -149,73 +152,62 @@ fun AppShell(themeState: ThemeState = DesktopThemeStore.state.collectAsState().v
         )
 
         // 设置以整窗覆盖层呈现（对齐安卓 navController 的 SETTINGS 目的地，返回即退出）。
-        if (settingsOpen) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                SettingsScreen(onBack = { settingsOpen = false })
-            }
+        OverlayPage(visible = settingsOpen) {
+            SettingsScreen(onBack = { settingsOpen = false })
         }
 
         // 文本打印编辑器同样以整窗覆盖层呈现（对齐安卓 TEXT_EDITOR 目的地）。
-        if (textPrintOpen) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                TextPrintScreen(onBack = { textPrintOpen = false })
-            }
+        OverlayPage(visible = textPrintOpen) {
+            TextPrintScreen(onBack = { textPrintOpen = false })
         }
 
         // 图片打印编辑器同样以整窗覆盖层呈现（对齐安卓 IMAGE_EDITOR 目的地）。
-        if (imagePrintOpen) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                ImagePrintScreen(onBack = { imagePrintOpen = false })
-            }
+        OverlayPage(visible = imagePrintOpen) {
+            ImagePrintScreen(onBack = { imagePrintOpen = false })
         }
 
         // AI 打印对话同样以整窗覆盖层呈现（对齐安卓 AI_CHAT 目的地）。
-        if (aiChatOpen) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                AiChatPage(
-                    onBack = { aiChatOpen = false },
-                    onOpenConfig = { aiConfigOpen = true },
-                )
-            }
+        OverlayPage(visible = aiChatOpen) {
+            AiChatPage(
+                onBack = { aiChatOpen = false },
+                onOpenConfig = { aiConfigOpen = true },
+            )
         }
 
         // AI 模型配置（对齐安卓 SETTINGS → AI 配置页面，可独立覆盖在对话之上）。
-        if (aiConfigOpen) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                AiConfigPage(onBack = { aiConfigOpen = false })
-            }
+        OverlayPage(visible = aiConfigOpen) {
+            AiConfigPage(onBack = { aiConfigOpen = false })
         }
 
         // 连接打印机（对齐安卓 CONNECT 目的地）：从首页状态胶囊、文本/图片编辑器底栏叠开，
         // 关闭后仍回到原页面，因此渲染在所有编辑页之后。
-        if (connectOpen) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                ConnectScreen(onBack = { connectOpen = false })
-            }
+        OverlayPage(visible = connectOpen) {
+            ConnectScreen(onBack = { connectOpen = false })
+        }
+    }
+}
+
+/**
+ * 整窗覆盖页（设置 / 编辑器 / 对话 / 连接）的统一入场退场包装。
+ *
+ * 之前这些覆盖页是瞬间铺满整窗，切换时像"闪一下"。现在改为淡入 + 轻微上浮的 spatial spring，
+ * 退场反向收回，和安卓端 push / pop 转场的体感一致。
+ */
+@Composable
+private fun OverlayPage(visible: Boolean, content: @Composable () -> Unit) {
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(DesktopMotion.effectFast()) +
+            slideInVertically(DesktopMotion.spatialSlow()) { it / 14 },
+        exit = fadeOut(DesktopMotion.effectFast()) +
+            slideOutVertically(DesktopMotion.spatialSlow()) { it / 14 },
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
+            content()
         }
     }
 }
@@ -238,9 +230,6 @@ private val FLOATING_NAV_ITEM_PADDING_V = 6.dp
 private val FLOATING_NAV_INDICATOR_PADDING_H = 18.dp
 private val FLOATING_NAV_INDICATOR_PADDING_V = 6.dp
 private val FLOATING_NAV_ICON_SIZE = 24.dp
-
-/** 导航项颜色补间时长（毫秒），与安卓端一致。 */
-private const val NAV_ITEM_ANIMATION_MS = 250
 
 /** 选中时图标放大幅度，与安卓端一致。 */
 private const val NAV_ICON_SELECTED_SCALE = 1.12f
@@ -345,7 +334,7 @@ private fun FloatingNavItem(
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
         },
-        animationSpec = tween(NAV_ITEM_ANIMATION_MS),
+        animationSpec = DesktopMotion.effect(),
         label = "floatingNavContentColor",
     )
     val indicatorColor by animateColorAsState(
@@ -354,13 +343,19 @@ private fun FloatingNavItem(
         } else {
             Color.Transparent
         },
-        animationSpec = tween(NAV_ITEM_ANIMATION_MS),
+        animationSpec = DesktopMotion.effect(),
         label = "floatingNavIndicatorColor",
     )
+    // 图标缩放用回弹 spring，容器指示器用常规 spatial spring：两者分开，符合 MD3 Spatial/Effect 二分。
     val iconScale by animateFloatAsState(
         targetValue = if (selected) NAV_ICON_SELECTED_SCALE else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy),
+        animationSpec = DesktopMotion.bouncy(),
         label = "floatingNavIconScale",
+    )
+    val indicatorScale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.72f,
+        animationSpec = DesktopMotion.spatialFast(),
+        label = "floatingNavIndicatorScale",
     )
 
     // 桌面端鼠标驻留会一直绘制 hover state layer，形成第二个「胶囊选中态」，与安卓观感不符，
@@ -371,6 +366,7 @@ private fun FloatingNavItem(
         modifier = modifier
             .fillMaxHeight()
             .clip(CircleShape)
+            .pressScale(interactionSource, pressedScale = 0.94f)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -382,6 +378,10 @@ private fun FloatingNavItem(
     ) {
         Box(
             modifier = Modifier
+                .graphicsLayer {
+                    scaleX = indicatorScale
+                    scaleY = indicatorScale
+                }
                 .clip(CircleShape)
                 .background(indicatorColor)
                 .padding(

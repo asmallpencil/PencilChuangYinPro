@@ -1,6 +1,7 @@
 package com.pencil.chuangyin.core.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,6 +30,7 @@ import com.pencil.chuangyin.core.theme.LocalControlOutline
 import com.pencil.chuangyin.core.theme.LocalLiquidGlassWidgetHost
 import com.pencil.chuangyin.core.theme.controlOutline
 import com.pencil.chuangyin.core.theme.cornerSafeInset
+import com.pencil.chuangyin.core.ui.motion.pressScale
 import com.pencil.chuangyin.resources.R as ResR
 
 /**
@@ -156,15 +158,19 @@ fun AppPrimaryButton(
         NativeGlassButton(text, onClick, modifier, leadingIcon, fillWidth = true)
         return
     }
+    // 按压反馈（M3 回退路径）：按下缩到 ~0.94，松开由 spatial spring 回弹。
+    val interactionSource = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .height(dimensionResource(ResR.dimen.dimen_global_btn_height_min))
-            .enabledControlOutline(enabled),
+            .enabledControlOutline(enabled)
+            .pressScale(interactionSource, enabled),
         enabled = enabled,
         shape = MaterialTheme.shapes.medium,
         contentPadding = appButtonContentPadding(),
+        interactionSource = interactionSource,
     ) {
         AppButtonContent(text, leadingContent, leadingIcon)
     }
@@ -183,17 +189,20 @@ fun AppSecondaryButton(
         NativeGlassButton(text, onClick, modifier, leadingIcon, fillWidth = true)
         return
     }
+    val interactionSource = remember { MutableInteractionSource() }
     OutlinedButton(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .height(dimensionResource(ResR.dimen.dimen_global_btn_height_min))
-            .enabledControlOutline(enabled),
+            .enabledControlOutline(enabled)
+            .pressScale(interactionSource, enabled),
         enabled = enabled,
         shape = MaterialTheme.shapes.medium,
         border = outlinedBorderOrNull(enabled),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
         contentPadding = appButtonContentPadding(),
+        interactionSource = interactionSource,
     ) {
         AppButtonContent(text, leadingContent, leadingIcon)
     }
@@ -216,14 +225,18 @@ fun AppOutlinedButton(
         NativeGlassButton(text, onClick, modifier, leadingIcon, fillWidth = false)
         return
     }
+    val interactionSource = remember { MutableInteractionSource() }
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.enabledControlOutline(enabled),
+        modifier = modifier
+            .enabledControlOutline(enabled)
+            .pressScale(interactionSource, enabled),
         enabled = enabled,
         shape = MaterialTheme.shapes.medium,
         border = outlinedBorderOrNull(enabled),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
         contentPadding = appButtonContentPadding(),
+        interactionSource = interactionSource,
     ) {
         AppButtonContent(text, leadingContent, leadingIcon)
     }

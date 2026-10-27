@@ -1,5 +1,6 @@
 package com.pencil.chuangyin.feature.pixiv.ui.detail
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -42,7 +43,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Print
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +55,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -63,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
@@ -80,12 +82,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.SubcomposeAsyncImage
 import com.pencil.chuangyin.core.ui.components.AppFilterChip
 import com.pencil.chuangyin.core.ui.components.AppIconButton
+import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppSecondaryButton
+import com.pencil.chuangyin.core.ui.components.AppSkeletonBox
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextField
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
+import com.pencil.chuangyin.core.ui.motion.animateItemMotion
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.feature.pixiv.domain.PixivComment
 import com.pencil.chuangyin.feature.pixiv.domain.PixivIllust
 import com.pencil.chuangyin.feature.pixiv.domain.PixivPage
@@ -234,14 +240,20 @@ private fun DetailContent(
         )
     }
 
+    val motion = rememberAppMotion()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = dimensionResource(ResR.dimen.dimen_global_padding_l)),
     ) {
-        item { MediaPager(illust = illust, onOpenFullscreen = { fullscreenPage = it }) }
+        item(key = "media") {
+            // 相关作品 / 评论加载完成后，上方内容会带惯性让位，而不是硬跳。
+            Box(modifier = animateItemMotion(motion)) {
+                MediaPager(illust = illust, onOpenFullscreen = { fullscreenPage = it })
+            }
+        }
 
-        item {
-            Column(modifier = Modifier.padding(pad)) {
+        item(key = "info") {
+            Column(modifier = animateItemMotion(motion).padding(pad)) {
                 AppText(
                     text = illust.title,
                     style = MaterialTheme.typography.titleLarge,
@@ -307,28 +319,33 @@ private fun DetailContent(
         }
 
         if (state.related.isNotEmpty()) {
-            item {
+            item(key = "related_title") {
                 AppText(
                     text = stringResource(ResR.string.pixiv_related),
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = pad, vertical = gap),
+                    modifier = animateItemMotion(motion).padding(horizontal = pad, vertical = gap),
                 )
             }
-            item {
+            item(key = "related_row") {
                 LaunchedEffect(state.related.size, state.relatedNextUrl) {
                     if (state.relatedNextUrl != null) onRelatedShown()
                 }
-                RelatedRow(items = state.related, onOpenDetail = onOpenDetail)
+                RelatedRow(
+                    items = state.related,
+                    onOpenDetail = onOpenDetail,
+                    modifier = animateItemMotion(motion),
+                )
             }
         }
 
-        item {
+        item(key = "comments") {
             CommentsSection(
                 state = state,
                 onInputChange = onCommentInputChange,
                 onPost = onPostComment,
                 onLoadMore = onCommentsMore,
                 onRetry = onCommentsRetry,
+                modifier = animateItemMotion(motion),
             )
         }
     }
@@ -367,10 +384,11 @@ private fun MediaPager(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize(),
                     loading = {
-                        Box(
+                        // 大图占位用 shimmer 骨架而不是转圈：形状与最终图片一致，切换时无跳动。
+                        AppSkeletonBox(
                             modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) { CircularProgressIndicator() }
+                            shape = RectangleShape,
+                        )
                     },
                     error = {
                         Box(
@@ -584,10 +602,8 @@ private fun ZoomablePixivImage(
                     translationY = offset.y
                 },
             loading = {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator(color = Color.White) }
+                // 全屏图在纯黑底上加载：用白色 morphing 指示器，比 MD2 转圈更有"M3 味"。
+                AppLoadingIndicator(color = Color.White)
             },
             error = {
                 Box(
@@ -683,15 +699,21 @@ private fun TagFlow(
 }
 
 @Composable
-private fun RelatedRow(items: List<PixivIllust>, onOpenDetail: (Int) -> Unit) {
+private fun RelatedRow(
+    items: List<PixivIllust>,
+    onOpenDetail: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val cardWidth = dimensionResource(ResR.dimen.dimen_pixiv_related_card_width)
     val pad = dimensionResource(ResR.dimen.dimen_global_padding_m)
+    val motion = rememberAppMotion()
     LazyRow(
+        modifier = modifier,
         contentPadding = PaddingValues(horizontal = pad),
         horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_pixiv_grid_spacing)),
     ) {
         items(items, key = { it.id }) { illust ->
-            Box(modifier = Modifier.width(cardWidth)) {
+            Box(modifier = animateItemMotion(motion).width(cardWidth)) {
                 IllustCard(illust = illust, onClick = { onOpenDetail(illust.id) })
             }
         }
@@ -705,10 +727,11 @@ private fun CommentsSection(
     onPost: () -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val pad = dimensionResource(ResR.dimen.dimen_global_padding_m)
     val gap = dimensionResource(ResR.dimen.dimen_global_padding_s)
-    Column(modifier = Modifier.padding(horizontal = pad, vertical = gap)) {
+    Column(modifier = modifier.padding(horizontal = pad, vertical = gap)) {
         AppText(
             text = stringResource(ResR.string.pixiv_comments),
             style = MaterialTheme.typography.titleMedium,
@@ -745,7 +768,7 @@ private fun CommentsSection(
                         .fillMaxWidth()
                         .padding(vertical = gap),
                     contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator() }
+                ) { AppLoadingIndicator() }
             }
             // 失败不再伪装成「暂无评论」：明确告知并提供重试。
             state.commentsError && state.comments.isEmpty() -> {
@@ -773,10 +796,12 @@ private fun CommentsSection(
             }
             else -> {
                 state.comments.forEach { comment ->
-                    CommentRow(
-                        comment = comment,
-                        modifier = Modifier.padding(vertical = gap),
-                    )
+                    key(comment.id) {
+                        AppearingComment(
+                            comment = comment,
+                            modifier = Modifier.padding(vertical = gap),
+                        )
+                    }
                 }
             }
         }
@@ -788,6 +813,20 @@ private fun CommentsSection(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+/**
+ * 评论出现动效：新发的 / 新加载的评论从顶部弹性撑开，
+ * 而不是在列表里"啪"地插入一行。
+ */
+@Composable
+private fun AppearingComment(comment: PixivComment, modifier: Modifier = Modifier) {
+    var appeared by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { appeared = true }
+    val motion = rememberAppMotion()
+    AnimatedVisibility(visible = appeared, enter = motion.expandEnter()) {
+        CommentRow(comment = comment, modifier = modifier)
     }
 }
 
@@ -874,7 +913,7 @@ private fun PrintingOverlay(done: Int, total: Int) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_m)),
             ) {
-                CircularProgressIndicator()
+                AppLoadingIndicator()
                 AppText(
                     text = stringResource(ResR.string.pixiv_preparing_print, done, total),
                     align = TextAlign.Center,

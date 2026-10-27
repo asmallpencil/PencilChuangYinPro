@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +29,7 @@ import com.pencil.chuangyin.desktop.pixiv.PixivIllust
 import com.pencil.chuangyin.desktop.support.rememberRemoteImage
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.DesktopLoadingIndicator
 
 /** 圆形头像（带占位）。 */
 @Composable
@@ -93,10 +93,9 @@ fun IllustCard(
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
-                CircularProgressIndicator(
+                DesktopLoadingIndicator(
                     color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(28.dp),
+                    size = 28.dp,
                 )
             }
             if (item.isBookmarked) {
@@ -144,10 +143,9 @@ private fun BadgeBox(modifier: Modifier = Modifier, content: @Composable () -> U
 @Composable
 fun LoadingBox(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(
+        DesktopLoadingIndicator(
             color = MaterialTheme.colorScheme.primary,
-            strokeWidth = 3.dp,
-            modifier = Modifier.size(32.dp),
+            size = 36.dp,
         )
     }
 }

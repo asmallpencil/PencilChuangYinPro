@@ -34,11 +34,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pencil.chuangyin.core.ui.components.AppFilterChip
 import com.pencil.chuangyin.core.ui.components.AppIconButton
+import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppSegmentedRow
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextField
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
+import com.pencil.chuangyin.core.ui.motion.animateItemMotion
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.feature.pixiv.domain.PixivNovel
 import com.pencil.chuangyin.feature.pixiv.domain.PixivSearchSort
 import com.pencil.chuangyin.feature.pixiv.domain.PixivSearchTarget
@@ -244,26 +247,31 @@ private fun NovelResultList(
     onOpen: (Int) -> Unit,
     contentPadding: PaddingValues,
 ) {
+    val motion = rememberAppMotion()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = contentPadding,
     ) {
         items(items, key = { it.id }) { novel ->
-            NovelRow(novel = novel, onClick = { onOpen(novel.id) })
+            NovelRow(
+                novel = novel,
+                onClick = { onOpen(novel.id) },
+                modifier = animateItemMotion(motion),
+            )
         }
         item {
             LaunchedEffect(items.size) {
                 if (canLoadMore) onLoadMore()
             }
             if (loadingMore) {
-                AppText(
-                    text = stringResource(ResR.string.pixiv_loading_more),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AppLoadingIndicator(size = 28.dp)
+                }
             }
         }
     }

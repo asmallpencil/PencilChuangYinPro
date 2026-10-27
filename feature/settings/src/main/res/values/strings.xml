@@ -2,6 +2,9 @@
     <string name="settings_title">设置</string>
 
     <!-- 设置主菜单 -->
+    <string name="settings_group_ai">智能能力</string>
+    <string name="settings_group_appearance">外观与动效</string>
+    <string name="settings_group_output">输出与关于</string>
     <string name="settings_menu_ai">AI 配置设置</string>
     <string name="settings_menu_ai_desc">配置 OpenAI 兼容接口的模型</string>
     <string name="settings_menu_visual">画面设置</string>
@@ -114,4 +117,8 @@
     <!-- 开源许可 -->
     <string name="settings_licenses_title">开放源代码许可</string>
     <string name="settings_licenses_intro">本应用建立在这些开源项目之上，每一项都不可或缺。以下按名称字母序排列，排名不分先后；无论参与方式是源码移植、构建依赖还是实现参照，贡献同等重要，共同鸣谢。点击可跳转至项目主页查看许可证详情。</string>
+    <string name="settings_licenses_search">搜索项目、作者或许可证</string>
+    <string name="settings_licenses_empty">没有匹配的开源项目</string>
+    <string name="settings_licenses_count">共 %1$d 个项目 · 排名不分先后</string>
+    <string name="settings_licenses_count_filtered">匹配 %1$d / %2$d 个项目</string>
 </resources>

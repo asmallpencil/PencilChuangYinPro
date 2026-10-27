@@ -103,6 +103,7 @@ fun AppTheme(
             LocalCornerStyle provides themeState.cornerStyle,
             LocalCornerStrength provides themeState.cornerStrength,
             LocalLiquidGlassWindowView provides windowView,
+            LocalMotionPreset provides themeState.motionPreset,
         ) {
             MaterialTheme(
                 colorScheme = effectiveScheme.copy(background = Color.Transparent),

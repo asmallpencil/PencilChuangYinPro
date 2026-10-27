@@ -57,6 +57,7 @@ import com.pencil.chuangyin.desktop.text.TextEditorUiState
 import com.pencil.chuangyin.desktop.text.TextNotice
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.animatedProgress
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -814,19 +815,23 @@ private fun PrintProgressLine(progress: PrintProgress?) {
         },
     )
     if (phase == PrintPhase.Printing || phase == PrintPhase.CoolingDown) {
+        val target = if (phase == PrintPhase.CoolingDown) {
+            1f
+        } else {
+            progress?.let {
+                val total = it.segmentCount.coerceAtLeast(1)
+                val segRatio = 1f / total
+                val pageRatio = if (it.pageCountInSegment > 0) {
+                    it.pageDone.toFloat() / it.pageCountInSegment
+                } else {
+                    0f
+                }
+                ((it.segmentIndex + pageRatio) * segRatio).coerceIn(0f, 1f)
+            } ?: 0f
+        }
+        val animated = animatedProgress(target, "textPrintProgress")
         LinearProgressIndicator(
-            progress = {
-                if (phase == PrintPhase.CoolingDown) 1f else progress?.let {
-                    val total = it.segmentCount.coerceAtLeast(1)
-                    val segRatio = 1f / total
-                    val pageRatio = if (it.pageCountInSegment > 0) {
-                        it.pageDone.toFloat() / it.pageCountInSegment
-                    } else {
-                        0f
-                    }
-                    ((it.segmentIndex + pageRatio) * segRatio).coerceIn(0f, 1f)
-                } ?: 0f
-            },
+            progress = { animated },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = PADDING_S),

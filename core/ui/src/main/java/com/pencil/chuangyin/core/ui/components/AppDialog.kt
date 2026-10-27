@@ -1,6 +1,9 @@
 package com.pencil.chuangyin.core.ui.components
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +42,7 @@ import com.pencil.chuangyin.core.theme.LiquidGlassLayer
 import com.pencil.chuangyin.core.theme.LocalLiquidGlassControlsEnabled
 import com.pencil.chuangyin.core.theme.LocalLiquidGlassStyle
 import com.pencil.chuangyin.core.theme.LocalLiquidGlassWidgetHost
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 
 /** 弹窗遮罩不透明度，与 M3 `AlertDialog` 的 scrim 一致。 */
 private const val DIALOG_SCRIM_ALPHA = 0.32f
@@ -98,24 +102,44 @@ fun AppDialogHost(state: AppDialogHostState, modifier: Modifier = Modifier) {
     }
 }
 
-/** 单层弹窗：全屏遮罩（点击/返回关闭）+ 居中卡片；卡片区域吞掉点击，避免穿透遮罩。 */
+/** 单层弹窗：全屏遮罩（点击/返回关闭）+ 居中卡片；卡片区域吞掉点击，避免穿透遮罩。
+ *
+ * 出现动画：遮罩走 effect spring（零过冲，纯不透明度），卡片走 spatial spring 的
+ * scaleIn（0.92 → 1，轻微过冲），替代此前「瞬间出现」的死板观感。
+ */
 @Composable
 private fun AppDialogLayer(entry: AppDialogEntry) {
     BackHandler(enabled = true) { entry.onDismissRequest() }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.scrim.copy(alpha = DIALOG_SCRIM_ALPHA))
-            .pointerInput(entry) { detectTapGestures { entry.onDismissRequest() } },
-        contentAlignment = Alignment.Center,
-    ) {
+    val motion = rememberAppMotion()
+    // 首帧 false → targetState true，让 AnimatedVisibility 播放入场动画。
+    val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
+    val scrimProgress by animateFloatAsState(
+        targetValue = if (visibleState.targetState || visibleState.currentState) 1f else 0f,
+        animationSpec = motion.effectSpec(),
+        label = "dialogScrim",
+    )
+    Box(modifier = Modifier.fillMaxSize()) {
         Box(
-            modifier = Modifier.pointerInput(entry) {
-                // 空手势：仅消费卡片区域的点击，使其不外泄到遮罩（点卡片不关闭）。
-                detectTapGestures { }
-            },
-        ) {
-            entry.content?.invoke()
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = DIALOG_SCRIM_ALPHA * scrimProgress))
+                .pointerInput(entry) { detectTapGestures { entry.onDismissRequest() } },
+        )
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            AnimatedVisibility(
+                visibleState = visibleState,
+                enter = motion.dialogEnter(),
+                exit = motion.dialogExit(),
+            ) {
+                Box(
+                    modifier = Modifier.pointerInput(entry) {
+                        // 空手势：仅消费卡片区域的点击，使其不外泄到遮罩（点卡片不关闭）。
+                        detectTapGestures { }
+                    },
+                ) {
+                    entry.content?.invoke()
+                }
+            }
         }
     }
 }

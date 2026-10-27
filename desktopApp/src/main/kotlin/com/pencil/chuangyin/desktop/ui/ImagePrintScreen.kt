@@ -27,7 +27,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +71,9 @@ import com.pencil.chuangyin.desktop.text.PrintResult
 import com.pencil.chuangyin.desktop.text.PrinterStatus
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.DesktopLoadingIndicator
+import com.pencil.chuangyin.desktop.ui.motion.animateGridItemMotion
+import com.pencil.chuangyin.desktop.ui.motion.animatedProgress
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -453,7 +455,7 @@ private fun PreviewPaper(
                         } else {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 if (page == currentIndex && isPreparing) {
-                                    CircularProgressIndicator()
+                                    DesktopLoadingIndicator(size = 28.dp)
                                     Spacer(modifier = Modifier.height(PADDING_S))
                                 }
                                 Text(
@@ -725,15 +727,15 @@ private fun ImagePrintProgressLine(progress: PrintProgress?) {
         },
     )
     if (phase == PrintPhase.Printing || phase == PrintPhase.CoolingDown) {
+        val target = if (phase == PrintPhase.CoolingDown) {
+            1f
+        } else {
+            val total = progress?.segmentCount?.coerceAtLeast(1) ?: 1
+            (((progress?.segmentIndex ?: 0) + 1).toFloat() / total).coerceIn(0f, 1f)
+        }
+        val animated = animatedProgress(target, "imagePrintProgress")
         LinearProgressIndicator(
-            progress = {
-                if (phase == PrintPhase.CoolingDown) {
-                    1f
-                } else {
-                    val total = progress?.segmentCount?.coerceAtLeast(1) ?: 1
-                    (((progress?.segmentIndex ?: 0) + 1).toFloat() / total).coerceIn(0f, 1f)
-                }
-            },
+            progress = { animated },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = PADDING_S),
@@ -824,6 +826,7 @@ private fun ImagePickContent(
                     thumbnail = pick.thumbnails[item.key],
                     onToggle = { onToggle(item.key) },
                     onEnsureThumbnail = { onEnsureThumbnail(item.key) },
+                    modifier = animateGridItemMotion(),
                 )
             }
         }
@@ -837,9 +840,10 @@ private fun PickCell(
     thumbnail: androidx.compose.ui.graphics.ImageBitmap?,
     onToggle: () -> Unit,
     onEnsureThumbnail: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(item.key) { onEnsureThumbnail() }
-    Column {
+    Column(modifier = modifier) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -857,8 +861,9 @@ private fun PickCell(
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(TOUCH_TARGET * 0.6f),
+                DesktopLoadingIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    size = TOUCH_TARGET * 0.6f,
                 )
             }
             // 选中角标（截图同款：右上角主色底白勾）。

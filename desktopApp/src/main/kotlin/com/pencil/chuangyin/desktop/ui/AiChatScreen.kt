@@ -32,7 +32,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -74,6 +73,8 @@ import com.pencil.chuangyin.desktop.glass.glassSurface
 import com.pencil.chuangyin.desktop.support.rememberLocalFileImage
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.DesktopLoadingIndicator
+import com.pencil.chuangyin.desktop.ui.motion.animateItemMotion
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -395,10 +396,10 @@ private fun AiConversationList(
             item(key = KEY_WELCOME) { AiWelcomeCard() }
         }
         items(messages, key = { MESSAGE_KEY_PREFIX + it.id }) { message ->
-            AiMessageBubble(message = message)
+            AiMessageBubble(message = message, modifier = animateItemMotion())
         }
         items(state.toolActivities, key = { TOOL_KEY_PREFIX + it.toolCallId }) { activity ->
-            AiToolActivityRow(activity = activity)
+            AiToolActivityRow(activity = activity, modifier = animateItemMotion())
         }
         state.error?.let { error ->
             item(key = KEY_ERROR) {
@@ -682,7 +683,7 @@ private fun AiToolActivityRow(activity: AiToolActivity, modifier: Modifier = Mod
             .padding(BubblePadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+        DesktopLoadingIndicator(size = 22.dp)
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -1245,6 +1246,7 @@ private fun AiHistorySheet(
                         selected = summary.id == currentId,
                         onOpen = { onOpen(summary.id) },
                         onDelete = { onDelete(summary) },
+                        modifier = animateItemMotion(),
                     )
                 }
             }

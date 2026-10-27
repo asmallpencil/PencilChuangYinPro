@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
+import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.feature.camera.ProcessStage
 import com.pencil.chuangyin.feature.camera.R
@@ -63,10 +63,9 @@ internal fun ProcessingOverlay(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        CircularProgressIndicator(
-            color = MaterialTheme.colorScheme.primary,
-            strokeWidth = dimensionResource(ResR.dimen.dimen_camera_process_indicator_stroke),
-        )
+        // M3 Expressive 的 morphing 指示器：在多种形状之间连续变形并旋转，
+        // 比 MD2 的"死板转圈"更能传达"正在精细处理"的观感。
+        AppLoadingIndicator(color = CameraTokens.content)
         AnimatedContent(
             targetState = docStages[index],
             transitionSpec = { fadeIn() togetherWith fadeOut() },

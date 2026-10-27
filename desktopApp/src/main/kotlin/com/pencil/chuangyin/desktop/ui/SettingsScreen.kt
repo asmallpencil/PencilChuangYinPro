@@ -3,9 +3,12 @@ package com.pencil.chuangyin.desktop.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +64,8 @@ import com.pencil.chuangyin.desktop.support.OutputPathStore
 import com.pencil.chuangyin.desktop.support.PaperWidthStore
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.StaggerIn
+import com.pencil.chuangyin.desktop.ui.motion.pressScale
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -134,44 +140,62 @@ private fun SettingsMenuPage(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(inner)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .widthIn(max = 720.dp),
         ) {
-            MenuEntry(
-                title = "AI 配置设置",
-                desc = "配置 OpenAI 兼容接口的模型",
-                onClick = { onOpen(SettingsRoute.AiConfig) },
-            )
-            SettingsDivider()
-            MenuEntry(
-                title = "画面设置",
-                desc = "主题、描边、粒子、背景",
-                onClick = { onOpen(SettingsRoute.Visual) },
-            )
-            SettingsDivider()
-            MenuEntry(
-                title = "液态玻璃",
-                desc = "渲染实现与详细参数",
-                onClick = { onOpen(SettingsRoute.LiquidGlass) },
-            )
-            SettingsDivider()
-            MenuEntry(
-                title = "尺寸设置",
-                desc = "热敏纸宽度",
-                onClick = { onOpen(SettingsRoute.Size) },
-            )
-            SettingsDivider()
-            MenuEntry(
-                title = "产物输出路径",
-                desc = "目录：${customOutputPath.ifBlank { OutputPathStore.displayPath() }}",
-                onClick = { outputDialogOpen = true },
-            )
-            SettingsDivider()
-            MenuEntry(
-                title = "开放源代码许可",
-                desc = "本应用所使用的开源项目",
-                onClick = { onOpen(SettingsRoute.About) },
-            )
-            SettingsDivider()
+            StaggerIn(index = 0) {
+                SettingsGroupCard(label = "智能能力") {
+                    MenuEntry(
+                        icon = AppIcon.AiTool,
+                        title = "AI 配置设置",
+                        desc = "配置 OpenAI 兼容接口的模型",
+                        onClick = { onOpen(SettingsRoute.AiConfig) },
+                    )
+                }
+            }
+            StaggerIn(index = 1) {
+                SettingsGroupCard(label = "外观与动效") {
+                    MenuEntry(
+                        icon = AppIcon.PhotoLibrary,
+                        title = "画面设置",
+                        desc = "主题、描边、粒子、背景",
+                        onClick = { onOpen(SettingsRoute.Visual) },
+                    )
+                    SettingsEntryDivider()
+                    MenuEntry(
+                        icon = AppIcon.Ink,
+                        title = "液态玻璃",
+                        desc = "渲染实现与详细参数",
+                        onClick = { onOpen(SettingsRoute.LiquidGlass) },
+                    )
+                    SettingsEntryDivider()
+                    MenuEntry(
+                        icon = AppIcon.Paper,
+                        title = "尺寸设置",
+                        desc = "热敏纸宽度",
+                        onClick = { onOpen(SettingsRoute.Size) },
+                    )
+                }
+            }
+            StaggerIn(index = 2) {
+                SettingsGroupCard(label = "输出与关于") {
+                    MenuEntry(
+                        icon = AppIcon.FolderZip,
+                        title = "产物输出路径",
+                        desc = "目录：${customOutputPath.ifBlank { OutputPathStore.displayPath() }}",
+                        onClick = { outputDialogOpen = true },
+                    )
+                    SettingsEntryDivider()
+                    MenuEntry(
+                        icon = AppIcon.Description,
+                        title = "开放源代码许可",
+                        desc = "本应用所使用的开源项目",
+                        onClick = { onOpen(SettingsRoute.About) },
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
         }
     }
 
@@ -275,20 +299,69 @@ private fun SizeSettingsPage(onBack: () -> Unit) {
     }
 }
 
+/** 设置分组：小标题 + 玻璃圆角卡片容器（对齐安卓端 SettingsGroup）。 */
 @Composable
-private fun MenuEntry(title: String, desc: String, onClick: () -> Unit) {
+private fun SettingsGroupCard(
+    label: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 8.dp, top = 16.dp, bottom = 8.dp),
+        )
+        GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
+            contentPadding = PaddingValues(vertical = 4.dp),
+            content = content,
+        )
+    }
+}
+
+/** 卡片内的一行设置项：图标胶囊 + 标题/说明 + 右侧箭头，按下有物理回弹。 */
+@Composable
+private fun MenuEntry(
+    icon: AppIcon,
+    title: String,
+    desc: String,
+    onClick: () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .pressScale(interaction, pressedScale = 0.98f)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.secondaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            AppIconView(
+                icon = icon,
+                size = 20.dp,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
         Column(Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            Text(text = title, style = MaterialTheme.typography.titleMedium)
             Text(
                 text = desc,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -298,6 +371,18 @@ private fun MenuEntry(title: String, desc: String, onClick: () -> Unit) {
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/** 组内分隔线：让出图标胶囊宽度，从文字起始处断开（对齐安卓端 SettingsEntryDivider）。 */
+@Composable
+private fun SettingsEntryDivider() {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 72.dp, end = 16.dp)
+            .height(1.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+    )
 }
 
 // ===================== 视觉主题 =====================
@@ -1009,15 +1094,17 @@ internal fun SettingsPage(
         },
         containerColor = Color.Transparent,
     ) { inner ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(inner)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 8.dp)
-                .widthIn(max = 720.dp),
-            content = content,
-        )
+        StaggerIn(index = 0, offsetDivisor = 20) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(inner)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .widthIn(max = 720.dp),
+                content = content,
+            )
+        }
     }
 }
 

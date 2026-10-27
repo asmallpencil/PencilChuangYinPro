@@ -1,7 +1,9 @@
 package com.pencil.chuangyin.feature.pixiv.ui.common
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,11 +14,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import com.pencil.chuangyin.core.ui.components.AppText
+import com.pencil.chuangyin.core.ui.motion.pressScale
 import com.pencil.chuangyin.feature.pixiv.domain.PixivNovel
 import com.pencil.chuangyin.resources.R as ResR
 
@@ -24,11 +28,17 @@ private const val NOVEL_TAG_PREVIEW = 4
 
 /** 小说列表通用条目：封面 + 标题 + 作者 + 字数 + 标签预览。浏览/榜单/搜索/收藏等列表共用。 */
 @Composable
-fun NovelRow(novel: PixivNovel, onClick: () -> Unit) {
+fun NovelRow(
+    novel: PixivNovel,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .pressScale(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { onClick() }
             .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
     ) {
         Box(

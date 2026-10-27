@@ -21,12 +21,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -39,6 +41,8 @@ import com.pencil.chuangyin.desktop.glass.glassSurface
 import com.pencil.chuangyin.desktop.theme.LocalLiquidGlassControlsEnabled
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.DesktopMotion
+import com.pencil.chuangyin.desktop.ui.motion.pressScale
 
 /** 顶部应用栏：玻璃材质 + 透明容器（对齐安卓端 HomeScreen / CreativeScreen / PixivBrowseScreen）。 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,6 +102,7 @@ fun AppIconButton(
     Box(
         modifier = modifier
             .size(size)
+            .pressScale(interaction, enabled = enabled, pressedScale = 0.92f)
             .clip(RoundedCornerShape(size / 2))
             .clickable(
                 enabled = enabled,
@@ -125,6 +130,7 @@ fun AppPrimaryButton(
     leadingIcon: AppIcon? = null,
     height: Dp = 44.dp,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
         enabled = enabled,
@@ -133,7 +139,10 @@ fun AppPrimaryButton(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
         ),
-        modifier = modifier.height(height),
+        interactionSource = interaction,
+        modifier = modifier
+            .height(height)
+            .pressScale(interaction, enabled = enabled),
     ) {
         if (leadingIcon != null) {
             AppIconView(
@@ -156,12 +165,14 @@ fun AppFilterChip(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     androidx.compose.material3.FilterChip(
         selected = selected,
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.pressScale(interaction, enabled = enabled, pressedScale = 0.94f),
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
+        interactionSource = interaction,
         border = androidx.compose.material3.FilterChipDefaults.filterChipBorder(
             enabled = enabled,
             selected = selected,
@@ -178,11 +189,15 @@ fun AppSecondaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     androidx.compose.material3.OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         shape = MaterialTheme.shapes.medium,
-        modifier = modifier.height(44.dp),
+        interactionSource = interaction,
+        modifier = modifier
+            .height(44.dp)
+            .pressScale(interaction, enabled = enabled),
     ) {
         Text(text = text, style = MaterialTheme.typography.labelLarge)
     }
@@ -198,11 +213,15 @@ fun AppOutlinedButton(
     leadingIcon: AppIcon? = null,
     height: Dp = 44.dp,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     androidx.compose.material3.OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         shape = MaterialTheme.shapes.medium,
-        modifier = modifier.height(height),
+        interactionSource = interaction,
+        modifier = modifier
+            .height(height)
+            .pressScale(interaction, enabled = enabled),
     ) {
         if (leadingIcon != null) {
             AppIconView(
@@ -224,10 +243,12 @@ fun AppTextButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     androidx.compose.material3.TextButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier,
+        interactionSource = interaction,
+        modifier = modifier.pressScale(interaction, enabled = enabled, pressedScale = 0.94f),
     ) {
         Text(text = text, style = MaterialTheme.typography.labelLarge)
     }
@@ -331,22 +352,47 @@ fun AppSegmentedRow(
         options.forEachIndexed { index, label ->
             val selected = index == selectedIndex
             val itemShape = MaterialTheme.shapes.medium
+            val interaction = remember { MutableInteractionSource() }
+            // 容器色走 Effect（零过冲），文字/图标缩放走 Spatial（有回弹）：对齐 MD3 的二分原则。
+            val itemColor by androidx.compose.animation.animateColorAsState(
+                targetValue = if (selected) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    Color.Transparent
+                },
+                animationSpec = DesktopMotion.effect(),
+                label = "segmentContainer",
+            )
+            val contentScale by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (selected) 1f else 0.95f,
+                animationSpec = DesktopMotion.bouncy(),
+                label = "segmentContentScale",
+            )
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .pressScale(interaction, pressedScale = 0.95f)
                     .clip(itemShape)
-                    .background(
-                        if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
-                    )
-                    .clickable { onSelected(index) }
+                    .background(itemColor)
+                    .clickable(interactionSource = interaction, indication = null) { onSelected(index) }
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Row(
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = contentScale
+                        scaleY = contentScale
+                    },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    if (showCheck && selected) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showCheck && selected,
+                        enter = androidx.compose.animation.fadeIn(DesktopMotion.effectFast()) +
+                            androidx.compose.animation.expandHorizontally(DesktopMotion.spatialFast()),
+                        exit = androidx.compose.animation.fadeOut(DesktopMotion.effectFast()) +
+                            androidx.compose.animation.shrinkHorizontally(DesktopMotion.spatialFast()),
+                    ) {
                         AppIconView(
                             icon = AppIcon.Check,
                             size = 16.dp,
@@ -421,19 +467,47 @@ fun SectionChip(
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(percent = 50)
+    val interaction = remember { MutableInteractionSource() }
+    // 容器色走 Effect（不过冲），选中时的轻微放大走 Spatial（带回弹），制造"被按下去选中"的物理感。
+    val containerColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        animationSpec = DesktopMotion.effect(),
+        label = "sectionChipColor",
+    )
+    val contentColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = DesktopMotion.effect(),
+        label = "sectionChipContentColor",
+    )
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (selected) 1f else 0.97f,
+        animationSpec = DesktopMotion.bouncy(),
+        label = "sectionChipScale",
+    )
     Box(
         modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .pressScale(interaction, pressedScale = 0.94f)
             .clip(shape)
-            .background(
-                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
-            )
-            .clickable(onClick = onClick)
+            .background(containerColor)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 7.dp),
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = contentColor,
         )
     }
 }

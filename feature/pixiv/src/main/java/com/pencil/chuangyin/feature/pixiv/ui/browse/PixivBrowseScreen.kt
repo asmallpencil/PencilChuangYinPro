@@ -58,12 +58,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pencil.chuangyin.core.theme.LiquidGlassLayer
 import com.pencil.chuangyin.core.ui.components.AppFilterChip
 import com.pencil.chuangyin.core.ui.components.AppIconButton
+import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppSegmentedRow
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
+import com.pencil.chuangyin.core.ui.motion.animateItemMotion
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.feature.pixiv.core.auth.PixivAccount
 import com.pencil.chuangyin.feature.pixiv.domain.PixivIllust
 import com.pencil.chuangyin.feature.pixiv.domain.PixivPage
@@ -377,12 +380,17 @@ private fun NovelFeed(
         )
         state.novels.isEmpty() -> FullScreenLoading()
         else -> {
+            val motion = rememberAppMotion()
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = bottomBarSpace),
             ) {
                 items(state.novels, key = { it.id }) { novel ->
-                    NovelRow(novel = novel, onClick = { onOpenNovel(novel.id) })
+                    NovelRow(
+                        novel = novel,
+                        onClick = { onOpenNovel(novel.id) },
+                        modifier = animateItemMotion(motion),
+                    )
                 }
                 if (state.nextUrl != null) {
                     item(key = "novel_loading") {
@@ -391,14 +399,14 @@ private fun NovelFeed(
                             if (state.nextUrl != null) onLoadMore()
                         }
                         if (state.loadingMore) {
-                            AppText(
-                                text = stringResource(ResR.string.pixiv_loading_more),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
-                            )
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                AppLoadingIndicator(size = 28.dp)
+                            }
                         }
                     }
                 }

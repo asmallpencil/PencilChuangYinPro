@@ -5,12 +5,19 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -26,15 +33,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
@@ -87,6 +103,7 @@ import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
 import com.pencil.chuangyin.core.ui.components.RgbColorPicker
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
+import com.pencil.chuangyin.core.ui.motion.pressScale
 import com.pencil.chuangyin.resources.R as ResR
 
 // ===================== 设置主菜单 =====================
@@ -157,53 +174,79 @@ fun SettingsScreen(
             )
         },
     ) { innerPadding ->
+        // 分组依次错峰浮现：卡片像被"放"到页面上，而不是一次性整屏刷出来。
+        var appeared by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { appeared = true }
+        val outputDesc = if (outputTreeName.isNotBlank()) {
+            outputTreeName
+        } else {
+            stringResource(R.string.settings_menu_output_default, outputDirName)
+        }
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m))
+                .padding(bottom = dimensionResource(ResR.dimen.dimen_global_padding_xl)),
         ) {
-            MenuEntry(
-                title = stringResource(R.string.settings_menu_ai),
-                desc = stringResource(R.string.settings_menu_ai_desc),
-                onClick = onOpenAiConfig,
-            )
-            AppDivider()
-            MenuEntry(
-                title = stringResource(R.string.settings_menu_visual),
-                desc = stringResource(R.string.settings_menu_visual_desc),
-                onClick = onOpenVisual,
-            )
-            AppDivider()
-            MenuEntry(
-                title = stringResource(R.string.settings_menu_liquid_glass),
-                desc = stringResource(R.string.settings_menu_liquid_glass_desc),
-                onClick = onOpenLiquidGlass,
-            )
-            AppDivider()
-            MenuEntry(
-                title = stringResource(R.string.settings_menu_size),
-                desc = stringResource(R.string.settings_menu_size_desc),
-                onClick = onOpenSize,
-            )
-            AppDivider()
-            val outputDesc = if (outputTreeName.isNotBlank()) {
-                outputTreeName
-            } else {
-                stringResource(R.string.settings_menu_output_default, outputDirName)
+            SettingsGroup(
+                label = stringResource(R.string.settings_group_ai),
+                visible = appeared,
+                delayMillis = 0,
+            ) {
+                SettingsEntry(
+                    icon = Icons.Filled.AutoAwesome,
+                    title = stringResource(R.string.settings_menu_ai),
+                    desc = stringResource(R.string.settings_menu_ai_desc),
+                    onClick = onOpenAiConfig,
+                )
             }
-            MenuEntry(
-                title = stringResource(R.string.settings_menu_output),
-                desc = stringResource(R.string.settings_menu_output_desc, outputDesc),
-                onClick = { showOutputDialog = true },
-            )
-            AppDivider()
-            MenuEntry(
-                title = stringResource(R.string.settings_menu_licenses),
-                desc = stringResource(R.string.settings_menu_licenses_desc),
-                onClick = onOpenLicenses,
-            )
-            AppDivider()
+            SettingsGroup(
+                label = stringResource(R.string.settings_group_appearance),
+                visible = appeared,
+                delayMillis = 70,
+            ) {
+                SettingsEntry(
+                    icon = Icons.Filled.Palette,
+                    title = stringResource(R.string.settings_menu_visual),
+                    desc = stringResource(R.string.settings_menu_visual_desc),
+                    onClick = onOpenVisual,
+                )
+                SettingsEntryDivider()
+                SettingsEntry(
+                    icon = Icons.Filled.BlurOn,
+                    title = stringResource(R.string.settings_menu_liquid_glass),
+                    desc = stringResource(R.string.settings_menu_liquid_glass_desc),
+                    onClick = onOpenLiquidGlass,
+                )
+                SettingsEntryDivider()
+                SettingsEntry(
+                    icon = Icons.Filled.FormatSize,
+                    title = stringResource(R.string.settings_menu_size),
+                    desc = stringResource(R.string.settings_menu_size_desc),
+                    onClick = onOpenSize,
+                )
+            }
+            SettingsGroup(
+                label = stringResource(R.string.settings_group_output),
+                visible = appeared,
+                delayMillis = 140,
+            ) {
+                SettingsEntry(
+                    icon = Icons.Filled.FolderOpen,
+                    title = stringResource(R.string.settings_menu_output),
+                    desc = stringResource(R.string.settings_menu_output_desc, outputDesc),
+                    onClick = { showOutputDialog = true },
+                )
+                SettingsEntryDivider()
+                SettingsEntry(
+                    icon = Icons.Filled.Policy,
+                    title = stringResource(R.string.settings_menu_licenses),
+                    desc = stringResource(R.string.settings_menu_licenses_desc),
+                    onClick = onOpenLicenses,
+                )
+            }
         }
     }
 
@@ -264,23 +307,86 @@ private fun OutputPathDialog(
     }
 }
 
+/** 设置分组：小标题 + 圆角卡片容器，整组带错峰入场。 */
 @Composable
-private fun MenuEntry(title: String, desc: String, onClick: () -> Unit) {
+private fun SettingsGroup(
+    label: String,
+    visible: Boolean,
+    delayMillis: Int,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(durationMillis = 240, delayMillis = delayMillis)) +
+            slideInVertically(tween(durationMillis = 320, delayMillis = delayMillis)) { it / 10 },
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            AppText(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(
+                    start = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                    top = dimensionResource(ResR.dimen.dimen_global_padding_l),
+                    bottom = dimensionResource(ResR.dimen.dimen_global_padding_s),
+                ),
+            )
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_l)),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                tonalElevation = 0.dp,
+            ) {
+                Column(content = content)
+            }
+        }
+    }
+}
+
+/** 卡片内的一行设置项：图标胶囊 + 标题/说明 + 右侧箭头，按压有物理回弹。 */
+@Composable
+private fun SettingsEntry(
+    icon: ImageVector,
+    title: String,
+    desc: String,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .pressScale(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
             .padding(
-                horizontal = dimensionResource(ResR.dimen.dimen_global_padding_l),
+                horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
                 vertical = dimensionResource(ResR.dimen.dimen_global_padding_m),
             ),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_m)),
     ) {
+        Box(
+            modifier = Modifier
+                .size(dimensionResource(ResR.dimen.dimen_global_touch_target) - 8.dp)
+                .clip(RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_m)))
+                .background(MaterialTheme.colorScheme.secondaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(20.dp),
+            )
+        }
         Column(modifier = Modifier.weight(1f)) {
             AppText(text = title, style = MaterialTheme.typography.titleMedium)
             AppText(
                 text = desc,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -289,6 +395,20 @@ private fun MenuEntry(title: String, desc: String, onClick: () -> Unit) {
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/** 组内分隔线：左侧让出图标宽度，视觉上从文字起始处断开。 */
+@Composable
+private fun SettingsEntryDivider() {
+    Box(
+        modifier = Modifier.padding(
+            start = dimensionResource(ResR.dimen.dimen_global_padding_m) +
+                dimensionResource(ResR.dimen.dimen_global_touch_target) - 8.dp +
+                dimensionResource(ResR.dimen.dimen_global_padding_m),
+        ),
+    ) {
+        AppDivider()
     }
 }
 

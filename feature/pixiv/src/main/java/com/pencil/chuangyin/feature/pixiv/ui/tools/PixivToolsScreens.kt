@@ -1,6 +1,7 @@
 package com.pencil.chuangyin.feature.pixiv.ui.tools
 
 import android.content.Intent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -69,6 +70,9 @@ import com.pencil.chuangyin.core.ui.components.AppSegmentedRow
 import com.pencil.chuangyin.core.ui.components.AppTextField
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
+import com.pencil.chuangyin.core.ui.motion.animateGridItemMotion
+import com.pencil.chuangyin.core.ui.motion.animateItemMotion
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.feature.pixiv.data.PixivDownloadStatus
 import com.pencil.chuangyin.feature.pixiv.data.PixivSavedCategory
 import com.pencil.chuangyin.feature.pixiv.data.PixivSavedImage
@@ -221,10 +225,11 @@ fun PixivHistoryRoute(
             if (history.isEmpty()) {
                 FullScreenEmpty(message = stringResource(ResR.string.pixiv_history_empty))
             } else {
+                val motion = rememberAppMotion()
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(history, key = { it.illustId }) { entry ->
                         Row(
-                            modifier = Modifier
+                            modifier = animateItemMotion(motion)
                                 .fillMaxWidth()
                                 .clickable { onOpenDetail(entry.illustId) }
                                 .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
@@ -330,10 +335,11 @@ fun PixivBookmarksRoute(
                     BookmarksTab.WORKS -> if (bookmarks.isEmpty()) {
                         FullScreenEmpty(message = stringResource(ResR.string.pixiv_bookmarks_empty))
                     } else {
+                        val motion = rememberAppMotion()
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(bookmarks, key = { it.illustId }) { entry ->
                                 Row(
-                                    modifier = Modifier
+                                    modifier = animateItemMotion(motion)
                                         .fillMaxWidth()
                                         .clickable { onOpenDetail(entry.illustId) }
                                         .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
@@ -376,12 +382,14 @@ fun PixivBookmarksRoute(
                     BookmarksTab.NOVELS -> if (novelBookmarks.isEmpty()) {
                         FullScreenEmpty(message = stringResource(ResR.string.pixiv_bookmarks_novel_empty))
                     } else {
+                        val motion = rememberAppMotion()
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(novelBookmarks, key = { it.novelId }) { entry ->
                                 NovelBookmarkRow(
                                     entry = entry,
                                     onClick = { onOpenNovel(entry.novelId) },
                                     onRemove = { viewModel.removeNovelBookmark(entry.novelId) },
+                                    modifier = animateItemMotion(motion),
                                 )
                             }
                         }
@@ -413,9 +421,10 @@ private fun NovelBookmarkRow(
     entry: NovelBookmarkEntry,
     onClick: () -> Unit,
     onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
@@ -473,6 +482,7 @@ fun PixivDownloadsRoute(
         if (tasks.isEmpty()) {
             FullScreenEmpty(message = stringResource(ResR.string.pixiv_downloads_empty))
         } else {
+            val motion = rememberAppMotion()
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
@@ -481,7 +491,7 @@ fun PixivDownloadsRoute(
             ) {
                 items(tasks, key = { it.illustId }) { task ->
                     Column(
-                        modifier = Modifier
+                        modifier = animateItemMotion(motion)
                             .fillMaxWidth()
                             .padding(
                                 horizontal = dimensionResource(ResR.dimen.dimen_global_padding_l),
@@ -523,10 +533,14 @@ fun PixivDownloadsRoute(
                         }
                         Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
                         if (task.status == PixivDownloadStatus.RUNNING) {
+                            // 进度条用 spring 追进度，避免每一帧都"跳格"。
+                            val fraction by animateFloatAsState(
+                                targetValue = if (task.total == 0) 0f else task.done.toFloat() / task.total,
+                                animationSpec = motion.spatialSpec(),
+                                label = "pixivDownloadProgress",
+                            )
                             LinearProgressIndicator(
-                                progress = {
-                                    if (task.total == 0) 0f else task.done.toFloat() / task.total
-                                },
+                                progress = { fraction },
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         } else {
@@ -609,6 +623,7 @@ fun PixivGalleryRoute(
                     if (filtered.isEmpty()) {
                         FullScreenEmpty(message = stringResource(ResR.string.pixiv_gallery_empty_filtered))
                     } else {
+                        val motion = rememberAppMotion()
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(GALLERY_COLUMNS),
                             modifier = Modifier.fillMaxSize(),
@@ -628,6 +643,7 @@ fun PixivGalleryRoute(
                                     image = item,
                                     onClick = { selected = item },
                                     loadCover = viewModel::archiveCover,
+                                    modifier = animateGridItemMotion(motion),
                                 )
                             }
                         }
@@ -690,9 +706,10 @@ private fun GalleryTile(
     image: PixivSavedImage,
     onClick: () -> Unit,
     loadCover: suspend (PixivSavedImage) -> File?,
+    modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .height(dimensionResource(ResR.dimen.dimen_pixiv_related_card_width))
             .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick),
@@ -1086,10 +1103,11 @@ fun PixivBlockedTagsRoute(
             if (tags.isEmpty()) {
                 FullScreenEmpty(message = stringResource(ResR.string.pixiv_blocked_empty))
             } else {
+                val motion = rememberAppMotion()
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(tags.toList(), key = { it }) { tag ->
                         Row(
-                            modifier = Modifier
+                            modifier = animateItemMotion(motion)
                                 .fillMaxWidth()
                                 .padding(vertical = dimensionResource(ResR.dimen.dimen_global_padding_s)),
                             verticalAlignment = Alignment.CenterVertically,

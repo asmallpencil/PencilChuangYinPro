@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -31,12 +30,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
+import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
+import com.pencil.chuangyin.core.ui.components.AppSkeletonBox
 import com.pencil.chuangyin.core.ui.components.AppText
+import com.pencil.chuangyin.core.ui.motion.animateGridItemMotion
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.feature.pixiv.domain.PixivIllust
 import com.pencil.chuangyin.resources.R as ResR
 
@@ -59,6 +63,7 @@ fun IllustGrid(
     }
 
     val spacing = dimensionResource(ResR.dimen.dimen_pixiv_grid_spacing)
+    val motion = rememberAppMotion()
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier.fillMaxSize(),
@@ -68,7 +73,12 @@ fun IllustGrid(
         verticalArrangement = Arrangement.spacedBy(spacing),
     ) {
         items(items.size, key = { items[it].id }) { index ->
-            IllustCard(illust = items[index], onClick = { onOpen(items[index].id) })
+            IllustCard(
+                illust = items[index],
+                onClick = { onOpen(items[index].id) },
+                // 增删/重排走 spatial spring：换源、刷新、筛选时卡片带惯性滑到新位置。
+                modifier = animateGridItemMotion(motion),
+            )
         }
         if (loadingMore) {
             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -78,7 +88,7 @@ fun IllustGrid(
                         .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator()
+                    AppLoadingIndicator()
                 }
             }
         }
@@ -123,10 +133,10 @@ fun IllustCard(
                 modifier = Modifier.fillMaxSize(),
             )
             when (painter.state) {
-                is AsyncImagePainter.State.Loading -> Box(
+                is AsyncImagePainter.State.Loading -> AppSkeletonBox(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator(modifier = Modifier.size(28.dp)) }
+                    shape = RectangleShape,
+                )
                 is AsyncImagePainter.State.Error -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,

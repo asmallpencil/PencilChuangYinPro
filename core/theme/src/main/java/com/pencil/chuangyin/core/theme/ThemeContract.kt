@@ -2,6 +2,7 @@ package com.pencil.chuangyin.core.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Shapes
+import androidx.compose.runtime.compositionLocalOf
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -193,6 +194,18 @@ enum class MotionPreset(val id: String) {
     Expressive("motion_expressive"),
     Reduced("motion_reduced"),
 }
+
+/**
+ * 当前动效偏好的 CompositionLocal。
+ *
+ * 由 [AppTheme] 下发，core:ui 的动效基础设施（[com.pencil.chuangyin.core.ui.motion.AppMotion]）
+ * 读取它决定 spring 参数：Expressive 允许轻微过冲，Full 用过冲为零的 spring，
+ * Reduced 直接退化为短时长 tween（无障碍 / 低端机流畅优先）。
+ *
+ * 之所以放在 core:theme 而不是 core:ui：主题状态本身在 core:theme，AppTheme 是唯一注入点，
+ * 这样 core:ui / feature:* 都能零成本读到同一份偏好，不需要各自注入。
+ */
+val LocalMotionPreset = compositionLocalOf { MotionPreset.Expressive }
 
 /** 根据种子色生成浅色/深色 [ColorScheme]（core:theme 内部实现，供 AppTheme 使用）。 */
 fun interface ColorSchemeProvider {

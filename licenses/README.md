@@ -2,7 +2,7 @@
 
 本目录收录了本项目**实际使用或实质借鉴**的开源组件的许可原文 / NOTICE，版权归各自作者所有。
 
-完整的 46 项开源致谢（含逐项贡献说明）见仓库根目录 `README.md` 的「开源致谢」表格 —— 那里**不按参与方式分层**，源码移植、构建依赖、实现参照，一视同仁。
+完整的 48 项开源致谢（含逐项贡献说明）见仓库根目录 `README.md` 的「开源致谢」表格 —— 那里**不按参与方式分层**，源码移植、构建依赖、实现参照，一视同仁。
 
 ## 一、许可原文已收录于此
 
@@ -24,10 +24,11 @@
 
 以下组件**没有复制进本仓库**，通过构建坐标引入，其许可文本随构件元数据（POM）与 JAR 内 `META-INF` 分发，因此不在此处重复收录。它们与本目录收录的项目贡献同等重要：
 
-- **Apache-2.0**：Kotlin、kotlinx.coroutines、kotlinx.serialization、Jetpack Compose（BOM 2024.12.01）、Material 3、Material Components for Android、Material Icons Extended、AndroidX Core/Lifecycle/Activity/Navigation/Fragment/DataStore/ExifInterface、CameraX、Accompanist Permissions、Hilt/Dagger、AndroidX Hilt Navigation Compose、KSP、JetBrains Annotations、javax.inject、Retrofit、OkHttp、Coil、OpenCV、Google ADK for Kotlin、Compose Multiplatform、Apache PDFBox、Gradle、Android Gradle Plugin、AndroidX Test
+- **Apache-2.0**：Kotlin、kotlinx.coroutines、kotlinx.serialization、Jetpack Compose（BOM 2024.12.01）、Material 3、Material Components for Android、Material Icons Extended、AndroidX Core/Lifecycle/Activity/Navigation/Fragment/DataStore/ExifInterface、AndroidX Graphics Shapes、CameraX、Accompanist Permissions、Hilt/Dagger、AndroidX Hilt Navigation Compose、KSP、JetBrains Annotations、javax.inject、Retrofit、OkHttp、Coil、OpenCV、Google ADK for Kotlin、Compose Multiplatform、Apache PDFBox、Gradle、Android Gradle Plugin、AndroidX Test
 - **BSD-3-Clause**：Skiko / Skia
 - **Apache-2.0 / LGPL-2.1 双许可**：JNA (Java Native Access)
 - **EPL-1.0**：JUnit 4（仅 androidTest）
+- **GPL-3.0（仅设计参照，未复用源码）**：Animeko —— 本项目以其交互动效手感作为质量基准，没有任何代码进入本仓库，故不构成衍生作品，也不在此收录许可原文
 
 逐项的上游仓库链接与作用说明见仓库根目录 `README.md` 的「开源致谢」表格。
 

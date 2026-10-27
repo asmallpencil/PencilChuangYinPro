@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Thermostat
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -73,6 +72,7 @@ import com.pencil.chuangyin.core.ui.components.AppAlertDialog
 import com.pencil.chuangyin.core.ui.components.AppLiquidDialog
 import com.pencil.chuangyin.core.ui.components.AppFilterChip
 import com.pencil.chuangyin.core.ui.components.AppIconButton
+import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppOutlinedButton
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppSlider
@@ -563,7 +563,7 @@ private fun PreviewPaper(
                         } else {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 if (page == currentIndex && isPreparing) {
-                                    CircularProgressIndicator()
+                                    AppLoadingIndicator(size = 28.dp)
                                     Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
                                 }
                                 AppText(

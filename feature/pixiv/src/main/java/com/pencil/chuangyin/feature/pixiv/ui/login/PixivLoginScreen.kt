@@ -8,12 +8,12 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -36,6 +36,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pencil.chuangyin.core.ui.components.AppIconButton
+import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
@@ -125,12 +126,16 @@ fun PixivLoginRoute(
                             .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        CircularProgressIndicator()
-                        AppText(
-                            text = stringResource(ResR.string.pixiv_login_loading),
-                            modifier = Modifier.padding(top = dimensionResource(ResR.dimen.dimen_global_padding_l)),
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
+                        // 原来是「spinner + 文案」同塞进 Box：二者都是 Box 子节点，会重叠。
+                        // 这里改为竖向 Column，并换成 M3 Expressive 的 morphing 指示器。
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            AppLoadingIndicator()
+                            AppText(
+                                text = stringResource(ResR.string.pixiv_login_loading),
+                                modifier = Modifier.padding(top = dimensionResource(ResR.dimen.dimen_global_padding_l)),
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
                     }
                 }
             }

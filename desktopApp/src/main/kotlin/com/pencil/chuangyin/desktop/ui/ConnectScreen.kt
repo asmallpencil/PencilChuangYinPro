@@ -1,6 +1,7 @@
 package com.pencil.chuangyin.desktop.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,6 +35,8 @@ import com.pencil.chuangyin.desktop.printer.TestFeedMessage
 import com.pencil.chuangyin.desktop.text.PrinterStatus
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
+import com.pencil.chuangyin.desktop.ui.motion.StaggerIn
+import com.pencil.chuangyin.desktop.ui.motion.pressScale
 
 /**
  * 「连接打印机」页 —— 与安卓端 feature/dashboard/ConnectScreen.kt 结构 1:1 对齐：
@@ -236,21 +239,30 @@ private fun DeviceSection(
     }
     val connectedKey = state.connectedDevice?.key
     val connectingKey = state.connectingDevice?.key
-    devices.forEach { device ->
-        DeviceRow(
-            device = device,
-            connected = connectedKey != null && connectedKey == device.key,
-            connecting = connectingKey != null && connectingKey == device.key,
-        )
+    devices.forEachIndexed { index, device ->
+        StaggerIn(index = index, step = 40, offsetDivisor = 30) {
+            DeviceRow(
+                device = device,
+                connected = connectedKey != null && connectedKey == device.key,
+                connecting = connectingKey != null && connectingKey == device.key,
+            )
+        }
     }
 }
 
 @Composable
 private fun DeviceRow(device: PrinterDevice, connected: Boolean, connecting: Boolean) {
+    val enabled = !connected && !connecting
+    val interaction = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = !connected && !connecting) {
+            .pressScale(interaction, enabled = enabled, pressedScale = 0.98f)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                enabled = enabled,
+            ) {
                 PrinterConnectStore.connect(device)
             }
             .padding(vertical = 8.dp),

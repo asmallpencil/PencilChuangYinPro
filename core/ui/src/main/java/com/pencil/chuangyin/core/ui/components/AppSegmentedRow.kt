@@ -1,13 +1,21 @@
 package com.pencil.chuangyin.core.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -15,17 +23,21 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.pencil.chuangyin.core.theme.LiquidGlassWidgetKind
 import com.pencil.chuangyin.core.theme.LocalControlOutline
 import com.pencil.chuangyin.core.theme.LocalLiquidGlassWidgetHost
 import com.pencil.chuangyin.core.theme.controlOutline
 import com.pencil.chuangyin.core.theme.cornerSafeInset
+import com.pencil.chuangyin.core.ui.motion.pressScale
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.resources.R as ResR
 
 /**
@@ -72,14 +84,19 @@ fun AppSegmentedRow(
         }
     }
     val shape = MaterialTheme.shapes.small
+    // 滑块形状用比外框更小的圆角，形成"M3 分段条"的内外双层观感。
+    val indicatorShape = MaterialTheme.shapes.extraSmall
     // 未开启主题描边时补回 M3 原生细边（开启时由 controlOutline 接管，避免双重描边）。
     val outline = LocalControlOutline.current
     // 形状安全内边距：高档菱形/切角下首尾选项文字会被斜切边裁掉，向内收缩内容区（外框尺寸不变）。
     val safeInset = cornerSafeInset(shapeScale = 0.75f)
-    Row(
+    val motion = rememberAppMotion()
+    val gap = dimensionResource(ResR.dimen.dimen_global_segment_gap)
+    val height = dimensionResource(ResR.dimen.dimen_global_segment_height)
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(dimensionResource(ResR.dimen.dimen_global_segment_height))
+            .height(height)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .then(
@@ -93,37 +110,85 @@ fun AppSegmentedRow(
                     Modifier
                 },
             )
-            .controlOutline(shape)
-            .padding(horizontal = safeInset),
-        horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_segment_gap)),
-        verticalAlignment = Alignment.CenterVertically,
+            .controlOutline(shape),
     ) {
-        options.forEachIndexed { index, label ->
-            val selected = index == selectedIndex
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(horizontal = safeInset)) {
+            val count = options.size
+            // 每项权重相同（weight(1f)），故滑块位置可精确算出，无需逐项测量（省一次布局回环）。
+            val itemWidth = ((maxWidth - gap * (count - 1)) / count).coerceAtLeast(0.dp)
+            val indicatorInset = 3.dp
+            // 位移走 spatial spring（允许过冲 → 物理惯性），这是 M3 底部导航/分段条的标准做法。
+            val indicatorX by animateDpAsState(
+                targetValue = (itemWidth + gap) * selectedIndex,
+                animationSpec = motion.spatialSpec(),
+                label = "segmentIndicatorX",
+            )
+            val indicatorWidth by animateDpAsState(
+                targetValue = itemWidth,
+                animationSpec = motion.spatialSpec(),
+                label = "segmentIndicatorWidth",
+            )
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .clickable(enabled = enabled) { onSelect(index) },
-                contentAlignment = Alignment.Center,
+                    .offset(x = indicatorX + indicatorInset, y = indicatorInset)
+                    .size(
+                        width = (indicatorWidth - indicatorInset * 2).coerceAtLeast(0.dp),
+                        height = (maxHeight - indicatorInset * 2).coerceAtLeast(0.dp),
+                    )
+                    .clip(indicatorShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+            )
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(gap),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (showCheck && selected) {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(dimensionResource(ResR.dimen.dimen_global_touch_target) * 0.45f),
-                        )
-                    }
-                    AppText(
-                        text = label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = when {
+                options.forEachIndexed { index, label ->
+                    val selected = index == selectedIndex
+                    val itemInteraction = remember(index) { MutableInteractionSource() }
+                    // 文字色是"效果型"变化（零过冲），与滑块的"空间型"位移分开，符合 M3 二分原则。
+                    val textColor by animateColorAsState(
+                        targetValue = when {
                             !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                             selected -> MaterialTheme.colorScheme.primary
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
+                        animationSpec = motion.effectSpec(),
+                        label = "segmentLabelColor",
                     )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .pressScale(itemInteraction, enabled)
+                            .clickable(
+                                interactionSource = itemInteraction,
+                                indication = LocalIndication.current,
+                                enabled = enabled,
+                            ) { onSelect(index) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AnimatedVisibility(
+                                visible = showCheck && selected,
+                                enter = motion.expandHorizontalEnter(),
+                                exit = motion.shrinkHorizontalExit(),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(
+                                        dimensionResource(ResR.dimen.dimen_global_touch_target) * 0.45f,
+                                    ),
+                                )
+                            }
+                            AppText(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = textColor,
+                            )
+                        }
+                    }
                 }
             }
         }

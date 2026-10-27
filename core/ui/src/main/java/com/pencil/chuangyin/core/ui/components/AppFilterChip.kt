@@ -1,5 +1,7 @@
 package com.pencil.chuangyin.core.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -10,10 +12,12 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pencil.chuangyin.core.theme.LiquidGlassButtonVariant
@@ -21,6 +25,8 @@ import com.pencil.chuangyin.core.theme.LiquidGlassWidgetKind
 import com.pencil.chuangyin.core.theme.LocalControlOutline
 import com.pencil.chuangyin.core.theme.LocalLiquidGlassWidgetHost
 import com.pencil.chuangyin.core.theme.outlineBrush
+import com.pencil.chuangyin.core.ui.motion.pressScale
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 
 /**
  * 全局筛选芯片：M3 [FilterChip] + 主题拐角形状 + 主题描边。
@@ -81,12 +87,51 @@ fun AppFilterChip(
 
     val shape = MaterialTheme.shapes.small
     val outline = LocalControlOutline.current
+    val motion = rememberAppMotion()
+    val interactionSource = remember { MutableInteractionSource() }
+    // 选中态容器色走 effect spring（零过冲，避免闪），选中瞬间的 scale 走 bouncy spring
+    // （DampingRatioMediumBouncy + StiffnessLow）——比单纯的颜色渐变多一层物理反馈。
+    val container by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        },
+        animationSpec = motion.effectSpec(),
+        label = "chipContainer",
+    )
+    val labelColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = motion.effectSpec(),
+        label = "chipLabel",
+    )
+    val selectionScale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.97f,
+        animationSpec = motion.bouncySpec(),
+        label = "chipScale",
+    )
     FilterChip(
         selected = selected,
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = selectionScale
+                scaleY = selectionScale
+            }
+            .pressScale(interactionSource, enabled),
         enabled = enabled,
         shape = shape,
+        interactionSource = interactionSource,
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = container,
+            labelColor = labelColor,
+            selectedContainerColor = container,
+            selectedLabelColor = labelColor,
+        ),
         border = when {
             outline.enabled -> BorderStroke(outline.widthDp.dp, outlineBrush(outline))
             else -> FilterChipDefaults.filterChipBorder(

@@ -1,5 +1,6 @@
 package com.pencil.chuangyin.core.ui.components
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -16,6 +17,7 @@ import com.pencil.chuangyin.core.theme.LiquidGlassButtonVariant
 import com.pencil.chuangyin.core.theme.LiquidGlassWidgetKind
 import com.pencil.chuangyin.core.theme.LocalLiquidGlassWidgetHost
 import com.pencil.chuangyin.core.theme.controlOutline
+import com.pencil.chuangyin.core.ui.motion.pressScale
 
 /**
  * 全局文字按钮：默认 M3 [TextButton]，液态玻璃开启时改用 **C++ 原生玻璃**文字按钮。
@@ -56,11 +58,15 @@ fun AppTextButton(
         }
         return
     }
+    val interactionSource = remember { MutableInteractionSource() }
     TextButton(
         onClick = onClick,
-        modifier = modifier.controlOutline(MaterialTheme.shapes.small),
+        modifier = modifier
+            .controlOutline(MaterialTheme.shapes.small)
+            .pressScale(interactionSource, enabled),
         enabled = enabled,
         contentPadding = AppTextButtonDefaults.ContentPadding,
+        interactionSource = interactionSource,
     ) {
         Text(text, color = contentColor, style = MaterialTheme.typography.labelLarge)
     }

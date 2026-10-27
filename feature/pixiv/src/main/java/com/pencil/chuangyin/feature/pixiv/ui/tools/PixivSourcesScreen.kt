@@ -2,7 +2,13 @@ package com.pencil.chuangyin.feature.pixiv.ui.tools
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +24,11 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -25,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import com.pencil.chuangyin.core.ui.components.AppText
+import com.pencil.chuangyin.core.ui.motion.pressScale
 import com.pencil.chuangyin.feature.pixiv.ui.common.PixivSubScaffold
 import com.pencil.chuangyin.resources.R as ResR
 
@@ -63,6 +75,9 @@ fun PixivSourcesRoute(
     imageUrl: String? = null,
 ) {
     val context = LocalContext.current
+    // 进入页面后各行错峰浮现，避免四条内容一次性"啪啪"贴上去。
+    var appeared by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { appeared = true }
     PixivSubScaffold(title = stringResource(ResR.string.pixiv_sources_title), onBack = onBack) {
         Column(
             modifier = Modifier
@@ -82,27 +97,34 @@ fun PixivSourcesRoute(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(dimensionResource(com.pencil.chuangyin.resources.R.dimen.dimen_global_padding_m)))
-            SourceEngine.entries.forEach { engine ->
+            SourceEngine.entries.forEachIndexed { index, engine ->
                 val label = when (engine) {
                     SourceEngine.SAUCENAO -> stringResource(ResR.string.pixiv_source_saucenao)
                     SourceEngine.ASCII2D -> stringResource(ResR.string.pixiv_source_ascii2d)
                     SourceEngine.GOOGLE_LENS -> stringResource(ResR.string.pixiv_source_google_lens)
                     SourceEngine.TINEYE -> stringResource(ResR.string.pixiv_source_tineye)
                 }
-                SourceRow(
-                    icon = Icons.AutoMirrored.Filled.OpenInNew,
-                    label = label,
-                    url = engine.baseUrl,
-                    onClick = {
-                        val target = imageUrl
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { engine.withImageUrl(it) }
-                            ?: engine.baseUrl
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse(target)),
-                        )
-                    },
-                )
+                val delay = index * 45
+                AnimatedVisibility(
+                    visible = appeared,
+                    enter = fadeIn(tween(durationMillis = 240, delayMillis = delay)) +
+                        slideInVertically(tween(durationMillis = 300, delayMillis = delay)) { it / 8 },
+                ) {
+                    SourceRow(
+                        icon = Icons.AutoMirrored.Filled.OpenInNew,
+                        label = label,
+                        url = engine.baseUrl,
+                        onClick = {
+                            val target = imageUrl
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let { engine.withImageUrl(it) }
+                                ?: engine.baseUrl
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(target)),
+                            )
+                        },
+                    )
+                }
             }
         }
     }
@@ -114,11 +136,18 @@ private fun SourceRow(
     label: String,
     url: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .pressScale(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
             .padding(vertical = dimensionResource(com.pencil.chuangyin.resources.R.dimen.dimen_global_padding_m)),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
