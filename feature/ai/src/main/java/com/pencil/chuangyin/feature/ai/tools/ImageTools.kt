@@ -16,8 +16,8 @@ import com.pencil.chuangyin.core.agent.runtime.ToolCallScope
 import com.pencil.chuangyin.printer.ImagePrintOptions
 import com.pencil.chuangyin.printer.PrintResult
 import com.pencil.chuangyin.printer.PrinterController
+import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.FileOutputStream
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
@@ -218,22 +218,24 @@ class ImageTools @Inject constructor(
     }
 
     private fun save(bitmap: Bitmap, target: File, format: String, quality: Int): Boolean = runCatching {
-        target.parentFile?.let { if (!it.exists()) it.mkdirs() }
         val compress = when (format) {
             ToolParamValues.FORMAT_JPEG -> Bitmap.CompressFormat.JPEG
             ToolParamValues.FORMAT_WEBP -> Bitmap.CompressFormat.WEBP
             else -> Bitmap.CompressFormat.PNG
         }
-        FileOutputStream(target).use { out -> bitmap.compress(compress, quality, out) }
+        val buffer = ByteArrayOutputStream()
+        bitmap.compress(compress, quality, buffer)
+        workspace.writeBytes(target, buffer.toByteArray())
     }.getOrDefault(false)
 
     private suspend fun printResult(file: File): String {
         if (!printer.isConnected) return "未打印：打印机未连接，请提示用户到首页连接后再试。"
+        val printable = workspace.materialize(file) ?: return "打印失败：无法读取 ${file.name}。"
         scope.current?.reportProgress("正在打印图片")
         return when (val result = printer.printImagePages(
             pageCount = 1,
             options = ImagePrintOptions(),
-            pageLoader = { BitmapFactory.decodeFile(file.absolutePath) },
+            pageLoader = { BitmapFactory.decodeFile(printable.absolutePath) },
         )) {
             is PrintResult.Success -> "已发送到打印机。"
             is PrintResult.Error -> "打印失败：${result.code}${result.detail?.let { "（$it）" } ?: ""}"

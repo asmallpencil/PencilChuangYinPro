@@ -111,8 +111,9 @@ fun SettingsRoute(
         onOpenLicenses = onOpenLicenses,
         onOpenAiConfig = onOpenAiConfig,
         outputDirName = state.outputDirName,
-        outputPath = state.outputPath,
-        onSetOutputPath = viewModel::setOutputPath,
+        outputTreeName = state.outputTreeName,
+        onSetOutputTree = viewModel::setOutputTree,
+        onClearOutputTree = viewModel::clearOutputTree,
         modifier = modifier,
     )
 }
@@ -127,11 +128,19 @@ fun SettingsScreen(
     onOpenLicenses: () -> Unit,
     onOpenAiConfig: () -> Unit = {},
     outputDirName: String = com.pencil.chuangyin.core.ui.data.OUTPUT_DIR_DEFAULT,
-    outputPath: String = "",
-    onSetOutputPath: (String) -> Unit = {},
+    outputTreeName: String = "",
+    onSetOutputTree: (String) -> Unit = {},
+    onClearOutputTree: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showOutputDialog by remember { mutableStateOf(false) }
+    // SAF 目录选择器：Android 11+ 无存储权限时，这是唯一能把产物写到用户可见目录的办法。
+    val pickOutputTree = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            onSetOutputTree(uri.toString())
+            showOutputDialog = false
+        }
+    }
     val glassActive = rememberLiquidGlassActive()
     Scaffold(
         modifier = modifier,
@@ -178,8 +187,8 @@ fun SettingsScreen(
                 onClick = onOpenSize,
             )
             AppDivider()
-            val outputDesc = if (outputPath.isNotBlank()) {
-                outputPath
+            val outputDesc = if (outputTreeName.isNotBlank()) {
+                outputTreeName
             } else {
                 stringResource(R.string.settings_menu_output_default, outputDirName)
             }
@@ -199,11 +208,11 @@ fun SettingsScreen(
     }
 
     if (showOutputDialog) {
-        val defaultAbsolute = stringResource(R.string.settings_output_default_absolute)
         OutputPathDialog(
-            current = outputPath.ifBlank { defaultAbsolute },
-            onConfirm = { path ->
-                onSetOutputPath(path)
+            currentName = outputTreeName,
+            onPick = { pickOutputTree.launch(null) },
+            onClear = {
+                onClearOutputTree()
                 showOutputDialog = false
             },
             onDismiss = { showOutputDialog = false },
@@ -213,11 +222,11 @@ fun SettingsScreen(
 
 @Composable
 private fun OutputPathDialog(
-    current: String,
-    onConfirm: (String) -> Unit,
+    currentName: String,
+    onPick: () -> Unit,
+    onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var input by remember { mutableStateOf(current) }
     LiquidGlassLayerScope(LiquidGlassLayer.MODAL) {
         AppAlertDialog(
             onDismissRequest = onDismiss,
@@ -230,20 +239,26 @@ private fun OutputPathDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-                    AppTextField(
-                        value = input,
-                        onValueChange = { input = it },
-                        label = stringResource(R.string.settings_output_dialog_label),
-                        placeholder = stringResource(R.string.settings_output_dialog_placeholder),
-                        singleLine = true,
+                    AppText(
+                        text = if (currentName.isBlank()) {
+                            stringResource(R.string.settings_output_dialog_none)
+                        } else {
+                            stringResource(R.string.settings_output_dialog_current, currentName)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             },
             confirmButton = {
-                AppTextButton(text = stringResource(ResR.string.action_confirm), onClick = { onConfirm(input) })
+                AppTextButton(text = stringResource(R.string.settings_output_dialog_pick), onClick = onPick)
             },
             dismissButton = {
-                AppTextButton(text = stringResource(ResR.string.action_cancel), onClick = onDismiss)
+                Row {
+                    if (currentName.isNotBlank()) {
+                        AppTextButton(text = stringResource(R.string.settings_output_dialog_clear), onClick = onClear)
+                    }
+                    AppTextButton(text = stringResource(ResR.string.action_cancel), onClick = onDismiss)
+                }
             },
         )
     }

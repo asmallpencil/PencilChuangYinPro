@@ -51,19 +51,35 @@ class ArchiveTools @Inject constructor(
 
         scope.current?.reportProgress("正在解压 ${archive.name}")
         return runCatching {
+            // 压缩包必须是真实文件（授权目录下的文档没有可读路径），先物化到缓存。
+            val readable = workspace.materialize(archive)
+                ?: return@runCatching fileFailure("无法读取压缩包：${workspace.displayPath(archive)}")
             // 按文件头魔数判断真实格式：扩展名常被改错（如 .docx/.jar 本质是 zip），不可信。
-            val format = detectFormat(archive)
-            val target = workspace.resolveForWrite(rawDestination)
-            if (!target.exists()) target.mkdirs()
+            val format = detectFormat(readable)
+            // 解压产物先落到缓存目录，再按输出配置写入 agent 目录（授权目录时走 SAF）。
+            val staging = File(readable.parentFile, rawDestination.substringAfterLast('/')
+                .substringAfterLast('\\').ifEmpty { "extracted" }).apply { mkdirs() }
             val summary = when (format) {
-                ArchiveFormat.ZIP -> extractZip(archive, target)
-                ArchiveFormat.GZIP -> extractGzip(archive, target)
+                ArchiveFormat.ZIP -> extractZip(readable, staging)
+                ArchiveFormat.GZIP -> extractGzip(readable, staging)
                 ArchiveFormat.UNKNOWN -> return@runCatching fileFailure(
                     "无法识别的压缩格式：${archive.name}。当前支持 zip（含 docx/xlsx/pptx/jar/apk 等）与 gzip。",
                 )
             }
+            val target = workspace.resolveForWrite(rawDestination)
+            copyTreeIntoWorkspace(staging, target)
             ToolOutput("$summary 已解压到 ${workspace.displayPath(target)}。")
         }.getOrElse { fileFailure(it.message ?: "解压失败") }
+    }
+
+    /** 把缓存目录里的解压结果逐项写入 agent 目录；授权目录下走 SAF。 */
+    private fun copyTreeIntoWorkspace(source: File, target: File) {
+        if (source.isDirectory) {
+            source.listFiles().orEmpty().forEach { child -> copyTreeIntoWorkspace(child, target) }
+            return
+        }
+        val bytes = runCatching { source.readBytes() }.getOrNull() ?: return
+        workspace.writeBytes(File(target, source.name), bytes)
     }
 
     /** 读取文件头判定压缩格式：`PK` 开头为 zip，`1F 8B` 为 gzip。 */
@@ -139,17 +155,23 @@ class ArchiveTools @Inject constructor(
 
         scope.current?.reportProgress("正在打包")
         return runCatching {
-            if (target.exists()) target.delete()
             var files = 0
+            // zip 先写入缓存，再按输出配置落到 agent 目录（授权目录下无法直接写 File）。
+            val staging = File(workspace.materialize(target)?.parentFile ?: File(target.absolutePath), "pack_${System.nanoTime()}.zip")
             withContext(Dispatchers.IO) {
-                ZipOutputStream(BufferedOutputStream(FileOutputStream(target))).use { output ->
+                ZipOutputStream(BufferedOutputStream(FileOutputStream(staging))).use { output ->
                     resolved.forEach { source ->
                         files += zip(output, source, source.name)
                     }
                 }
             }
+            val bytes = runCatching { staging.readBytes() }.getOrNull()
+            staging.delete()
+            if (bytes == null || !workspace.writeBytes(target, bytes)) {
+                return@runCatching fileFailure("打包失败：无法写入 ${workspace.displayPath(target)}")
+            }
             ToolOutput(
-                content = "已打包 $files 个文件到 ${workspace.displayPath(target)}（${formatFileSize(target.length())}）。",
+                content = "已打包 $files 个文件到 ${workspace.displayPath(target)}（${formatFileSize(bytes.size.toLong())}）。",
                 artifacts = listOf(
                     ToolArtifact(
                         id = UUID.randomUUID().toString(),
@@ -173,7 +195,8 @@ class ArchiveTools @Inject constructor(
             return count
         }
         output.putNextEntry(ZipEntry(entryName))
-        file.inputStream().use { input -> input.copyTo(output) }
+        val input = workspace.readAgent(file) ?: file.inputStream()
+        input.use { it.copyTo(output) }
         output.closeEntry()
         return 1
     }

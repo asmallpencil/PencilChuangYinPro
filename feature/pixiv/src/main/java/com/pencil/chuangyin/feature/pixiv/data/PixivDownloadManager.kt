@@ -2,9 +2,11 @@ package com.pencil.chuangyin.feature.pixiv.data
 
 import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import com.pencil.chuangyin.core.ui.data.OutputPathRepository
+import com.pencil.chuangyin.core.ui.data.SafOutputDir
 import com.pencil.chuangyin.feature.pixiv.di.PixivImageClient
 import com.pencil.chuangyin.feature.pixiv.domain.PixivIllust
 import com.pencil.chuangyin.resources.R as ResR
@@ -427,23 +429,18 @@ class PixivDownloadManager @Inject constructor(
 
     /**
      * 把下载成功的单张图片镜像到配置的产物输出目录。
-     * 若用户设置了完整绝对路径，则优先直接写入该真实目录（可下载到任意可写位置）；
-     * 写入失败或未设置路径时，Android Q+ 走 MediaStore（默认 Pictures/PencilChuangyinPro），
+     * 若用户在设置里授权了输出目录（SAF），优先写入该目录；
+     * 未授权时 Android Q+ 走 MediaStore（默认 Pictures/PencilChuangyinPro），
      * API 29 及以下尝试拷贝到公共 Pictures 目录。
      * 失败不影响主流程（应用内部仍以 filesDir 为数据源）。
      */
     private fun mirrorImageToPublic(file: File): Boolean = runCatching {
         if (!file.exists() || !file.isFile) return false
         val displayName = file.name
-        val customPath = outputPathRepository.outputPath.value
+        val treeUri = outputPathRepository.outputTreeUri.value?.takeIf { it.isNotBlank() }
         var mirrored = false
-        if (customPath.isNotBlank()) {
-            mirrored = runCatching {
-                val outFile = File(customPath, displayName)
-                outFile.parentFile?.mkdirs()
-                file.copyTo(outFile, overwrite = true)
-                true
-            }.getOrDefault(false)
+        if (treeUri != null) {
+            mirrored = SafOutputDir.copyFile(context, Uri.parse(treeUri), displayName, file)
         }
         if (mirrored) {
             true

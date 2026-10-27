@@ -58,6 +58,8 @@ data class PixivComment(
     val date: String,
     val user: PixivUser,
     val hasReplies: Boolean,
+    /** 评论贴图地址；纯贴图评论的 [comment] 为空串，正文只由这里提供。 */
+    val stampUrl: String? = null,
 )
 
 /** 评论列表分页结果。 */
@@ -80,6 +82,7 @@ fun CommentDto.toDomain() = PixivComment(
         isFollowed = user.isFollowed,
     ),
     hasReplies = hasReplies,
+    stampUrl = stamp?.stampUrl?.takeIf { it.isNotBlank() },
 )
 
 /**

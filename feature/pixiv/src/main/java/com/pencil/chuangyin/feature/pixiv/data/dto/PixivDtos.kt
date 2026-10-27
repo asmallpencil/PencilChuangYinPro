@@ -2,6 +2,7 @@ package com.pencil.chuangyin.feature.pixiv.data.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNames
 
 /**
  * P 站接口原始 DTO（kotlinx.serialization）。
@@ -182,6 +183,21 @@ data class CommentDto(
     @SerialName("date") val date: String = "",
     val user: PixivUserDto = PixivUserDto(),
     @SerialName("has_replies") val hasReplies: Boolean = false,
+    /**
+     * 评论贴图（P 站的「スタンプ」）。纯贴图评论的 `comment` 是空串，
+     * 正文实际由本对象提供；旧实现没有映射该字段，这类评论就整条显示为空白。
+     */
+    val stamp: CommentStampDto? = null,
+)
+
+/**
+ * 评论贴图。不同版本接口分别出现过 snake_case 与 camelCase 两种键名，
+ * 这里两种都接受（Json 默认启用 useAlternativeNames）。
+ */
+@Serializable
+data class CommentStampDto(
+    @SerialName("stamp_id") @JsonNames("stampId") val stampId: Int = 0,
+    @SerialName("stamp_url") @JsonNames("stampUrl") val stampUrl: String = "",
 )
 
 @Serializable

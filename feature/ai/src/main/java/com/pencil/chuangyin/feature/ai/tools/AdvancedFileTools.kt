@@ -48,10 +48,19 @@ class AdvancedFileTools @Inject constructor(
         return runCatching {
             val src = workspace.resolveForRead(source.trim())
             if (src.isDirectory) return@runCatching fileFailure("源是目录：${workspace.displayPath(src)}。请用 create_archive 打包，或逐个复制文件。")
-            val dst = resolveDestination(workspace, destination.trim(), src.name)
-            if (dst.exists()) dst.delete()
-            withContext(Dispatchers.IO) { src.copyTo(dst, overwrite = true) }
-            ToolOutput("已复制到 ${workspace.displayPath(dst)}（${formatFileSize(dst.length())}）。")
+            val dst = resolveDestination(workspace, destination.trim(), src.name).first
+            val copied = withContext(Dispatchers.IO) {
+                if (workspace.isInsideWorkspace(dst)) {
+                    // 目标在 agent 目录：授权目录下必须走 SAF 写。
+                    workspace.readAgent(src)?.use { input ->
+                        workspace.writeBytes(dst, input.readBytes())
+                    } ?: runCatching { src.copyTo(dst, overwrite = true); true }.getOrDefault(false)
+                } else {
+                    runCatching { src.copyTo(dst, overwrite = true); true }.getOrDefault(false)
+                }
+            }
+            if (!copied) return@runCatching fileFailure("复制失败：${workspace.displayPath(src)} → ${workspace.displayPath(dst)}")
+            ToolOutput("已复制到 ${workspace.displayPath(dst)}（${formatFileSize(src.length())}）。")
         }.getOrElse { fileFailure(it.message ?: "复制失败") }
     }
 
@@ -63,14 +72,22 @@ class AdvancedFileTools @Inject constructor(
     ): ToolOutput {
         return runCatching {
             val src = workspace.resolveForDelete(source.trim())
-            val dst = resolveDestination(workspace, destination.trim(), src.name)
-            if (dst.exists()) dst.delete()
+            val dst = resolveDestination(workspace, destination.trim(), src.name).first
             val moved = withContext(Dispatchers.IO) {
-                if (src.renameTo(dst)) {
-                    true
-                } else {
+                when {
+                    // 授权目录下没有真实文件可 rename，按「读流 → 写新文件 → 删旧文件」搬移。
+                    workspace.usesOutputDir -> {
+                        val bytes = workspace.readAgent(src)?.use { it.readBytes() }
+                        if (bytes != null && workspace.writeBytes(dst, bytes)) {
+                            workspace.deleteInWorkspace(src)
+                        } else {
+                            false
+                        }
+                    }
+
+                    src.renameTo(dst) -> true
                     // 跨卷/跨文件系统时 rename 会失败，退化为复制后删除。
-                    src.copyRecursively(dst, overwrite = true).also { ok -> if (ok) src.deleteRecursively() }
+                    else -> src.copyRecursively(dst, overwrite = true).also { ok -> if (ok) src.deleteRecursively() }
                 }
             }
             if (moved) {
@@ -88,28 +105,32 @@ class AdvancedFileTools @Inject constructor(
     ): ToolOutput {
         val file = runCatching { workspace.resolveForRead(path.trim()) }
             .getOrElse { return fileFailure(it.message ?: "路径无效") }
+        val readable = workspace.materialize(file) ?: file
         val builder = StringBuilder()
-        builder.appendLine("名称：${file.name}")
+        builder.appendLine("名称：${readable.name}")
         builder.appendLine("路径：${workspace.displayPath(file)}")
-        builder.appendLine("类型：${if (file.isDirectory) "目录" else "文件"}")
-        builder.appendLine("修改时间：${FILE_TIME_FORMAT.format(Date(file.lastModified()))}")
-        if (file.isDirectory) {
-            builder.appendLine("子项数量：${file.listFiles()?.size ?: 0}")
+        builder.appendLine("类型：${if (readable.isDirectory) "目录" else "文件"}")
+        builder.appendLine("修改时间：${FILE_TIME_FORMAT.format(Date(readable.lastModified()))}")
+        if (readable.isDirectory) {
+            builder.appendLine("子项数量：${readable.listFiles()?.size ?: 0}")
             return ToolOutput(builder.toString().trim())
         }
-        builder.appendLine("大小：${formatFileSize(file.length())}（${file.length()} 字节）")
-        val mime = mimeTypeOf(file)
+        builder.appendLine("大小：${formatFileSize(readable.length())}（${readable.length()} 字节）")
+        val mime = mimeTypeOf(readable)
         builder.appendLine("MIME：$mime")
         if (mime.startsWith("image/")) {
             val bounds = withContext(Dispatchers.IO) {
                 BitmapFactory.Options().apply { inJustDecodeBounds = true }.also { options ->
-                    BitmapFactory.decodeFile(file.absolutePath, options)
+                    BitmapFactory.decodeFile(readable.absolutePath, options)
                 }
             }
             builder.appendLine("尺寸：${bounds.outWidth}×${bounds.outHeight} 像素")
         } else if (mime.startsWith("text/") || mime == "application/json") {
             val text = withContext(Dispatchers.IO) {
-                runCatching { file.readText().take(WorkspaceLimits.MAX_READ_CHARS) }.getOrNull()
+                runCatching {
+                    (workspace.readAgent(file)?.use { it.readBytes().decodeToString() } ?: readable.readText())
+                        .take(WorkspaceLimits.MAX_READ_CHARS)
+                }.getOrNull()
             }
             if (text != null) {
                 builder.appendLine("行数：${text.count { it == '\n' } + 1}")
@@ -125,15 +146,15 @@ class AdvancedFileTools @Inject constructor(
     }
 }
 
-/** 目标路径解析：以 / 结尾或指向已存在目录时，沿用源文件名。 */
-internal fun resolveDestination(workspace: Workspace, destination: String, sourceName: String): File {
+/** 目标路径解析：以 / 结尾或指向已存在目录时，沿用源文件名。返回目标文件与「是否按目录处理」。 */
+internal fun resolveDestination(workspace: Workspace, destination: String, sourceName: String): Pair<File, Boolean> {
     val trimmed = destination.trim()
     val asDir = trimmed.endsWith("/") || trimmed.endsWith("\\")
     val existingDir = !asDir && runCatching { workspace.resolveForWrite(trimmed).isDirectory }.getOrDefault(false)
     return if (asDir || existingDir) {
-        workspace.resolveForWrite(trimmed.trimEnd('/', '\\') + "/" + sourceName)
+        workspace.resolveForWrite(trimmed.trimEnd('/', '\\') + "/" + sourceName) to true
     } else {
-        workspace.resolveForWrite(trimmed)
+        workspace.resolveForWrite(trimmed) to false
     }
 }
 

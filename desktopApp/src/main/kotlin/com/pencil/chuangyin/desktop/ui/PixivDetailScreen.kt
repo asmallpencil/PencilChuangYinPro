@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -57,6 +58,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.pencil.chuangyin.desktop.glass.glassSurface
 import com.pencil.chuangyin.desktop.image.ImageEditorStore
@@ -575,22 +577,33 @@ private fun FullScreenViewer(illust: PixivIllust, initialPage: Int, onClose: () 
     }
 }
 
-/** 可缩放图片：双击 1x/3x，双指捏合 1..5x，放大后可平移；scale == 1 时放行 pager。 */
+/** 可缩放图片：双击以点击点为锚 1x/3x，双指以两指中点为锚捏合 1..5x，放大后可平移；scale == 1 时放行 pager。 */
 @Composable
 private fun ZoomableImage(url: String?) {
     val bitmap = rememberRemoteImage(url)
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
-    var containerWidth by remember { mutableIntStateOf(0) }
-    var containerHeight by remember { mutableIntStateOf(0) }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // graphicsLayer 的缩放原点是图层中心 C，平移在缩放之后施加。
+    // 设 k = 新缩放 / 旧缩放，要让锚点 anchor 处的画面缩放后仍停在原地，必须满足
+    //   offset' = (anchor - C) * (1 - k) + offset * k
+    // 旧实现漏掉了 `- C`，导致无论手指按在哪里都以图片中心缩放。
+    fun zoomAround(anchor: Offset, nextScale: Float) {
+        val target = nextScale.coerceIn(1f, 5f)
+        val k = target / scale
+        val center = Offset(containerSize.width / 2f, containerSize.height / 2f)
+        val moved = (anchor - center) * (1f - k) + offset * k
+        val maxX = containerSize.width * (target - 1f) / 2f
+        val maxY = containerSize.height * (target - 1f) / 2f
+        offset = Offset(moved.x.coerceIn(-maxX, maxX), moved.y.coerceIn(-maxY, maxY))
+        scale = target
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .onSizeChanged {
-                containerWidth = it.width
-                containerHeight = it.height
-            }
+            .onSizeChanged { containerSize = it }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
@@ -599,23 +612,20 @@ private fun ZoomableImage(url: String?) {
                         if (event.changes.any { it.isConsumed }) break
                         val zoomChange = event.calculateZoom()
                         val panChange = event.calculatePan()
-                        if (scale > 1f || zoomChange != 1f) {
-                            val newScale = (scale * zoomChange).coerceIn(1f, 5f)
-                            if (newScale != scale) {
-                                val centroid = event.calculateCentroid(useCurrent = false)
-                                offset = Offset(
-                                    x = centroid.x - (centroid.x - offset.x) * (newScale / scale),
-                                    y = centroid.y - (centroid.y - offset.y) * (newScale / scale),
-                                )
-                                scale = newScale
+                        val multiTouch = event.changes.count { it.pressed } > 1
+                        // 仅在「已放大 / 正在缩放 / 双指按下」时接管手势，
+                        // 保证 scale=1 且单指时 pager 仍可左右翻页。
+                        if (scale > 1f || zoomChange != 1f || multiTouch) {
+                            if (zoomChange != 1f && containerSize.width > 0) {
+                                // 用上一帧的两指中点：本帧位移由下面的 pan 补上。
+                                zoomAround(event.calculateCentroid(useCurrent = false), scale * zoomChange)
                             }
-                            if (scale > 1f) {
-                                offset += panChange
-                                val maxX = containerWidth * (scale - 1f) / 2f
-                                val maxY = containerHeight * (scale - 1f) / 2f
+                            if (scale > 1f && panChange != Offset.Zero) {
+                                val maxX = containerSize.width * (scale - 1f) / 2f
+                                val maxY = containerSize.height * (scale - 1f) / 2f
                                 offset = Offset(
-                                    x = offset.x.coerceIn(-maxX, maxX),
-                                    y = offset.y.coerceIn(-maxY, maxY),
+                                    (offset.x + panChange.x).coerceIn(-maxX, maxX),
+                                    (offset.y + panChange.y).coerceIn(-maxY, maxY),
                                 )
                             }
                             if (event.changes.any { it.positionChanged() }) {
@@ -627,14 +637,9 @@ private fun ZoomableImage(url: String?) {
             }
             .pointerInput(Unit) {
                 detectTapGestures(
-                    onDoubleTap = {
-                        if (scale > 1f) {
-                            scale = 1f
-                            offset = Offset.Zero
-                        } else {
-                            scale = 3f
-                            offset = Offset.Zero
-                        }
+                    onDoubleTap = { tap ->
+                        // 以双击位置为锚：放大后该点仍停在手指下方。
+                        zoomAround(tap, if (scale > 1f) 1f else 3f)
                     }
                 )
             },
@@ -842,12 +847,25 @@ private fun CommentRow(comment: PixivComment, modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                text = comment.text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(top = 2.dp),
-            )
+            if (comment.text.isNotBlank()) {
+                Text(
+                    text = comment.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            } else if (!comment.stampUrl.isNullOrBlank()) {
+                // 贴图评论：Pixiv 的 stamp 图片，纯贴图评论正文为空串。
+                val stamp = rememberRemoteImage(comment.stampUrl)
+                if (stamp != null) {
+                    Image(
+                        bitmap = stamp,
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.padding(top = 2.dp).sizeIn(maxWidth = 120.dp, maxHeight = 120.dp),
+                    )
+                }
+            }
         }
     }
 }

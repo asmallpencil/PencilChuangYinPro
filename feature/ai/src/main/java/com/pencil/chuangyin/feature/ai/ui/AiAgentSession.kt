@@ -187,11 +187,12 @@ class AiAgentSession @Inject constructor(
                 }
             }
             result.onSuccess { (name, file) ->
-                val display = workspace.displayPath(file)
+                // 授权输出目录时 file 只是同名占位，展示用 agent 内相对路径。
+                val display = if (workspace.usesOutputDir) name else workspace.displayPath(file)
                 val artifact = AiUiArtifact(
                     id = "attach_" + java.util.UUID.randomUUID(),
                     kind = kindOf(name),
-                    path = file.absolutePath,
+                    path = if (workspace.usesOutputDir) name else file.absolutePath,
                     label = file.name,
                 )
                 _state.update { current -> current.copy(attachments = current.attachments + artifact) }

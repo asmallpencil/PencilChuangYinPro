@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -70,6 +71,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -485,7 +487,21 @@ private fun FullScreenViewer(
     }
 }
 
-/** REQ9：可缩放图片，双击切换 1x/3x，两指捏合缩放且可平移。 */
+/**
+ * REQ9：可缩放图片。
+ *
+ * 双指捏合**以两指中点为锚点**放大，双击**以点击位置为锚点**放大——
+ * 两者都不再固定以图片中心缩放。
+ *
+ * `graphicsLayer` 的缩放原点是图层中心（transformOrigin 默认 0.5, 0.5），
+ * 且平移在缩放之后施加。设图层中心为 C、旧缩放 s0、新缩放 s1、k = s1/s0，
+ * 要让锚点 anchor 处的画面在缩放后仍停在原地，必须满足：
+ *
+ *     offset' = (anchor - C) * (1 - k) + offset * k
+ *
+ * 旧实现写成了 `anchor - (anchor - offset) * k`，漏掉了 `- C` 这一项，
+ * 因此无论手指按在哪里，实际都以图片中心为缩放中心。
+ */
 @Composable
 private fun ZoomablePixivImage(
     model: Any?,
@@ -493,16 +509,25 @@ private fun ZoomablePixivImage(
 ) {
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
-    var containerWidth by remember { mutableStateOf(0) }
-    var containerHeight by remember { mutableStateOf(0) }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+
+    /** 以 [anchor] 为锚点缩放到 [nextScale]，并把平移限制在「画面边缘不出界」的范围内。 */
+    fun zoomAround(anchor: Offset, nextScale: Float) {
+        val target = nextScale.coerceIn(1f, MAX_ZOOM_SCALE)
+        val size = containerSize
+        val k = target / scale
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val moved = (anchor - center) * (1f - k) + offset * k
+        val maxX = size.width * (target - 1f) / 2f
+        val maxY = size.height * (target - 1f) / 2f
+        offset = Offset(moved.x.coerceIn(-maxX, maxX), moved.y.coerceIn(-maxY, maxY))
+        scale = target
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .onSizeChanged {
-                containerWidth = it.width
-                containerHeight = it.height
-            }
+            .onSizeChanged { containerSize = it }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
@@ -511,44 +536,38 @@ private fun ZoomablePixivImage(
                         if (event.changes.any { it.isConsumed }) break
                         val zoomChange = event.calculateZoom()
                         val panChange = event.calculatePan()
-                        // 仅在已放大或正在缩放时处理并消费事件，
-                        // 保证 scale=1 时 HorizontalPager 仍可左右翻页。
-                        if (scale > 1f || zoomChange != 1f) {
-                            val newScale = (scale * zoomChange).coerceIn(1f, 5f)
-                            if (newScale != scale) {
-                                val centroid = event.calculateCentroid(useCurrent = false)
-                                offset = Offset(
-                                    x = centroid.x - (centroid.x - offset.x) * (newScale / scale),
-                                    y = centroid.y - (centroid.y - offset.y) * (newScale / scale),
-                                )
-                                scale = newScale
-                            }
-                            if (scale > 1f) {
-                                offset += panChange
-                                val maxX = containerWidth * (scale - 1f) / 2f
-                                val maxY = containerHeight * (scale - 1f) / 2f
-                                offset = Offset(
-                                    x = offset.x.coerceIn(-maxX, maxX),
-                                    y = offset.y.coerceIn(-maxY, maxY),
+                        val multiTouch = event.changes.count { it.pressed } > 1
+                        // 仅在「已放大 / 正在缩放 / 双指按下」时接管手势，
+                        // 保证 scale=1 且单指时 HorizontalPager 仍可左右翻页。
+                        if (scale > 1f || zoomChange != 1f || multiTouch) {
+                            if (zoomChange != 1f && containerSize.width > 0) {
+                                // 用上一帧的两指中点：本帧的位移由下面的 pan 补上，
+                                // 与 detectTransformGestures 的处理顺序一致。
+                                zoomAround(
+                                    anchor = event.calculateCentroid(useCurrent = false),
+                                    nextScale = scale * zoomChange,
                                 )
                             }
-                            if (event.changes.any { it.positionChanged() }) {
-                                event.changes.forEach { it.consume() }
+                            if (scale > 1f && panChange != Offset.Zero) {
+                                val maxX = containerSize.width * (scale - 1f) / 2f
+                                val maxY = containerSize.height * (scale - 1f) / 2f
+                                offset = Offset(
+                                    (offset.x + panChange.x).coerceIn(-maxX, maxX),
+                                    (offset.y + panChange.y).coerceIn(-maxY, maxY),
+                                )
                             }
+                            event.changes.forEach { if (it.positionChanged()) it.consume() }
                         }
                     } while (event.changes.any { it.pressed })
                 }
             }
             .pointerInput(Unit) {
-                detectTapGestures(onDoubleTap = {
-                    if (scale > 1f) {
-                        scale = 1f
-                        offset = Offset.Zero
-                    } else {
-                        scale = 3f
-                        offset = Offset.Zero
-                    }
-                })
+                detectTapGestures(
+                    onDoubleTap = { tap ->
+                        // 以双击位置为锚：放大后该点仍停在手指下方。
+                        zoomAround(tap, if (scale > 1f) 1f else DOUBLE_TAP_ZOOM_SCALE)
+                    },
+                )
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -806,11 +825,24 @@ private fun CommentRow(comment: PixivComment, modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
-            AppText(
-                text = comment.comment,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 2.dp),
-            )
+            // P 站的「スタンプ」贴图评论正文为空串，内容全在贴图里；
+            // 只贴图时若按纯文本渲染就是一片空白，这里改为显示贴图。
+            if (comment.comment.isNotBlank()) {
+                AppText(
+                    text = comment.comment,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            } else if (!comment.stampUrl.isNullOrBlank()) {
+                SubcomposeAsyncImage(
+                    model = comment.stampUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .sizeIn(maxWidth = 120.dp, maxHeight = 120.dp),
+                )
+            }
         }
     }
 }
@@ -851,6 +883,12 @@ private fun PrintingOverlay(done: Int, total: Int) {
         }
     }
 }
+
+/** 全屏查看的最大放大倍数。 */
+private const val MAX_ZOOM_SCALE = 5f
+
+/** 双击一次放大的倍数。 */
+private const val DOUBLE_TAP_ZOOM_SCALE = 3f
 
 /** 中文习惯的数量缩写：1.2 万。 */
 private fun compactCount(value: Int): String =

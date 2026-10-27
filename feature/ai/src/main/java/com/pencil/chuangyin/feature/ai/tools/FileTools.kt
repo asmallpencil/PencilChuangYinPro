@@ -98,8 +98,9 @@ class FileTools @Inject constructor(
         if (target.isDirectory) {
             return ToolOutput("${workspace.displayPath(target)} 是目录，无法写入。", isError = true)
         }
-        runCatching { target.writeText(content) }
+        val written = runCatching { workspace.writeBytes(target, content.toByteArray()) }
             .getOrElse { return ToolOutput("写入失败：${it.message ?: it.javaClass.simpleName}", isError = true) }
+        if (!written) return ToolOutput("写入失败：${workspace.displayPath(target)}", isError = true)
         return ToolOutput("已写入 ${workspace.displayPath(target)}（${content.length} 字符）。")
     }
 
@@ -111,8 +112,10 @@ class FileTools @Inject constructor(
         val target = runCatching { workspace.resolveForDelete(path.trim()) }
             .getOrElse { return failure(it) }
         val display = workspace.displayPath(target)
-        val deleted = runCatching { target.deleteRecursively() }
-            .getOrElse { return ToolOutput("删除失败：${it.message ?: it.javaClass.simpleName}", isError = true) }
+        val deleted = runCatching {
+            // agent 内文件授权目录下走 SAF；可读根之外的目录（如 P 站下载）仍用文件系统删除。
+            if (workspace.isInsideWorkspace(target)) workspace.deleteInWorkspace(target) else target.deleteRecursively()
+        }.getOrElse { return ToolOutput("删除失败：${it.message ?: it.javaClass.simpleName}", isError = true) }
         return if (deleted) {
             ToolOutput("已删除 $display。")
         } else {
@@ -146,27 +149,38 @@ class FileTools @Inject constructor(
 
     /** 图片：不解码正文，改为以 IMAGE 产物返回，由引擎作为多模态图片交给模型查看。 */
     private suspend fun readImage(file: File, display: String): ToolOutput = withContext(Dispatchers.IO) {
+        // 授权目录下的文件没有可解码的绝对路径，先物化到缓存再读尺寸；产物则直接回传授权目录内的原件。
+        val readable = workspace.materialize(file) ?: return@withContext ToolOutput("读取失败：无法打开 $display。", isError = true)
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        BitmapFactory.decodeFile(readable.absolutePath, bounds)
         val size = if (bounds.outWidth > 0) "${bounds.outWidth}×${bounds.outHeight} 像素" else "尺寸未知"
         ToolOutput(
-            content = "文件 $display 是一张图片（$size，${formatSize(file.length())}）。" +
+            content = "文件 $display 是一张图片（$size，${formatSize(readable.length())}）。" +
                 "图片内容已随本次工具结果提供，请直接查看并理解它。",
-            artifacts = listOf(imageArtifact(file)),
+            artifacts = listOf(imageArtifact(file, readable)),
         )
     }
 
     /** PDF：逐页渲染为 PNG 产物，交由多模态理解（纯文本抽取对 PDF 不可靠）。 */
     private suspend fun readPdf(file: File, display: String): ToolOutput = withContext(Dispatchers.IO) {
-        val outputDir = runCatching { workspace.resolveForWrite(file.nameWithoutExtension + "_pages") }
-            .getOrElse { return@withContext ToolOutput("PDF 输出目录创建失败：${it.message}", isError = true) }
-        val pages = runCatching { DocumentReader.renderPdf(file, outputDir, MAX_PDF_PAGES) }
+        // PDF 渲染依赖真实的文件描述符，授权目录下先物化到缓存。
+        val readable = workspace.materialize(file)
+            ?: return@withContext ToolOutput("读取失败：无法打开 $display。", isError = true)
+        val rendered = runCatching {
+            DocumentReader.renderPdf(readable, File(readable.parentFile, readable.nameWithoutExtension + "_pages"), MAX_PDF_PAGES)
+        }
             .getOrElse { return@withContext ToolOutput("渲染 PDF 失败：${it.message ?: it.javaClass.simpleName}", isError = true) }
-        if (pages.isEmpty()) {
+        if (rendered.isEmpty()) {
             return@withContext ToolOutput("PDF $display 没有可渲染的页面。", isError = true)
         }
+        // 渲染产物先落在缓存目录，再按当前输出配置写到 agent 目录（授权目录时走 SAF）。
+        val pages = rendered.map { page ->
+            val stored = workspace.uniqueTarget(page.name)
+            workspace.copyInto(page, stored)
+            stored
+        }
         ToolOutput(
-            content = "文件 $display 已渲染为 ${pages.size} 页图片（保存在 ${workspace.displayPath(outputDir)}），" +
+            content = "文件 $display 已渲染为 ${pages.size} 页图片（保存在 ${workspace.displayPath(pages.first())} 同级目录），" +
                 "内容已随本次工具结果提供，请直接查看并理解它们。",
             artifacts = pages.map { imageArtifact(it) },
         )
@@ -174,14 +188,18 @@ class FileTools @Inject constructor(
 
     /** Office 文档：从 zip 容器内抽取文字；抽取失败则退化为二进制元信息。 */
     private suspend fun readOoxml(file: File, display: String): ToolOutput = withContext(Dispatchers.IO) {
-        val text = runCatching { DocumentReader.ooxmlText(file) }.getOrNull()
+        val text = runCatching {
+            workspace.materialize(file)?.let { DocumentReader.ooxmlText(it) }
+        }.getOrNull()
         if (text.isNullOrBlank()) return@withContext readBinary(file, display)
         textResult(display, text)
     }
 
     /** 文本：直接返回正文，超长截断。 */
     private suspend fun readText(file: File, display: String): ToolOutput = withContext(Dispatchers.IO) {
-        val text = runCatching { file.readText() }
+        val text = runCatching {
+            workspace.readAgent(file)?.use { it.readBytes().decodeToString() } ?: file.readText()
+        }
             .getOrElse { return@withContext ToolOutput("读取失败：${it.message ?: it.javaClass.simpleName}", isError = true) }
         textResult(display, text)
     }
@@ -191,7 +209,8 @@ class FileTools @Inject constructor(
         val head = ByteArray(BINARY_HEAD_BYTES)
         var read = 0
         runCatching {
-            file.inputStream().use { input -> read = input.read(head) }
+            val input = workspace.readAgent(file) ?: file.inputStream()
+            input.use { stream -> read = stream.read(head) }
         }
         val hex = head.take(read.coerceAtLeast(0)).joinToString(" ") { "%02X".format(it) }
         ToolOutput(
@@ -232,12 +251,16 @@ class FileTools @Inject constructor(
     }
 
     private fun contentContains(file: File, query: String): Boolean =
-        runCatching { file.readText().contains(query, ignoreCase = true) }.getOrDefault(false)
+        runCatching {
+            (workspace.readAgent(file)?.use { it.readBytes().decodeToString() } ?: file.readText())
+                .contains(query, ignoreCase = true)
+        }.getOrDefault(false)
 
-    private fun imageArtifact(file: File): ToolArtifact = ToolArtifact(
+    private fun imageArtifact(file: File, readable: File = file): ToolArtifact = ToolArtifact(
         id = UUID.randomUUID().toString(),
         kind = ToolArtifactKind.IMAGE,
-        path = file.absolutePath,
+        // 授权输出目录时 file 只是 agent 内的名义路径，多模态编码需要可读的绝对路径，改用物化后的缓存文件。
+        path = readable.absolutePath,
         label = file.name,
     )
 

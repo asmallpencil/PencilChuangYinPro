@@ -24,8 +24,8 @@ data class SettingsUiState(
     val themeState: ThemeState = ThemeState.Default,
     val paperWidthMm: Int = com.pencil.chuangyin.printer.PAPER_WIDTH_MM_DEFAULT,
     val outputDirName: String = OUTPUT_DIR_DEFAULT,
-    /** 用户自定义的完整产物输出路径；为空表示使用默认目录。 */
-    val outputPath: String = "",
+    /** 用户通过系统目录选择器授权的输出目录展示名；为空表示未授权，使用默认目录。 */
+    val outputTreeName: String = "",
 )
 
 @HiltViewModel
@@ -55,8 +55,12 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            outputPathRepository.outputPath.collect { path ->
-                _state.update { it.copy(outputPath = path) }
+            outputPathRepository.outputTreeUri.collect { uri ->
+                _state.update {
+                    it.copy(
+                        outputTreeName = if (uri.isNullOrBlank()) "" else outputPathRepository.outputTreeDisplayName(),
+                    )
+                }
             }
         }
     }
@@ -65,9 +69,14 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { outputPathRepository.setOutputDirName(name) }
     }
 
-    /** 设置自定义完整产物输出路径；清空表示回到默认目录。 */
-    fun setOutputPath(path: String) {
-        viewModelScope.launch { outputPathRepository.setOutputPath(path) }
+    /** 记录用户授权的产物输出目录（SAF 树 URI）。 */
+    fun setOutputTree(uri: String) {
+        viewModelScope.launch { outputPathRepository.setOutputTree(uri) }
+    }
+
+    /** 撤销输出目录授权，回到默认相册目录。 */
+    fun clearOutputTree() {
+        viewModelScope.launch { outputPathRepository.clearOutputTree() }
     }
 
     fun setSeedColor(argb: Long) {

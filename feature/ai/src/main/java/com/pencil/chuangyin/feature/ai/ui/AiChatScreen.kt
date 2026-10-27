@@ -145,6 +145,7 @@ fun AiChatRoute(
         onDismissError = viewModel::dismissError,
         onRemoveAttachment = viewModel::removeAttachment,
         onSetPermissionMode = viewModel::setPermissionMode,
+        resolveImage = viewModel::resolveImage,
         // 上传：把内容拷贝进 agent 目录，挂到输入框上方的挂载区；失败时才提示。
         onImport = { uri, report ->
             viewModel.importFromUri(
@@ -175,6 +176,8 @@ fun AiChatScreen(
     onImport: (Uri, (String) -> Unit) -> Unit,
     onRemoveAttachment: (String) -> Unit,
     onSetPermissionMode: (AgentPermissionMode) -> Unit,
+    /** 图片产物解码器：授权输出目录时产物在 SAF 里，需要先物化；为 null 时按普通文件路径解码。 */
+    resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)? = null,
     modifier: Modifier = Modifier,
 ) {
     val glassActive = rememberLiquidGlassActive()
@@ -246,6 +249,7 @@ fun AiChatScreen(
                     onAttach = { attachSheetVisible = true },
                     onPermissionClick = { permissionSheetVisible = true },
                     onRemoveAttachment = onRemoveAttachment,
+                    resolveImage = resolveImage,
                 )
             }
         },
@@ -267,6 +271,7 @@ fun AiChatScreen(
                     bottomInset = innerPadding.calculateBottomPadding(),
                     onRetry = onRetry,
                     onDismissError = onDismissError,
+                    resolveImage = resolveImage,
                 )
             }
         }
@@ -379,6 +384,7 @@ private fun AiConversationList(
     bottomInset: androidx.compose.ui.unit.Dp,
     onRetry: () -> Unit,
     onDismissError: () -> Unit,
+    resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
     modifier: Modifier = Modifier,
 ) {
     val padM = dimensionResource(ResR.dimen.dimen_global_padding_m)
@@ -415,7 +421,7 @@ private fun AiConversationList(
             item(key = KEY_WELCOME) { AiWelcomeCard() }
         }
         items(messages, key = { MESSAGE_KEY_PREFIX + it.id }) { message ->
-            AiMessageBubble(message = message)
+            AiMessageBubble(message = message, resolveImage = resolveImage)
         }
         items(state.toolActivities, key = { TOOL_KEY_PREFIX + it.toolCallId }) { activity ->
             AiToolActivityRow(activity = activity)
@@ -460,7 +466,11 @@ private fun AiWelcomeCard(modifier: Modifier = Modifier) {
 
 /** 单条消息气泡：深度思考折叠区 + 工具标签 + 正文 + 产物。 */
 @Composable
-private fun AiMessageBubble(message: AiUiMessage, modifier: Modifier = Modifier) {
+private fun AiMessageBubble(
+    message: AiUiMessage,
+    resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
+    modifier: Modifier = Modifier,
+) {
     val isUser = message.role == AiMessageRole.User
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -478,7 +488,9 @@ private fun AiMessageBubble(message: AiUiMessage, modifier: Modifier = Modifier)
             if (message.artifacts.isNotEmpty()) {
                 Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
                 Column(verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s))) {
-                    message.artifacts.forEach { artifact -> AiArtifactItem(artifact = artifact) }
+                    message.artifacts.forEach { artifact ->
+                        AiArtifactItem(artifact = artifact, resolveImage = resolveImage)
+                    }
                 }
             }
         }
@@ -781,21 +793,34 @@ private fun AiErrorCard(
 
 /** 产物条目：图片直接解码预览，其它类型展示文件名。 */
 @Composable
-private fun AiArtifactItem(artifact: AiUiArtifact, modifier: Modifier = Modifier) {
+private fun AiArtifactItem(
+    artifact: AiUiArtifact,
+    resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
+    modifier: Modifier = Modifier,
+) {
     if (artifact.isImage) {
-        AiImageArtifact(artifact = artifact, modifier = modifier)
+        AiImageArtifact(artifact = artifact, resolveImage = resolveImage, modifier = modifier)
     } else {
         AiFileArtifact(artifact = artifact, modifier = modifier)
     }
 }
 
 @Composable
-private fun AiImageArtifact(artifact: AiUiArtifact, modifier: Modifier = Modifier) {
+private fun AiImageArtifact(
+    artifact: AiUiArtifact,
+    resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
+    modifier: Modifier = Modifier,
+) {
     val shape = MaterialTheme.shapes.medium
     // 图片解码放到 IO 线程，避免大图在主线程阻塞滚动。
+    // 授权输出目录时产物在 SAF 里，须经 resolveImage 物化后再解码。
     val image by produceState<ImageBitmap?>(initialValue = null, key1 = artifact.id, key2 = artifact.path) {
         value = withContext(Dispatchers.IO) {
-            runCatching { BitmapFactory.decodeFile(artifact.path)?.asImageBitmap() }.getOrNull()
+            if (resolveImage != null) {
+                resolveImage(artifact)
+            } else {
+                runCatching { BitmapFactory.decodeFile(artifact.path)?.asImageBitmap() }.getOrNull()
+            }
         }
     }
     Box(
@@ -911,6 +936,7 @@ private fun AiInputBar(
     onAttach: () -> Unit,
     onPermissionClick: () -> Unit,
     onRemoveAttachment: (String) -> Unit,
+    resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -936,6 +962,7 @@ private fun AiInputBar(
                     AiAttachmentStrip(
                         attachments = attachments,
                         onRemove = onRemoveAttachment,
+                        resolveImage = resolveImage,
                     )
                     Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
                 }
@@ -1007,6 +1034,7 @@ private fun AiInputBar(
 private fun AiAttachmentStrip(
     attachments: List<AiUiArtifact>,
     onRemove: (String) -> Unit,
+    resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -1023,7 +1051,11 @@ private fun AiAttachmentStrip(
             horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
         ) {
             attachments.forEach { artifact ->
-                AiAttachmentChip(artifact = artifact, onRemove = { onRemove(artifact.id) })
+                AiAttachmentChip(
+                    artifact = artifact,
+                    onRemove = { onRemove(artifact.id) },
+                    resolveImage = resolveImage,
+                )
             }
         }
     }
@@ -1034,6 +1066,7 @@ private fun AiAttachmentStrip(
 private fun AiAttachmentChip(
     artifact: AiUiArtifact,
     onRemove: () -> Unit,
+    resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -1047,7 +1080,7 @@ private fun AiAttachmentChip(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (artifact.isImage) {
-            AiAttachmentThumbnail(artifact = artifact)
+            AiAttachmentThumbnail(artifact = artifact, resolveImage = resolveImage)
         } else {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
@@ -1082,10 +1115,18 @@ private fun AiAttachmentChip(
 
 /** 附件缩略图：IO 线程解码，避免大图阻塞输入栏。 */
 @Composable
-private fun AiAttachmentThumbnail(artifact: AiUiArtifact, modifier: Modifier = Modifier) {
+private fun AiAttachmentThumbnail(
+    artifact: AiUiArtifact,
+    resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
+    modifier: Modifier = Modifier,
+) {
     val image by produceState<ImageBitmap?>(initialValue = null, key1 = artifact.id, key2 = artifact.path) {
         value = withContext(Dispatchers.IO) {
-            runCatching { BitmapFactory.decodeFile(artifact.path)?.asImageBitmap() }.getOrNull()
+            if (resolveImage != null) {
+                resolveImage(artifact)
+            } else {
+                runCatching { BitmapFactory.decodeFile(artifact.path)?.asImageBitmap() }.getOrNull()
+            }
         }
     }
     Box(

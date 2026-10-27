@@ -1,8 +1,10 @@
 package com.pencil.chuangyin.feature.ai.ui
 
 import android.net.Uri
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import com.pencil.chuangyin.core.agent.runtime.AgentPermissionMode
+import com.pencil.chuangyin.feature.ai.tools.Workspace
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 @HiltViewModel
 class AiChatViewModel @Inject constructor(
     private val session: AiAgentSession,
+    private val workspace: Workspace,
 ) : ViewModel() {
 
     val state: StateFlow<AiChatUiState> = session.state
@@ -50,4 +53,7 @@ class AiChatViewModel @Inject constructor(
     fun removeAttachment(id: String) = session.removeAttachment(id)
 
     fun setPermissionMode(mode: AgentPermissionMode) = session.setPermissionMode(mode)
+
+    /** 解码产物缩略图：授权输出目录时产物在 SAF 树里，需要先物化到缓存。 */
+    suspend fun resolveImage(artifact: AiUiArtifact): ImageBitmap? = artifact.decodePreview(workspace)
 }

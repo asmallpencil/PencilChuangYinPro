@@ -53,4 +53,6 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+    // SAF 目录写入：用户授权输出目录后，按 DocumentFile 逐级创建子目录与文件
+    implementation(libs.androidx.documentfile)
 }

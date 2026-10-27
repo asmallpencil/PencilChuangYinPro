@@ -84,7 +84,10 @@ class PrintTools @Inject constructor(
         if (file.isDirectory) return ToolOutput("${workspace.displayPath(file)} 是目录，不是图片文件。", isError = true)
         if (!printer.isConnected) return ToolOutput(ERROR_NOT_CONNECTED, isError = true)
 
-        val bitmap = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(file.absolutePath) }
+        // 授权输出目录时文件在 SAF 里，先物化成缓存文件再解码。
+        val readable = withContext(Dispatchers.IO) { workspace.materialize(file) }
+            ?: return ToolOutput("无法读取图片：${workspace.displayPath(file)}", isError = true)
+        val bitmap = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(readable.absolutePath) }
             ?: return ToolOutput("无法解码图片：${workspace.displayPath(file)}", isError = true)
 
         val process = ImageProcessOptions(

@@ -12,8 +12,8 @@ import com.pencil.chuangyin.printer.ImagePrintOptions
 import com.pencil.chuangyin.printer.PrintResult
 import com.pencil.chuangyin.printer.PrinterController
 import com.pencil.chuangyin.printer.PrinterSettings
+import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.FileOutputStream
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
@@ -155,11 +155,12 @@ class DrawTools @Inject constructor(
     /** 打印刚绘制好的 PNG；未连接时返回说明而不是失败。 */
     private suspend fun printDrawn(file: File): String {
         if (!printer.isConnected) return "未打印：打印机未连接，请提示用户到首页连接后再试。"
+        val printable = workspace.materialize(file) ?: return "打印失败：无法读取 ${file.name}。"
         scope.current?.reportProgress("正在打印绘制结果")
         val result = printer.printImagePages(
             pageCount = 1,
             options = ImagePrintOptions(),
-            pageLoader = { BitmapFactory.decodeFile(file.absolutePath) },
+            pageLoader = { BitmapFactory.decodeFile(printable.absolutePath) },
         )
         return when (result) {
             is PrintResult.Success -> "已发送到打印机。"
@@ -168,12 +169,9 @@ class DrawTools @Inject constructor(
     }
 
     private fun resolveTargetFile(fileName: String?): File {
-        val root = workspace.writeRoot
         val sanitized = fileName?.trim()?.let { sanitize(it) }?.takeIf { it.isNotEmpty() }
         val base = sanitized ?: (FILE_PREFIX + System.currentTimeMillis())
-        val candidate = File(root, "$base$FILE_SUFFIX")
-        val unique = if (candidate.exists()) File(root, "$base-${UUID.randomUUID().toString().take(4)}$FILE_SUFFIX") else candidate
-        return unique
+        return workspace.uniqueTarget("$base$FILE_SUFFIX")
     }
 
     /** 去掉路径分隔符与不合法字符，避免模型给出的名字逃逸出工作区。 */
@@ -185,8 +183,9 @@ class DrawTools @Inject constructor(
     }
 
     private fun savePng(bitmap: Bitmap, target: File): Boolean = runCatching {
-        target.parentFile?.let { if (!it.exists()) it.mkdirs() }
-        FileOutputStream(target).use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, PNG_QUALITY, out) }
+        val buffer = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, PNG_QUALITY, buffer)
+        workspace.writeBytes(target, buffer.toByteArray())
     }.getOrDefault(false)
 
     private companion object {

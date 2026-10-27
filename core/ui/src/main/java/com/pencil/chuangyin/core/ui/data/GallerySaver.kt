@@ -3,6 +3,7 @@ package com.pencil.chuangyin.core.ui.data
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -45,19 +46,16 @@ class GallerySaver @Inject constructor(
     }
 
     /**
-     * 优先写入用户自定义的完整绝对路径（可下载到任意可写位置）；写入失败或未设置
-     * 自定义路径时，回退到 MediaStore（Q+）/ 公共 Pictures 目录（API 29 及以下）。
+     * 优先写入用户在设置里授权的输出目录（SAF，Android 11+ 唯一能真正写出可见文件的途径）；
+     * 未授权时回退到 MediaStore（Q+）/ 公共 Pictures 目录（API 29 及以下）。
      */
     private fun saveNow(bitmap: Bitmap, displayName: String): Boolean {
-        val customPath = outputPathRepository.outputPath.value
-        if (customPath.isNotBlank()) {
+        val treeUri = outputPathRepository.outputTreeUri.value?.takeIf { it.isNotBlank() }
+        if (treeUri != null) {
             val ok = runCatching {
-                val dir = File(customPath)
-                if (!dir.exists()) dir.mkdirs()
-                FileOutputStream(File(dir, displayName)).use {
+                SafOutputDir.openOutputStream(context, Uri.parse(treeUri), displayName)?.use {
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
-                }
-                true
+                } != null
             }.getOrDefault(false)
             if (ok) return true
         }

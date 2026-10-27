@@ -94,6 +94,14 @@ data class CommentDto(
     val date: String = "",
     val user: PixivUserDto? = null,
     @SerialName("has_replies") val hasReplies: Boolean = false,
+    val stamp: CommentStampDto? = null,
+)
+
+/** 贴图评论（stamp）：纯贴图评论的 `comment` 为空串，正文只能靠贴图呈现。 */
+@Serializable
+data class CommentStampDto(
+    @SerialName("stamp_id") val stampId: Int = 0,
+    @SerialName("stamp_url") val stampUrl: String = "",
 )
 
 @Serializable
@@ -161,6 +169,7 @@ data class PixivComment(
     val date: String,
     val userName: String,
     val avatarUrl: String?,
+    val stampUrl: String? = null,
 )
 
 data class IllustPage(
@@ -208,4 +217,5 @@ fun CommentDto.toModel(): PixivComment = PixivComment(
     date = date,
     userName = user?.name.orEmpty().ifBlank { "匿名" },
     avatarUrl = user?.profileImages?.bestUrl,
+    stampUrl = stamp?.stampUrl?.takeIf { it.isNotBlank() },
 )
