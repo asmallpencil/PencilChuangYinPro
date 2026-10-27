@@ -195,7 +195,7 @@ fun OnboardingScreen(
         ) {
             val stepProgress by animateFloatAsState(
                 targetValue = (state.step + 1f) / state.totalSteps,
-                animationSpec = rememberAppMotion().spatialSpec(),
+                animationSpec = rememberAppMotion().effectSpec(),
                 label = "onboardingStepProgress",
             )
             LinearProgressIndicator(

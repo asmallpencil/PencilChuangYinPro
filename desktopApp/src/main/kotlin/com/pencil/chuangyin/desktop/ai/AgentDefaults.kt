@@ -11,6 +11,24 @@ object AgentDefaults {
     /** OpenAI 兼容的 API 版本段落。 */
     const val API_VERSION_SEGMENT = "/v1"
 
+    /** Anthropic Messages 端点后缀（挂在 `/v1` 之后）。 */
+    const val ANTHROPIC_MESSAGES_SUFFIX = "/messages"
+
+    /** Anthropic 协议版本请求头取值。 */
+    const val ANTHROPIC_VERSION = "2023-06-01"
+
+    /** Gemini API 版本段落。 */
+    const val GEMINI_VERSION_SEGMENT = "/v1beta"
+
+    /** Gemini 模型路径段落。 */
+    const val GEMINI_MODELS_SEGMENT = "/models/"
+
+    /** Gemini 流式动作（SSE）。 */
+    const val GEMINI_STREAM_ACTION = ":streamGenerateContent?alt=sse"
+
+    /** Gemini 一次性动作。 */
+    const val GEMINI_ONCE_ACTION = ":generateContent"
+
     /** 采样温度默认值。 */
     const val TEMPERATURE = 0.6
 

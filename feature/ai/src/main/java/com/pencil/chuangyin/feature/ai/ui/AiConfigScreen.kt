@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -30,15 +29,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pencil.chuangyin.core.agent.config.AiModelConfig
+import com.pencil.chuangyin.core.agent.config.ApiProtocol
 import com.pencil.chuangyin.core.ui.components.AppAlertDialog
 import com.pencil.chuangyin.core.ui.components.AppIconButton
-import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppSecondaryButton
+import com.pencil.chuangyin.core.ui.components.AppSegmentedRow
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextButton
 import com.pencil.chuangyin.core.ui.components.AppTextField
@@ -123,10 +124,21 @@ fun AiConfigScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-            AppText(
-                text = stringResource(R.string.ai_config_models_label),
-                style = MaterialTheme.typography.titleMedium,
-            )
+            // 标题行右侧直接放「添加模型」：模型再多也不必先滚到底部才能新增。
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AppText(
+                    text = stringResource(R.string.ai_config_models_label),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                AppTextButton(
+                    text = stringResource(R.string.ai_config_add),
+                    onClick = onCreate,
+                )
+            }
             Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
             if (state.isEmpty) {
                 AppText(
@@ -146,12 +158,6 @@ fun AiConfigScreen(
                     Spacer(Modifier.height(dimensionResource(R.dimen.ai_model_row_gap)))
                 }
             }
-            Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-            AppPrimaryButton(
-                text = stringResource(R.string.ai_config_add),
-                onClick = onCreate,
-                leadingIcon = Icons.Filled.Add,
-            )
             Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_l)))
         }
     }
@@ -231,15 +237,20 @@ private fun AiConfigModelCard(
             }
         }
         Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+        // 协议与模型名同行：一眼看出这条配置该用哪种接口，避免选错协议后连不上。
         AppText(
-            text = model.modelName,
+            text = "${model.protocol.shortName} · ${model.modelName}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
         AppText(
             text = model.baseUrl,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
         Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
         Row(horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s))) {
@@ -279,6 +290,8 @@ private fun AiConfigFormDialog(
 ) {
     // 以 dialog 为 key：打开新增/编辑时重置，检测状态变化不会重置输入内容。
     var form by remember(dialog) { mutableStateOf(dialog.form) }
+    // 各协议的默认服务地址集合：切换协议时，只有当用户没改过地址（仍是某个默认值）才跟着替换。
+    val protocolDefaults = remember { ApiProtocol.entries.map { it.defaultBaseUrl }.toSet() }
     val testing = testStatus == AiConfigTestStatus.Testing
     AppAlertDialog(
         onDismissRequest = onDismiss,
@@ -295,6 +308,34 @@ private fun AiConfigFormDialog(
                     .heightIn(max = FORM_MAX_HEIGHT)
                     .verticalScroll(rememberScrollState()),
             ) {
+                AppText(
+                    text = stringResource(R.string.ai_config_field_protocol),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+                AppSegmentedRow(
+                    options = ApiProtocol.entries.map { it.shortName },
+                    selectedIndex = form.protocol.ordinal,
+                    onSelect = { index ->
+                        val protocol = ApiProtocol.entries[index]
+                        form = form.copy(
+                            protocol = protocol,
+                            baseUrl = if (form.baseUrl.isBlank() || form.baseUrl.trim() in protocolDefaults) {
+                                protocol.defaultBaseUrl
+                            } else {
+                                form.baseUrl
+                            },
+                        )
+                    },
+                )
+                Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+                AppText(
+                    text = stringResource(R.string.ai_config_field_protocol_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
                 AppTextField(
                     value = form.baseUrl,
                     onValueChange = { value -> form = form.copy(baseUrl = value) },
@@ -402,8 +443,9 @@ private fun AiConfigScreenPreview() {
                 ),
                 AiModelConfig(
                     id = "2",
-                    baseUrl = "https://api.deepseek.com/v1",
-                    modelName = "deepseek-chat",
+                    protocol = ApiProtocol.GEMINI,
+                    baseUrl = "https://generativelanguage.googleapis.com",
+                    modelName = "gemini-2.5-flash",
                 ),
             ),
             activeModelId = "1",

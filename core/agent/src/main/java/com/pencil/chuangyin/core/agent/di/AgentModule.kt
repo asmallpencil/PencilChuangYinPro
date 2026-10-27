@@ -3,8 +3,8 @@ package com.pencil.chuangyin.core.agent.di
 import com.pencil.chuangyin.core.agent.config.AiConfigRepository
 import com.pencil.chuangyin.core.agent.config.DataStoreAiConfigRepository
 import com.pencil.chuangyin.core.agent.model.AgentTool
-import com.pencil.chuangyin.core.agent.openai.OkHttpOpenAiChatClient
 import com.pencil.chuangyin.core.agent.openai.OpenAiChatClient
+import com.pencil.chuangyin.core.agent.provider.ProtocolChatClient
 import com.pencil.chuangyin.core.agent.runtime.AgentPermissionModeProvider
 import com.pencil.chuangyin.core.agent.runtime.MutableAgentPermissionModeProvider
 import com.pencil.chuangyin.core.agent.runtime.MutableToolCallScope
@@ -26,9 +26,10 @@ abstract class AgentModule {
     @Singleton
     abstract fun bindAiConfigRepository(impl: DataStoreAiConfigRepository): AiConfigRepository
 
+    /** 按模型配置的协议分派到 OpenAI / Anthropic / Gemini 实现。 */
     @Binds
     @Singleton
-    abstract fun bindOpenAiChatClient(impl: OkHttpOpenAiChatClient): OpenAiChatClient
+    abstract fun bindOpenAiChatClient(impl: ProtocolChatClient): OpenAiChatClient
 
     /** 官方 ADK FunctionTool 适配层向工具函数体桥接项目 ToolContext。 */
     @Binds

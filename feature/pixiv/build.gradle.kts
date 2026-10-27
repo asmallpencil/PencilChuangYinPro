@@ -64,5 +64,7 @@ dependencies {
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.coil.compose)
+    // 全屏图片查看器：手势缩放 + 双击放大 + 超大图子采样
+    implementation(libs.zoomimage.compose.coil2)
     implementation(libs.androidx.datastore.preferences)
 }

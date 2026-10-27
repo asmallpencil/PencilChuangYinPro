@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -48,24 +49,38 @@ fun AppTheme(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val baseScheme = colorSchemeProvider.colorScheme(themeState.seedArgb, themeState.darkTheme)
+    // MaterialKolor 生成整套 M3 色板是纯 CPU 重活（HCT 量化 + 调色板推导，几十毫秒级别）。
+    // 这里必须按「种子色 + 明暗」记忆：否则每次 AppTheme 重组（导航切换、弹窗开关等）都会重算一遍，
+    // 表现为启动首帧与页面切换时的明显卡顿。
+    val baseScheme = remember(themeState.seedArgb, themeState.darkTheme) {
+        colorSchemeProvider.colorScheme(themeState.seedArgb, themeState.darkTheme)
+    }
     // 控件不透明度：surface 系颜色整体降透明度，让页面透出底层壁纸；
     // 未设背景图时仅透出底色（同色系，无视觉副作用），状态仍持久化。
     val surfaceAlpha = themeState.surfaceAlpha.coerceIn(SURFACE_ALPHA_MIN, 1f)
-    val effectiveScheme = if (surfaceAlpha < 1f) {
-        baseScheme.copy(
-            surface = baseScheme.surface.copy(alpha = surfaceAlpha),
-            surfaceVariant = baseScheme.surfaceVariant.copy(alpha = surfaceAlpha),
-            surfaceContainerLowest = baseScheme.surfaceContainerLowest.copy(alpha = surfaceAlpha),
-            surfaceContainerLow = baseScheme.surfaceContainerLow.copy(alpha = surfaceAlpha),
-            surfaceContainer = baseScheme.surfaceContainer.copy(alpha = surfaceAlpha),
-            surfaceContainerHigh = baseScheme.surfaceContainerHigh.copy(alpha = surfaceAlpha),
-            surfaceContainerHighest = baseScheme.surfaceContainerHighest.copy(alpha = surfaceAlpha),
-            surfaceDim = baseScheme.surfaceDim.copy(alpha = surfaceAlpha),
-            surfaceBright = baseScheme.surfaceBright.copy(alpha = surfaceAlpha),
-        )
-    } else {
-        baseScheme
+    val effectiveScheme = remember(baseScheme, surfaceAlpha) {
+        if (surfaceAlpha < 1f) {
+            baseScheme.copy(
+                surface = baseScheme.surface.copy(alpha = surfaceAlpha),
+                surfaceVariant = baseScheme.surfaceVariant.copy(alpha = surfaceAlpha),
+                surfaceContainerLowest = baseScheme.surfaceContainerLowest.copy(alpha = surfaceAlpha),
+                surfaceContainerLow = baseScheme.surfaceContainerLow.copy(alpha = surfaceAlpha),
+                surfaceContainer = baseScheme.surfaceContainer.copy(alpha = surfaceAlpha),
+                surfaceContainerHigh = baseScheme.surfaceContainerHigh.copy(alpha = surfaceAlpha),
+                surfaceContainerHighest = baseScheme.surfaceContainerHighest.copy(alpha = surfaceAlpha),
+                surfaceDim = baseScheme.surfaceDim.copy(alpha = surfaceAlpha),
+                surfaceBright = baseScheme.surfaceBright.copy(alpha = surfaceAlpha),
+            )
+        } else {
+            baseScheme
+        }
+    }
+    // background 透明：M3 Scaffold 默认容器色即 background，于是所有页面背景自动透出底层壁纸。
+    val themeColorScheme = remember(effectiveScheme) {
+        effectiveScheme.copy(background = Color.Transparent)
+    }
+    val themeShapes = remember(shapeResolver, themeState.cornerStyle, themeState.cornerStrength) {
+        shapeResolver.shapes(themeState.cornerStyle, themeState.cornerStrength)
     }
     Box(
         modifier = modifier
@@ -106,8 +121,8 @@ fun AppTheme(
             LocalMotionPreset provides themeState.motionPreset,
         ) {
             MaterialTheme(
-                colorScheme = effectiveScheme.copy(background = Color.Transparent),
-                shapes = shapeResolver.shapes(themeState.cornerStyle, themeState.cornerStrength),
+                colorScheme = themeColorScheme,
+                shapes = themeShapes,
                 content = content,
             )
         }

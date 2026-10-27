@@ -1,43 +1,18 @@
 package com.pencil.chuangyin.feature.dashboard
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BatteryAlert
@@ -61,20 +36,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -86,8 +54,6 @@ import com.pencil.chuangyin.core.ui.components.AppIconButton
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
-import com.pencil.chuangyin.core.ui.motion.pressScale
-import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.printer.PrinterStatus
 import com.pencil.chuangyin.resources.R as ResR
 
@@ -117,13 +83,6 @@ fun HomeRoute(
     )
 }
 
-/**
- * 首页（M3 Expressive 版）。
- *
- * 结构上把原来的"一整张卡片里竖排 5 条入口"拆成两层：
- * 1. 打印机英雄卡：状态文案、电量条、状态胶囊全部带弹簧过渡；
- * 2. 创作工具瀑布：2 列瓦片，逐块错峰入场，按压有物理回弹。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -138,12 +97,6 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     val glassActive = rememberLiquidGlassActive()
-    val paddingM = dimensionResource(ResR.dimen.dimen_global_padding_m)
-
-    // 首帧之后再打开入场动画，避免和 NavHost 转场同时位移造成"抖动"。
-    var appeared by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { appeared = true }
-
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -170,286 +123,93 @@ fun HomeScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = paddingM)
-                .padding(top = paddingM)
+                .padding(dimensionResource(ResR.dimen.dimen_global_padding_m))
                 // 底部留白放在滚动内容内部：列表末项能停在悬浮导航栏上方，
                 // 滚动过程中卡片仍可穿过导航栏下方（液态玻璃毛玻璃取样）。
-                .padding(bottom = bottomBarSpace + paddingM),
-            verticalArrangement = Arrangement.spacedBy(paddingM),
+                .padding(bottom = bottomBarSpace),
+            verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_m)),
         ) {
-            AnimatedVisibility(
-                visible = appeared,
-                enter = staggerEnter(delayMillis = 0),
-            ) {
-                PrinterHeroCard(capsule = capsule, onClick = onOpenConnect)
-            }
-
-            AnimatedVisibility(
-                visible = appeared,
-                enter = staggerEnter(delayMillis = 70),
-            ) {
-                AppText(
-                    text = stringResource(R.string.home_creative_tools),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-
-            ToolGrid(
-                appeared = appeared,
-                firstDelayMillis = 120,
-                tiles = listOf(
-                    ToolTile(
-                        icon = Icons.Filled.Description,
-                        title = stringResource(ResR.string.creative_text_print),
-                        subtitle = stringResource(ResR.string.creative_text_print_desc),
-                        onClick = onOpenText,
-                    ),
-                    ToolTile(
-                        icon = Icons.Filled.Image,
-                        title = stringResource(ResR.string.creative_image_print),
-                        subtitle = stringResource(ResR.string.creative_image_print_desc),
-                        onClick = onOpenImage,
-                    ),
-                    ToolTile(
-                        icon = Icons.Filled.PhotoCamera,
-                        title = stringResource(ResR.string.creative_photo_print),
-                        subtitle = stringResource(ResR.string.creative_photo_print_desc),
-                        onClick = onOpenCamera,
-                    ),
-                    ToolTile(
-                        icon = Icons.Filled.AutoAwesome,
-                        title = stringResource(ResR.string.creative_ai_print),
-                        subtitle = stringResource(ResR.string.creative_ai_print_desc),
-                        onClick = onOpenAi,
-                    ),
-                    ToolTile(
-                        icon = Icons.AutoMirrored.Filled.Label,
-                        title = stringResource(ResR.string.creative_label_print),
-                        subtitle = null,
-                        badge = stringResource(ResR.string.common_coming_soon),
-                        onClick = null,
-                    ),
-                ),
+            PrinterStatusCapsule(capsule = capsule, onClick = onOpenConnect)
+            CreativeToolsCard(
+                onOpenText = onOpenText,
+                onOpenImage = onOpenImage,
+                onOpenCamera = onOpenCamera,
+                onOpenAi = onOpenAi,
             )
         }
     }
 }
 
-/** 错峰入场：淡入 + 轻微上移，时间曲线与全局动效语言保持一致。 */
-private fun staggerEnter(delayMillis: Int): EnterTransition =
-    fadeIn(
-        animationSpec = tween(
-            durationMillis = 260,
-            delayMillis = delayMillis,
-            easing = LinearOutSlowInEasing,
-        ),
-    ) + slideInVertically(
-        animationSpec = tween(
-            durationMillis = 320,
-            delayMillis = delayMillis,
-            easing = LinearOutSlowInEasing,
-        ),
-        initialOffsetY = { fullHeight -> fullHeight / 14 },
-    )
-
 /**
- * 打印机英雄卡：左侧状态图标（连接/连接中/未连接三态色）+ 标题与状态行，
- * 下方是电量条与 2×2 状态胶囊；整卡点击进连接管理页。
+ * 打印机状态胶囊：左侧打印图标 + 标题/连接状态行，右侧 2×2 迷你状态项
+ * （电量/合盖/缺纸/连接），过热时追加一项；整卡点击进连接管理页。
  */
 @Composable
-private fun PrinterHeroCard(
+private fun PrinterStatusCapsule(
     capsule: HomePrinterCapsule,
     onClick: () -> Unit,
 ) {
-    val motion = rememberAppMotion()
-    val glassActive = rememberLiquidGlassActive()
-    val interaction = remember { MutableInteractionSource() }
-    val paddingM = dimensionResource(ResR.dimen.dimen_global_padding_m)
-    val paddingS = dimensionResource(ResR.dimen.dimen_global_padding_s)
-
     val connectedName = capsule.connectedDevice?.let { it.name.ifBlank { it.address } }
     val connected = connectedName != null
-    val accentTarget = when {
-        connected -> MaterialTheme.colorScheme.primary
-        capsule.isConnecting -> MaterialTheme.colorScheme.tertiary
-        else -> MaterialTheme.colorScheme.outline
-    }
-    val accent by androidx.compose.animation.animateColorAsState(
-        targetValue = accentTarget,
-        animationSpec = motion.effectSpec(),
-        label = "printerAccent",
-    )
-    val statusText = when {
-        connectedName != null -> stringResource(R.string.home_connected, connectedName)
-        capsule.isConnecting -> stringResource(R.string.home_connecting)
-        else -> stringResource(R.string.home_disconnected)
-    }
-
+    val glassActive = rememberLiquidGlassActive()
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         modifier = Modifier
             .fillMaxWidth()
-            // 过热异常项出现/消失时，整卡高度带弹簧节奏扩展，而不是瞬间跳变。
-            .animateContentSize(animationSpec = motion.spatialSpec())
-            .pressScale(interaction, enabled = true)
             .nativeGlassSurface(
-                shape = MaterialTheme.shapes.large,
+                shape = CardDefaults.shape,
                 enabled = glassActive,
-                fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                fallbackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
-            .glassAwareOutline(MaterialTheme.shapes.large, glassActive)
-            .clickable(
-                interactionSource = interaction,
-                indication = LocalIndication.current,
-                onClick = onClick,
-            ),
+            .glassAwareOutline(MaterialTheme.shapes.medium, glassActive)
+            .clickable(onClick = onClick),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(paddingM),
-            verticalArrangement = Arrangement.spacedBy(paddingS),
+                .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(dimensionResource(ResR.dimen.dimen_global_touch_target))
-                        .clip(CircleShape)
-                        .background(accent.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    AppIcon(
-                        imageVector = Icons.Filled.Print,
-                        contentDescription = stringResource(R.string.home_capsule_printer_title),
-                        tint = accent,
-                    )
-                }
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = paddingM),
-                ) {
-                    AppText(
-                        text = stringResource(R.string.home_capsule_printer_title),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AnimatedContent(
-                            targetState = statusText,
-                            transitionSpec = {
-                                (fadeIn(motion.effectFastSpec()) +
-                                    slideInVertically(motion.effectFastSpec()) { it / 3 })
-                                    .togetherWith(
-                                        fadeOut(motion.effectFastSpec()) +
-                                            slideOutVertically(motion.effectFastSpec()) { -it / 3 },
-                                    )
-                            },
-                            label = "printerStatus",
-                        ) { text ->
-                            AppText(
-                                text = text,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = accent,
-                            )
-                        }
-                        if (capsule.isConnecting) {
-                            ConnectingPulseDot(color = accent)
-                        }
-                    }
-                }
-                AppIcon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = stringResource(R.string.home_capsule_open),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            AppIcon(
+                imageVector = Icons.Filled.Print,
+                contentDescription = stringResource(R.string.home_capsule_printer_title),
+                tint = when {
+                    connected -> MaterialTheme.colorScheme.primary
+                    capsule.isConnecting -> MaterialTheme.colorScheme.tertiary
+                    else -> MaterialTheme.colorScheme.outline
+                },
+                modifier = Modifier.size(dimensionResource(ResR.dimen.dimen_global_touch_target)),
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = dimensionResource(ResR.dimen.dimen_global_padding_m)),
+            ) {
+                AppText(
+                    text = stringResource(R.string.home_capsule_printer_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                AppText(
+                    text = when {
+                        connectedName != null -> stringResource(R.string.home_connected, connectedName)
+                        capsule.isConnecting -> stringResource(R.string.home_connecting)
+                        else -> stringResource(R.string.home_disconnected)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = when {
+                        connected -> MaterialTheme.colorScheme.primary
+                        capsule.isConnecting -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
             }
-
-            capsule.batteryPercent?.let { percent ->
-                BatteryBar(percent = percent)
-            }
-
             PrinterStatusGrid(capsule = capsule)
+            AppIcon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = stringResource(R.string.home_capsule_open),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-    }
-}
-
-/** 连接中呼吸点：缩放与透明度反相呼吸，让"正在连接"有生命感。 */
-@Composable
-private fun ConnectingPulseDot(color: Color) {
-    val motion = rememberAppMotion()
-    val paddingS = dimensionResource(ResR.dimen.dimen_global_padding_s)
-    val dotModifier = Modifier
-        .padding(start = paddingS)
-        .size(8.dp)
-        .clip(CircleShape)
-        .background(color)
-
-    if (motion.isReduced) {
-        Box(modifier = dotModifier)
-        return
-    }
-
-    val transition = rememberInfiniteTransition(label = "connectingPulse")
-    val scale by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900, easing = LinearOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "connectingPulseScale",
-    )
-    val alpha by transition.animateFloat(
-        initialValue = 0.9f,
-        targetValue = 0.35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900, easing = LinearOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "connectingPulseAlpha",
-    )
-    Box(
-        modifier = dotModifier.graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-            this.alpha = alpha
-        },
-    )
-}
-
-/** 电量条：数值变化时按弹簧节奏推进，低电自动转 error 色。 */
-@Composable
-private fun BatteryBar(percent: Int) {
-    val motion = rememberAppMotion()
-    val paddingS = dimensionResource(ResR.dimen.dimen_global_padding_s)
-    val low = percent <= BATTERY_LOW_PERCENT
-    val target = (percent.coerceIn(0, 100) / 100f)
-    val fraction by animateFloatAsState(
-        targetValue = target,
-        animationSpec = motion.spatialSpec(),
-        label = "batteryFraction",
-    )
-    val color by androidx.compose.animation.animateColorAsState(
-        targetValue = if (low) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-        animationSpec = motion.effectSpec(),
-        label = "batteryColor",
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = paddingS)
-            .height(6.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(fraction)
-                .fillMaxHeight()
-                .clip(CircleShape)
-                .background(color),
-        )
     }
 }
 
@@ -531,15 +291,10 @@ private fun PrinterStatusGrid(capsule: HomePrinterCapsule) {
             null
         },
     )
-    val gap = dimensionResource(R.dimen.dimen_dashboard_status_gap)
-    Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+    Column(verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.dimen_dashboard_status_gap))) {
         items.chunked(2).forEach { rowItems ->
-            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s))) {
                 rowItems.forEach { item -> CapsuleStatusChip(item) }
-                if (rowItems.size == 1) {
-                    // 落单项保持半宽节奏，避免第五项被拉伸成全宽。
-                    Spacer(modifier = Modifier.weight(1f))
-                }
             }
         }
     }
@@ -547,23 +302,12 @@ private fun PrinterStatusGrid(capsule: HomePrinterCapsule) {
 
 @Composable
 private fun CapsuleStatusChip(item: CapsuleStatusItem) {
-    val color by androidx.compose.animation.animateColorAsState(
-        targetValue = if (item.isError) {
-            MaterialTheme.colorScheme.error
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        animationSpec = rememberAppMotion().effectSpec(),
-        label = "capsuleStatusColor",
-    )
-    val gap = dimensionResource(R.dimen.dimen_dashboard_status_gap)
-    Row(
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f))
-            .padding(horizontal = gap, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    val color = if (item.isError) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
         AppIcon(
             imageVector = item.icon,
             contentDescription = item.contentDescription,
@@ -574,141 +318,130 @@ private fun CapsuleStatusChip(item: CapsuleStatusItem) {
             text = item.text,
             style = MaterialTheme.typography.labelSmall,
             color = color,
-            modifier = Modifier.padding(start = gap),
+            modifier = Modifier.padding(start = dimensionResource(R.dimen.dimen_dashboard_status_gap)),
         )
     }
 }
 
-/** 创作工具瓦片数据。 */
-private data class ToolTile(
-    val icon: ImageVector,
-    val title: String,
-    val subtitle: String?,
-    val badge: String? = null,
-    val onClick: (() -> Unit)?,
-)
-
-/** 2 列工具瀑布：逐块错峰入场（每块 +45ms），未开放项降到低饱和。 */
+/** 创作工具区：文本/图片/拍照/AI 打印入口，每条带一句功能描述。 */
 @Composable
-private fun ToolGrid(
-    tiles: List<ToolTile>,
-    appeared: Boolean,
-    firstDelayMillis: Int,
+private fun CreativeToolsCard(
+    onOpenText: () -> Unit,
+    onOpenImage: () -> Unit,
+    onOpenCamera: () -> Unit,
+    onOpenAi: () -> Unit,
 ) {
-    val gap = dimensionResource(ResR.dimen.dimen_global_padding_s)
-    Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-        tiles.chunked(2).forEachIndexed { rowIndex, rowTiles ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(gap),
-            ) {
-                rowTiles.forEachIndexed { columnIndex, tile ->
-                    val index = rowIndex * 2 + columnIndex
-                    AnimatedVisibility(
-                        visible = appeared,
-                        enter = staggerEnter(firstDelayMillis + index * 45),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        ToolTileCard(tile = tile)
-                    }
-                }
-                if (rowTiles.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
+    val glassActive = rememberLiquidGlassActive()
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        modifier = Modifier
+            .fillMaxWidth()
+            .nativeGlassSurface(
+                shape = CardDefaults.shape,
+                enabled = glassActive,
+                fallbackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+            .glassAwareOutline(MaterialTheme.shapes.medium, glassActive),
+    ) {
+        Column(
+            modifier = Modifier.padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
+            verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
+        ) {
+            AppText(
+                text = stringResource(R.string.home_creative_tools),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            CreativeToolEntry(
+                icon = Icons.Filled.Description,
+                title = stringResource(ResR.string.creative_text_print),
+                subtitle = stringResource(ResR.string.creative_text_print_desc),
+                badge = null,
+                onClick = onOpenText,
+            )
+            CreativeToolEntry(
+                icon = Icons.Filled.Image,
+                title = stringResource(ResR.string.creative_image_print),
+                subtitle = stringResource(ResR.string.creative_image_print_desc),
+                badge = null,
+                onClick = onOpenImage,
+            )
+            CreativeToolEntry(
+                icon = Icons.Filled.PhotoCamera,
+                title = stringResource(ResR.string.creative_photo_print),
+                subtitle = stringResource(ResR.string.creative_photo_print_desc),
+                badge = null,
+                onClick = onOpenCamera,
+            )
+            CreativeToolEntry(
+                icon = Icons.Filled.AutoAwesome,
+                title = stringResource(ResR.string.creative_ai_print),
+                subtitle = stringResource(ResR.string.creative_ai_print_desc),
+                badge = null,
+                onClick = onOpenAi,
+            )
         }
     }
 }
 
 @Composable
-private fun ToolTileCard(tile: ToolTile) {
-    val motion = rememberAppMotion()
-    val glassActive = rememberLiquidGlassActive()
-    val interaction = remember { MutableInteractionSource() }
-    val enabled = tile.onClick != null
-    val paddingM = dimensionResource(ResR.dimen.dimen_global_padding_m)
-    val paddingS = dimensionResource(ResR.dimen.dimen_global_padding_s)
-
-    val containerColor = if (enabled) {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerLow
-    }
-    val iconContainer = if (enabled) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHighest
-    }
-    val iconTint = if (enabled) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.outline
-    }
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+private fun CreativeToolEntry(
+    icon: ImageVector,
+    title: String,
+    subtitle: String?,
+    badge: String?,
+    onClick: (() -> Unit)?,
+) {
+    val enabled = onClick != null
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(animationSpec = motion.spatialSpec())
-            .pressScale(interaction, enabled)
-            .nativeGlassSurface(
-                shape = MaterialTheme.shapes.large,
-                enabled = glassActive,
-                fallbackColor = containerColor,
-            )
-            .glassAwareOutline(MaterialTheme.shapes.large, glassActive)
-            .clickable(
-                interactionSource = interaction,
-                indication = LocalIndication.current,
-                enabled = enabled,
-                onClick = { tile.onClick?.invoke() },
-            ),
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(dimensionResource(ResR.dimen.dimen_global_padding_s)),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        AppIcon(
+            imageVector = icon,
+            contentDescription = title,
+            tint = if (enabled) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.outline
+            },
+        )
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(paddingM),
-            verticalArrangement = Arrangement.spacedBy(paddingS),
+                .weight(1f)
+                .padding(start = dimensionResource(ResR.dimen.dimen_global_padding_m)),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(iconContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                AppIcon(
-                    imageVector = tile.icon,
-                    contentDescription = tile.title,
-                    tint = iconTint,
-                )
-            }
             AppText(
-                text = tile.title,
-                style = MaterialTheme.typography.titleSmall,
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
                 color = if (enabled) {
                     MaterialTheme.colorScheme.onSurface
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
-            when {
-                tile.subtitle != null -> AppText(
-                    text = tile.subtitle,
-                    style = MaterialTheme.typography.bodySmall,
+            if (subtitle != null) {
+                AppText(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-
-                tile.badge != null -> AppText(
-                    text = tile.badge,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary,
                 )
             }
+        }
+        if (badge != null) {
+            AppText(
+                text = badge,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            AppIcon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

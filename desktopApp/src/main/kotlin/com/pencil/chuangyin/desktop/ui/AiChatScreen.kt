@@ -32,6 +32,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -70,6 +72,8 @@ import com.pencil.chuangyin.desktop.ai.chat.toolLabel
 import com.pencil.chuangyin.desktop.ai.tools.ToolNames
 import com.pencil.chuangyin.desktop.glass.GlassPanel
 import com.pencil.chuangyin.desktop.glass.glassSurface
+import com.pencil.chuangyin.desktop.support.AiConfigStore
+import com.pencil.chuangyin.desktop.support.AiModelConfig
 import com.pencil.chuangyin.desktop.support.rememberLocalFileImage
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
@@ -126,8 +130,12 @@ private val IMAGE_EXTENSIONS = arrayOf("png", "jpg", "jpeg", "webp", "bmp", "gif
 fun AiChatPage(onBack: () -> Unit, onOpenConfig: () -> Unit) {
     AiChatStore.start()
     val state by AiChatStore.state.collectAsState()
+    val configState by AiConfigStore.state.collectAsState()
     AiChatScreen(
         state = state,
+        models = configState.models,
+        activeModelId = configState.activeModelId,
+        onSelectModel = { id -> AiConfigStore.setActive(id) },
         onBack = onBack,
         onOpenConfig = onOpenConfig,
         onInputChange = AiChatStore::onInputChange,
@@ -155,6 +163,9 @@ fun AiChatPage(onBack: () -> Unit, onOpenConfig: () -> Unit) {
 @Composable
 fun AiChatScreen(
     state: AiChatUiState,
+    models: List<AiModelConfig>,
+    activeModelId: String?,
+    onSelectModel: (String) -> Unit,
     onBack: () -> Unit,
     onOpenConfig: () -> Unit,
     onInputChange: (String) -> Unit,
@@ -201,6 +212,51 @@ fun AiChatScreen(
                         AppIconButton(icon = AppIcon.Back, contentDescription = "返回", onClick = onBack)
                     },
                     actions = {
+                        // 模型快捷切换：与安卓端一致，会话中途即可换模型，不必退回配置页。
+                        if (models.isNotEmpty()) {
+                            var modelMenuVisible by remember { mutableStateOf(false) }
+                            Box {
+                                AppIconButton(
+                                    icon = AppIcon.SwapHoriz,
+                                    contentDescription = "切换模型",
+                                    onClick = { modelMenuVisible = true },
+                                )
+                                DropdownMenu(
+                                    expanded = modelMenuVisible,
+                                    onDismissRequest = { modelMenuVisible = false },
+                                ) {
+                                    models.forEach { model ->
+                                        val isActive = model.id == activeModelId ||
+                                            (activeModelId == null && model == models.first())
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = model.displayName.ifBlank { model.modelName },
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                )
+                                            },
+                                            trailingIcon = if (isActive) {
+                                                {
+                                                    AppIconView(
+                                                        icon = AppIcon.Check,
+                                                        size = 18.dp,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                    )
+                                                }
+                                            } else {
+                                                null
+                                            },
+                                            onClick = {
+                                                modelMenuVisible = false
+                                                if (!isActive) onSelectModel(model.id)
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         AppIconButton(
                             icon = AppIcon.History,
                             contentDescription = "历史对话",

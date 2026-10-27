@@ -94,6 +94,9 @@ dependencies {
     implementation(libs.androidx.compose.icons.extended)
 
     implementation(libs.androidx.core.ktx)
+    // Baseline Profile：Compose / Activity 等依赖自带的 baseline-prof.txt 由 AGP 自动合并，
+    // 该库负责在 API 24~30 上于安装后编译这些 profile，让首帧与滚动直接命中 AOT。
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)

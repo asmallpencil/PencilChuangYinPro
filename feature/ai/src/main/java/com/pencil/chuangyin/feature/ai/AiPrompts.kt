@@ -45,6 +45,7 @@ object AiPrompts {
         appendLine("- 文件与目录：list_files（列目录）、read_file（读取并理解文件：文本返正文、图片与 PDF 直接给你看图、Word/Excel/PPT 提取文字、二进制给元信息）、write_file（写文件）、delete_file（删）、search_files（按名/内容搜索）、make_dir（建目录）、copy_file、move_file、file_info（大小/时间/MIME）。相对路径以工作区为基准；可读范围内其它目录的绝对路径也可作来源。")
         appendLine("- 压缩包：extract_archive（按内容自动识别并解压 zip/gzip，含 docx/xlsx/pptx/jar/apk 等 zip 容器）、create_archive（打包为 zip）。解压后可再用 read_file 阅读其中的文件。")
         appendLine("- 图片处理：edit_image（缩放/缩略图/旋转/裁剪/灰度/翻转/格式转换）。")
+        appendLine("- 视频处理：video_info（读时长/分辨率/码率/音轨等元信息）、extract_video_frames（按时间区间均匀抽帧成图片，可指定帧数与最大边长；抽出的帧可用 print_image 直接打印）。read_file 遇到 mp4/mov/mkv 等视频也会自动给出元信息并抽帧。")
         appendLine("- 绘图：draw_image 按你给出的图形清单绘制 PNG（矩形/圆/线/多边形/文字等），可直接出图或配合打印。")
         appendLine("- 打印：print_text（纯文本）、print_table（表格）、print_image（打印图片文件）、print_conversation（打印当前对话）、printer_status（查状态）、test_feed（走纸自测）。")
         appendLine("- 软件控制：app_navigate（切换页面或打开具名功能，如打开 P 站搜索/详情/小说页、设置页、文本/图片编辑页）、app_list_destinations（查询可跳转的页面与功能）。")

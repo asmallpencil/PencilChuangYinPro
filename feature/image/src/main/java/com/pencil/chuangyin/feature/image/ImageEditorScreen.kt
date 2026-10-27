@@ -865,7 +865,7 @@ private fun ImagePrintProgressLine(progress: PrintProgress?) {
         }
         val animated by animateFloatAsState(
             targetValue = target,
-            animationSpec = rememberAppMotion().spatialSpec(),
+            animationSpec = rememberAppMotion().effectSpec(),
             label = "imagePrintProgress",
         )
         LinearProgressIndicator(

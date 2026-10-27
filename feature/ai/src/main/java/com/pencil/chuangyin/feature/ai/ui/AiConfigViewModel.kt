@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pencil.chuangyin.core.agent.AgentDefaults
 import com.pencil.chuangyin.core.agent.config.AiConfigRepository
 import com.pencil.chuangyin.core.agent.config.AiModelConfig
+import com.pencil.chuangyin.core.agent.config.ApiProtocol
 import com.pencil.chuangyin.core.agent.model.ChatMessage
 import com.pencil.chuangyin.core.agent.model.ChatRequest
 import com.pencil.chuangyin.core.agent.model.ChatRole
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 /** 表单可编辑字段的快照（与 [AiModelConfig] 同构，便于直接落库）。 */
 data class AiConfigForm(
     val id: String = "",
+    val protocol: ApiProtocol = ApiProtocol.OPENAI,
     val baseUrl: String = "",
     val modelName: String = "",
     val displayName: String = "",
@@ -32,6 +34,7 @@ data class AiConfigForm(
     /** 转回持久化模型，去掉首尾空白避免误存。 */
     fun toModel(): AiModelConfig = AiModelConfig(
         id = id,
+        protocol = protocol,
         displayName = displayName.trim(),
         baseUrl = baseUrl.trim(),
         modelName = modelName.trim(),
@@ -42,6 +45,7 @@ data class AiConfigForm(
         /** 由已有配置构造表单（编辑场景）。 */
         fun of(model: AiModelConfig): AiConfigForm = AiConfigForm(
             id = model.id,
+            protocol = model.protocol,
             baseUrl = model.baseUrl,
             modelName = model.modelName,
             displayName = model.displayName,

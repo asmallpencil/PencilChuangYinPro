@@ -12,7 +12,7 @@ import java.util.zip.ZipFile
 import org.xmlpull.v1.XmlPullParser
 
 /** 文件类别判定结果，决定 read_file 采用哪种读取策略。 */
-internal enum class FileKind { Image, Pdf, Ooxml, Text, Binary }
+internal enum class FileKind { Image, Pdf, Ooxml, Text, Video, Binary }
 
 /**
  * 依据扩展名（必要时嗅探文件头）判定文件类别。
@@ -40,6 +40,7 @@ internal object FileKinds {
             "pdf" -> FileKind.Pdf
             in OOXML_EXTENSIONS -> FileKind.Ooxml
             in TEXT_EXTENSIONS -> FileKind.Text
+            in VideoReader.VIDEO_EXTENSIONS -> FileKind.Video
             else -> sniff(file)
         }
     }

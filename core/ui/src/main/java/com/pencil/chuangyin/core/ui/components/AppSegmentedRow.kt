@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.pencil.chuangyin.core.theme.LiquidGlassWidgetKind
 import com.pencil.chuangyin.core.theme.LocalControlOutline
@@ -118,21 +119,24 @@ fun AppSegmentedRow(
             val itemWidth = ((maxWidth - gap * (count - 1)) / count).coerceAtLeast(0.dp)
             val indicatorInset = 3.dp
             // 位移走 spatial spring（允许过冲 → 物理惯性），这是 M3 底部导航/分段条的标准做法。
-            val indicatorX by animateDpAsState(
+            // 这里只保留 State 句柄，真正的值在布局阶段（offset 的 lambda 内）读取，
+            // 避免每帧动画值都在组合阶段被读到而触发整条分段行的重组。
+            val indicatorX = animateDpAsState(
                 targetValue = (itemWidth + gap) * selectedIndex,
                 animationSpec = motion.spatialSpec(),
                 label = "segmentIndicatorX",
             )
-            val indicatorWidth by animateDpAsState(
-                targetValue = itemWidth,
-                animationSpec = motion.spatialSpec(),
-                label = "segmentIndicatorWidth",
-            )
             Box(
                 modifier = Modifier
-                    .offset(x = indicatorX + indicatorInset, y = indicatorInset)
+                    .offset {
+                        IntOffset(
+                            x = (indicatorX.value + indicatorInset).roundToPx(),
+                            y = indicatorInset.roundToPx(),
+                        )
+                    }
+                    // 宽度只随可用宽度与选项数变化，不参与逐帧动画：由 itemWidth 直接派生为常量。
                     .size(
-                        width = (indicatorWidth - indicatorInset * 2).coerceAtLeast(0.dp),
+                        width = (itemWidth - indicatorInset * 2).coerceAtLeast(0.dp),
                         height = (maxHeight - indicatorInset * 2).coerceAtLeast(0.dp),
                     )
                     .clip(indicatorShape)

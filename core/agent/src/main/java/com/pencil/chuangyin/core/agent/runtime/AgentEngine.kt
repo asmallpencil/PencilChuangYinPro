@@ -15,7 +15,7 @@ import com.pencil.chuangyin.core.agent.model.ToolCallRequest
 import com.pencil.chuangyin.core.agent.model.ToolArtifactKind
 import com.pencil.chuangyin.core.agent.model.ToolContext
 import com.pencil.chuangyin.core.agent.model.ToolOutput
-import com.pencil.chuangyin.core.agent.model.ToolPermission
+import com.pencil.chuangyin.core.agent.model.ToolSpec
 import com.pencil.chuangyin.core.agent.openai.OpenAiChatClient
 import java.util.UUID
 import javax.inject.Inject
@@ -184,8 +184,8 @@ class AgentEngine @Inject constructor(
         val tool = registry.find(call.name)
         val output = if (tool == null) {
             ToolOutput(UNKNOWN_TOOL_PREFIX + call.name, isError = true)
-        } else if (!isApproved(tool.spec.permission, call, transcript)) {
-            // 当前权限模式下该操作未被放行：不执行工具函数，把确认指引回灌给模型，由它向用户请求确认。
+        } else if (!isApproved(tool.spec, call, transcript)) {
+            // 用户拒绝了本次执行（或等待超时）：不执行工具函数，把结果回灌给模型。
             ToolOutput(CONFIRMATION_DENIED_MESSAGE, isError = true)
         } else {
             val context = object : ToolContext {
@@ -239,14 +239,14 @@ class AgentEngine @Inject constructor(
      * （否则视为「无法完成确认」而拒绝，避免在无门环境下静默放行危险操作）。
      */
     private suspend fun isApproved(
-        permission: ToolPermission,
+        spec: ToolSpec,
         call: ToolCallRequest,
         transcript: List<ChatMessage>,
     ): Boolean {
-        if (!permissionPolicy.requiresConfirmation(permission)) return true
+        if (!permissionPolicy.requiresConfirmation(spec.permission)) return true
         if (confirmationGates.isEmpty()) return false
         return confirmationGates.all { gate ->
-            gate.requestConfirmation(call.name, parseArguments(call.arguments), transcript)
+            gate.requestConfirmation(call.name, parseArguments(call.arguments), transcript, spec.permission)
         }
     }
 
@@ -271,8 +271,8 @@ class AgentEngine @Inject constructor(
         const val TOOL_FAILED_PREFIX = "工具执行失败："
         const val IMAGE_CONTEXT_PROMPT = "上方工具已产出图片，请直接查看并理解图片内容（它已作为多模态图片随本消息提供），结合图片回答或继续操作。"
         const val CONFIRMATION_DENIED_MESSAGE =
-            "该工具属于不可逆操作，已触发用户确认流程，本次调用被拦截（未执行）。" +
-                "请用一句话向用户说明将要执行的具体操作与影响，明确请求用户回复确认；本轮请勿再调用该工具。" +
-                "用户回复同意后，下一轮再次以相同参数调用本工具即可放行执行；若用户拒绝或转移话题，不要再调用。"
+            "用户未批准本次操作，工具未执行（已拦截）。" +
+                "请不要重复调用同一工具，先用一句话说明你原本想做什么、以及为什么被拦截，" +
+                "然后等待用户明确指示；若用户要求继续，再重新调用。"
     }
 }

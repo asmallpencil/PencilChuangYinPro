@@ -12,6 +12,7 @@ import com.pencil.chuangyin.core.agent.model.ToolArtifact
 import com.pencil.chuangyin.core.agent.model.ToolArtifactKind
 import com.pencil.chuangyin.core.agent.runtime.AgentEngine
 import com.pencil.chuangyin.core.agent.runtime.AgentPermissionMode
+import com.pencil.chuangyin.core.agent.runtime.ToolApprovalBus
 import com.pencil.chuangyin.feature.ai.AiPrompts
 import com.pencil.chuangyin.feature.ai.R
 import com.pencil.chuangyin.feature.ai.data.AiPermissionRepository
@@ -34,6 +35,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -56,6 +58,7 @@ class AiAgentSession @Inject constructor(
     private val workspace: Workspace,
     private val printer: PrinterController,
     private val permissionRepository: AiPermissionRepository,
+    private val approvalBus: ToolApprovalBus,
 ) {
 
     // SupervisorJob：单个会话失败不影响后续任务；Main.immediate 保证事件第一时间反映到界面。
@@ -93,6 +96,7 @@ class AiAgentSession @Inject constructor(
         observePrinter()
         observeSummaries()
         observePermission()
+        observeApproval()
         restoreConversation()
     }
 
@@ -129,7 +133,18 @@ class AiAgentSession @Inject constructor(
 
     /** 停止当前任务；已生成的内容会保留并落盘。 */
     fun stop() {
+        approvalBus.cancelPending()
         runJob?.cancel()
+    }
+
+    /**
+     * 回应用户对敏感工具的审批请求。
+     *
+     * 允许后同一工具在本会话内不再重复询问（见 [ToolApprovalBus.approvedTools]），
+     * 这样 AI 终端这类需要连续多次调用的工具才能真正跑起来。
+     */
+    fun decideApproval(id: String, approved: Boolean) {
+        approvalBus.decide(id, approved)
     }
 
     /** 放弃当前错误提示。 */
@@ -215,18 +230,33 @@ class AiAgentSession @Inject constructor(
         permissionRepository.set(mode)
     }
 
+    /** 顶栏快捷切换当前使用的模型。 */
+    fun setActiveModel(id: String) {
+        scope.launch { configRepository.setActive(id) }
+    }
+
     // endregion
 
     // region 状态订阅
 
     private fun observeConfig() {
         scope.launch {
-            configRepository.activeModel.collect { model ->
+            combine(configRepository.models, configRepository.activeModel) { models, active ->
+                models to active
+            }.collect { (models, active) ->
                 _state.update {
                     it.copy(
-                        hasUsableModel = model?.isUsable == true,
-                        modelDisplayName = model?.displayName?.takeIf { name -> name.isNotBlank() }
-                            ?: model?.modelName.orEmpty(),
+                        hasUsableModel = active?.isUsable == true,
+                        modelDisplayName = active?.displayName?.takeIf { name -> name.isNotBlank() }
+                            ?: active?.modelName.orEmpty(),
+                        models = models.map { model ->
+                            AiModelOption(
+                                id = model.id,
+                                label = model.displayName.takeIf { name -> name.isNotBlank() }
+                                    ?: model.modelName.ifBlank { model.id },
+                            )
+                        },
+                        activeModelId = active?.id.orEmpty(),
                     )
                 }
             }
@@ -256,6 +286,26 @@ class AiAgentSession @Inject constructor(
     private fun observePermission() {
         scope.launch {
             permissionRepository.mode.collect { mode -> _state.update { it.copy(permissionMode = mode) } }
+        }
+    }
+
+    /** 订阅引擎的审批请求，推送到界面弹窗。 */
+    private fun observeApproval() {
+        scope.launch {
+            approvalBus.pending.collect { request ->
+                _state.update { current ->
+                    current.copy(
+                        pendingApproval = request?.let { pending ->
+                            AiApprovalUi(
+                                id = pending.id,
+                                toolName = pending.toolName,
+                                arguments = pending.arguments,
+                                permission = pending.permission,
+                            )
+                        },
+                    )
+                }
+            }
         }
     }
 
@@ -469,6 +519,8 @@ class AiAgentSession @Inject constructor(
         history = conversation.messages.filter { it.role != ChatRole.System }
         conversationCreatedAt = conversation.createdAt
         clearRunScratch()
+        // 换会话即换上下文：清空会话级工具白名单，危险工具重新征询同意。
+        approvalBus.resetSession()
         _state.update {
             it.copy(
                 conversationId = conversation.id,
@@ -481,6 +533,7 @@ class AiAgentSession @Inject constructor(
                 attachments = emptyList(),
                 historyVisible = false,
                 canRetry = false,
+                pendingApproval = null,
             )
         }
     }

@@ -60,7 +60,8 @@ class FileTools @Inject constructor(
 
     /**
      * 读取并理解文件内容：文本文件直接返回正文；图片与 PDF 会作为图片提供给你查看；
-     * Word/Excel/PPT（.docx/.xlsx/.pptx）会提取其中的文字；其余二进制文件返回体积、类型等元信息。
+     * Word/Excel/PPT（.docx/.xlsx/.pptx）会提取其中的文字；视频返回元信息并抽帧成图片；
+     * 其余二进制文件返回体积、类型等元信息。
      */
     @Tool
     suspend fun read_file(
@@ -77,6 +78,7 @@ class FileTools @Inject constructor(
             FileKind.Pdf -> readPdf(target, display)
             FileKind.Ooxml -> readOoxml(target, display)
             FileKind.Text -> readText(target, display)
+            FileKind.Video -> readVideo(target, display)
             FileKind.Binary -> readBinary(target, display)
         }
     }
@@ -186,6 +188,43 @@ class FileTools @Inject constructor(
         )
     }
 
+    /** 视频：先给出元信息，再均匀抽几帧作为图片产物，让模型能"看到"画面内容。 */
+    private suspend fun readVideo(file: File, display: String): ToolOutput = withContext(Dispatchers.IO) {
+        val readable = workspace.materialize(file)
+            ?: return@withContext ToolOutput("读取失败：无法打开 $display。", isError = true)
+        val meta = runCatching { VideoReader.probe(readable) }.getOrNull()
+            ?: return@withContext ToolOutput(
+                "文件 $display 无法解析为视频（可能缺少视频轨或编码不受支持）。",
+                isError = true,
+            )
+        val frames = runCatching {
+            VideoReader.frames(
+                file = readable,
+                count = READ_VIDEO_FRAMES,
+                startMs = 0L,
+                endMs = 0L,
+                maxEdge = READ_VIDEO_FRAME_EDGE,
+                outputDir = File(readable.parentFile, readable.nameWithoutExtension + "_frames"),
+            )
+        }.getOrDefault(emptyList())
+        if (frames.isEmpty()) {
+            return@withContext ToolOutput(
+                meta.describe(display) + "\n（未能抽出画面，可能是编码不受支持。）",
+            )
+        }
+        val pages = frames.map { frame ->
+            val stored = workspace.uniqueTarget(frame.file.name)
+            workspace.copyInto(frame.file, stored)
+            stored
+        }
+        ToolOutput(
+            content = meta.describe(display) +
+                "\n已抽出 ${pages.size} 个画面（保存在 ${workspace.displayPath(pages.first())} 同级目录），" +
+                "画面已随本次工具结果提供，请直接查看并理解它们。",
+            artifacts = pages.map { imageArtifact(it) },
+        )
+    }
+
     /** Office 文档：从 zip 容器内抽取文字；抽取失败则退化为二进制元信息。 */
     private suspend fun readOoxml(file: File, display: String): ToolOutput = withContext(Dispatchers.IO) {
         val text = runCatching {
@@ -276,6 +315,8 @@ class FileTools @Inject constructor(
 
     private companion object {
         const val MAX_PDF_PAGES = 8
+        const val READ_VIDEO_FRAMES = 4
+        const val READ_VIDEO_FRAME_EDGE = 960
         const val BINARY_HEAD_BYTES = 16
         const val MAX_CONTENT_SCAN_BYTES = 512_000L
         val TEXT_EXTENSIONS = setOf(

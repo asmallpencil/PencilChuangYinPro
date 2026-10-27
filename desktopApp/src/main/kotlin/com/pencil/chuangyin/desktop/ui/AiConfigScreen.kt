@@ -31,6 +31,7 @@ import com.pencil.chuangyin.desktop.support.AiConfigForm
 import com.pencil.chuangyin.desktop.support.AiConfigStore
 import com.pencil.chuangyin.desktop.support.AiModelConfig
 import com.pencil.chuangyin.desktop.support.AiTestResult
+import com.pencil.chuangyin.desktop.support.ApiProtocol
 import kotlinx.coroutines.launch
 
 /** 正在编辑的模型表单；[isNew] 决定弹窗标题与保存语义。 */
@@ -80,8 +81,8 @@ fun AiConfigPage(onBack: () -> Unit) {
     SettingsPage(title = "AI 配置设置", onBack = onBack) {
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "兼容 OpenAI 格式接口。填写服务链接、模型名称、模型显示名称与密钥即可接入，" +
-                "支持同时保存多个模型并随时切换。",
+            text = "支持 OpenAI 兼容、Anthropic Claude 与 Google Gemini 三种协议。" +
+                "选择协议后填写服务链接、模型名称与密钥即可接入，可保存多个模型并随时切换。",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -206,9 +207,11 @@ private fun AiConfigModelCard(
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                text = model.modelName,
+                text = "${model.protocol.shortName} · ${model.modelName}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = model.baseUrl,
@@ -253,6 +256,8 @@ private fun AiConfigFormDialog(
 ) {
     // 以 dialog 为 key：打开新增/编辑时重置，检测状态变化不会重置输入内容。
     var form by remember(dialog) { mutableStateOf(dialog.form) }
+    // 各协议默认地址集合：切换协议时若仍是默认地址（或为空），自动替换为新协议默认地址。
+    val protocolDefaults = remember { ApiProtocol.entries.map { it.defaultBaseUrl }.toSet() }
     val testing = testStatus == AiConfigTestStatus.Testing
 
     AlertDialog(
@@ -269,6 +274,30 @@ private fun AiConfigFormDialog(
                     .heightIn(max = FORM_MAX_HEIGHT)
                     .verticalScroll(rememberScrollState()),
             ) {
+                FieldLabel("接口协议")
+                AppSegmentedRow(
+                    options = ApiProtocol.entries.map { it.shortName },
+                    selectedIndex = form.protocol.ordinal,
+                    onSelected = { index ->
+                        val protocol = ApiProtocol.entries[index]
+                        form = form.copy(
+                            protocol = protocol,
+                            baseUrl = if (form.baseUrl.isBlank() || form.baseUrl.trim() in protocolDefaults) {
+                                protocol.defaultBaseUrl
+                            } else {
+                                form.baseUrl
+                            },
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "选错协议会直接连不上，请与密钥所属服务商保持一致",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
                 FieldLabel("服务链接")
                 AppTextField(
                     value = form.baseUrl,

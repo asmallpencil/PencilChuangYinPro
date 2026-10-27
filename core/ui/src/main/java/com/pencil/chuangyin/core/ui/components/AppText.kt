@@ -21,6 +21,7 @@ fun AppText(
     color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
     align: TextAlign = TextAlign.Start,
     maxLines: Int = Int.MAX_VALUE,
+    minLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Clip,
 ) {
     Text(
@@ -30,6 +31,7 @@ fun AppText(
         style = style,
         textAlign = align,
         maxLines = maxLines,
+        minLines = minLines,
         overflow = overflow,
     )
 }

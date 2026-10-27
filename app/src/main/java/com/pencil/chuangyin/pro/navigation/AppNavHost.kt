@@ -319,8 +319,9 @@ fun AppNavHost(
 
     // 液态玻璃导航栏开启时，底部导航栏改由原生覆盖层（LiquidGlassView）绘制，
     // 此处隐藏 Compose 悬浮导航栏避免重复；内容区底部留白仍由 MainTabPager 保留。
-    // 页面转场统一走全局动效体系：进入=轻微上浮+淡入，退出=轻微下沉+淡出，
-    // 取代 NavHost 默认的「硬切/统一 fade」，让每次跳页都有空间层次的物理感。
+    // 页面转场统一走全局动效体系：二级页从右侧推入、返回时向右推出，进入与返回互为反向；
+    // 顶级页（MAIN/ONBOARDING）单独覆写为轻微上浮/下沉 + 淡入淡出。
+    // 四个方向全部引用 AppMotion 既有 token，取代 NavHost 默认的「硬切/统一 fade」。
     val motion = rememberAppMotion()
     Scaffold(
         modifier = modifier,
@@ -335,12 +336,18 @@ fun AppNavHost(
                 navController = navController,
                 startDestination = startDestination,
                 modifier = Modifier.fillMaxSize(),
+                enterTransition = { motion.pushEnter() },
+                exitTransition = { motion.pageExit() },
+                popEnterTransition = { motion.pageEnter() },
+                popExitTransition = { motion.popExit() },
+            ) {
+            composable(
+                route = AppRoutes.ONBOARDING,
                 enterTransition = { motion.pageEnter() },
                 exitTransition = { motion.pageExit() },
                 popEnterTransition = { motion.pageEnter() },
                 popExitTransition = { motion.pageExit() },
             ) {
-            composable(AppRoutes.ONBOARDING) {
                 OnboardingRoute(
                     onFinished = {
                         onboardingFlagRepository.markCompleted()
@@ -351,7 +358,13 @@ fun AppNavHost(
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable(AppRoutes.MAIN) {
+            composable(
+                route = AppRoutes.MAIN,
+                enterTransition = { motion.pageEnter() },
+                exitTransition = { motion.pageExit() },
+                popEnterTransition = { motion.pageEnter() },
+                popExitTransition = { motion.pageExit() },
+            ) {
                 MainTabPager(
                     pagerState = pagerState,
                     onOpenConnect = { navController.navigate(AppRoutes.CONNECT) },

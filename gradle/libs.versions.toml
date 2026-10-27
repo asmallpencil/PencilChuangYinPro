@@ -7,6 +7,7 @@ hilt = "2.57.2"
 hiltNavigationCompose = "1.2.0"
 navigationCompose = "2.8.5"
 coreKtx = "1.15.0"
+profileInstaller = "1.4.1"
 lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2024.12.01"
@@ -25,6 +26,8 @@ retrofit = "2.11.0"
 okhttp = "4.12.0"
 kotlinxSerializationJson = "1.9.0"
 coil = "2.7.0"
+# ZoomImage（panpf/zoomimage）：手势缩放 / 双击放大 / 超大图子采样，替换自研简易查看器
+zoomImage = "1.4.0"
 # core:backdrop —— 液态玻璃 Kotlin/Compose 实现（Kyant0/AndroidLiquidGlass）
 jetbrainsAnnotations = "26.1.0"
 # Google ADK for Kotlin（AI 工具链 @Tool/@Param 注解 + KSP 生成器）
@@ -39,6 +42,7 @@ google-adk-processor = { module = "com.google.adk:google-adk-kotlin-processor", 
 
 # AndroidX core / lifecycle
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
+androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileInstaller" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
@@ -100,6 +104,7 @@ okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
+zoomimage-compose-coil2 = { module = "io.github.panpf.zoomimage:zoomimage-compose-coil2", version.ref = "zoomImage" }
 
 # core:backdrop —— 液态玻璃 Kotlin/Compose 实现
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrainsAnnotations" }

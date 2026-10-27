@@ -5,6 +5,7 @@ import com.pencil.chuangyin.core.agent.model.ChatMessage
 import com.pencil.chuangyin.core.agent.model.ChatRole
 import com.pencil.chuangyin.core.agent.model.ToolArtifact
 import com.pencil.chuangyin.core.agent.model.ToolArtifactKind
+import com.pencil.chuangyin.core.agent.model.ToolPermission
 import com.pencil.chuangyin.core.agent.runtime.AgentPermissionMode
 import com.pencil.chuangyin.feature.ai.data.ConversationSummary
 
@@ -69,6 +70,21 @@ data class AiErrorUi(
     val detail: String? = null,
 )
 
+/** 顶栏模型快捷切换菜单中的一项。 */
+data class AiModelOption(
+    val id: String,
+    val label: String,
+)
+
+/** 等待用户点「允许 / 拒绝」的危险工具调用。 */
+data class AiApprovalUi(
+    val id: String,
+    val toolName: String,
+    /** 模型给出的原始参数 JSON。 */
+    val arguments: String,
+    val permission: ToolPermission,
+)
+
 /** AI 聊天任务页的完整界面状态。 */
 data class AiChatUiState(
     val conversationId: String = "",
@@ -88,6 +104,10 @@ data class AiChatUiState(
     val hasUsableModel: Boolean = false,
     /** 当前模型显示名（用于副标题）。 */
     val modelDisplayName: String = "",
+    /** 已配置的全部模型（用于顶栏快捷切换）。 */
+    val models: List<AiModelOption> = emptyList(),
+    /** 当前选中模型 id。 */
+    val activeModelId: String = "",
     /** 打印机是否已连接。 */
     val printerConnected: Boolean = false,
     /** 已连接打印机名称。 */
@@ -99,6 +119,8 @@ data class AiChatUiState(
     val canRetry: Boolean = false,
     /** 当前工具审批模式。 */
     val permissionMode: AgentPermissionMode = AgentPermissionMode.OUTSIDE_WORKSPACE_ASK,
+    /** 等待用户批准的敏感工具调用；非空时聊天页弹出审批对话框。 */
+    val pendingApproval: AiApprovalUi? = null,
 ) {
     /** 是否处于「空会话」状态（用于展示欢迎卡片）。 */
     val isEmpty: Boolean get() = messages.isEmpty() && toolActivities.isEmpty() && !streaming

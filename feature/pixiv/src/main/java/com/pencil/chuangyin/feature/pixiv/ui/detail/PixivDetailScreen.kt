@@ -3,12 +3,6 @@ package com.pencil.chuangyin.feature.pixiv.ui.detail
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculateCentroid
-import androidx.compose.foundation.gestures.calculatePan
-import androidx.compose.foundation.gestures.calculateZoom
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,18 +56,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -100,6 +88,7 @@ import com.pencil.chuangyin.feature.pixiv.ui.PixivImageProvider
 import com.pencil.chuangyin.feature.pixiv.ui.common.FullScreenError
 import com.pencil.chuangyin.feature.pixiv.ui.common.FullScreenLoading
 import com.pencil.chuangyin.feature.pixiv.ui.common.IllustCard
+import com.pencil.chuangyin.feature.pixiv.ui.common.PixivZoomableImage
 import com.pencil.chuangyin.resources.R as ResR
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -462,7 +451,8 @@ private fun FullScreenViewer(
                 .background(Color.Black),
         ) {
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { pageIndex ->
-                ZoomablePixivImage(
+                // 手势缩放 / 双击放大 / 超大图子采样交给 ZoomImage（panpf/zoomimage）
+                PixivZoomableImage(
                     model = illust.pages[pageIndex].large,
                     contentDescription = illust.title,
                 )
@@ -502,122 +492,6 @@ private fun FullScreenViewer(
                     .padding(bottom = dimensionResource(ResR.dimen.dimen_global_padding_m)),
             )
         }
-    }
-}
-
-/**
- * REQ9：可缩放图片。
- *
- * 双指捏合**以两指中点为锚点**放大，双击**以点击位置为锚点**放大——
- * 两者都不再固定以图片中心缩放。
- *
- * `graphicsLayer` 的缩放原点是图层中心（transformOrigin 默认 0.5, 0.5），
- * 且平移在缩放之后施加。设图层中心为 C、旧缩放 s0、新缩放 s1、k = s1/s0，
- * 要让锚点 anchor 处的画面在缩放后仍停在原地，必须满足：
- *
- *     offset' = (anchor - C) * (1 - k) + offset * k
- *
- * 旧实现写成了 `anchor - (anchor - offset) * k`，漏掉了 `- C` 这一项，
- * 因此无论手指按在哪里，实际都以图片中心为缩放中心。
- */
-@Composable
-private fun ZoomablePixivImage(
-    model: Any?,
-    contentDescription: String?,
-) {
-    var scale by remember { mutableStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-    var containerSize by remember { mutableStateOf(IntSize.Zero) }
-
-    /** 以 [anchor] 为锚点缩放到 [nextScale]，并把平移限制在「画面边缘不出界」的范围内。 */
-    fun zoomAround(anchor: Offset, nextScale: Float) {
-        val target = nextScale.coerceIn(1f, MAX_ZOOM_SCALE)
-        val size = containerSize
-        val k = target / scale
-        val center = Offset(size.width / 2f, size.height / 2f)
-        val moved = (anchor - center) * (1f - k) + offset * k
-        val maxX = size.width * (target - 1f) / 2f
-        val maxY = size.height * (target - 1f) / 2f
-        offset = Offset(moved.x.coerceIn(-maxX, maxX), moved.y.coerceIn(-maxY, maxY))
-        scale = target
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .onSizeChanged { containerSize = it }
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
-                    do {
-                        val event = awaitPointerEvent()
-                        if (event.changes.any { it.isConsumed }) break
-                        val zoomChange = event.calculateZoom()
-                        val panChange = event.calculatePan()
-                        val multiTouch = event.changes.count { it.pressed } > 1
-                        // 仅在「已放大 / 正在缩放 / 双指按下」时接管手势，
-                        // 保证 scale=1 且单指时 HorizontalPager 仍可左右翻页。
-                        if (scale > 1f || zoomChange != 1f || multiTouch) {
-                            if (zoomChange != 1f && containerSize.width > 0) {
-                                // 用上一帧的两指中点：本帧的位移由下面的 pan 补上，
-                                // 与 detectTransformGestures 的处理顺序一致。
-                                zoomAround(
-                                    anchor = event.calculateCentroid(useCurrent = false),
-                                    nextScale = scale * zoomChange,
-                                )
-                            }
-                            if (scale > 1f && panChange != Offset.Zero) {
-                                val maxX = containerSize.width * (scale - 1f) / 2f
-                                val maxY = containerSize.height * (scale - 1f) / 2f
-                                offset = Offset(
-                                    (offset.x + panChange.x).coerceIn(-maxX, maxX),
-                                    (offset.y + panChange.y).coerceIn(-maxY, maxY),
-                                )
-                            }
-                            event.changes.forEach { if (it.positionChanged()) it.consume() }
-                        }
-                    } while (event.changes.any { it.pressed })
-                }
-            }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onDoubleTap = { tap ->
-                        // 以双击位置为锚：放大后该点仍停在手指下方。
-                        zoomAround(tap, if (scale > 1f) 1f else DOUBLE_TAP_ZOOM_SCALE)
-                    },
-                )
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        SubcomposeAsyncImage(
-            model = model,
-            contentDescription = contentDescription,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = offset.x
-                    translationY = offset.y
-                },
-            loading = {
-                // 全屏图在纯黑底上加载：用白色 morphing 指示器，比 MD2 转圈更有"M3 味"。
-                AppLoadingIndicator(color = Color.White)
-            },
-            error = {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.BrokenImage,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.8f),
-                    )
-                }
-            },
-        )
     }
 }
 
@@ -922,12 +796,6 @@ private fun PrintingOverlay(done: Int, total: Int) {
         }
     }
 }
-
-/** 全屏查看的最大放大倍数。 */
-private const val MAX_ZOOM_SCALE = 5f
-
-/** 双击一次放大的倍数。 */
-private const val DOUBLE_TAP_ZOOM_SCALE = 3f
 
 /** 中文习惯的数量缩写：1.2 万。 */
 private fun compactCount(value: Int): String =

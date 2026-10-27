@@ -39,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Check
@@ -54,6 +55,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -90,6 +93,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pencil.chuangyin.core.theme.LiquidGlassLayer
 import com.pencil.chuangyin.core.agent.runtime.AgentPermissionMode
+import com.pencil.chuangyin.core.agent.model.ToolPermission
 import com.pencil.chuangyin.core.ui.components.AppAlertDialog
 import com.pencil.chuangyin.core.ui.components.AppDivider
 import com.pencil.chuangyin.core.ui.components.AppIconButton
@@ -147,6 +151,8 @@ fun AiChatRoute(
         onDismissError = viewModel::dismissError,
         onRemoveAttachment = viewModel::removeAttachment,
         onSetPermissionMode = viewModel::setPermissionMode,
+        onDecideApproval = viewModel::decideApproval,
+        onSelectModel = viewModel::setActiveModel,
         resolveImage = viewModel::resolveImage,
         // 上传：把内容拷贝进 agent 目录，挂到输入框上方的挂载区；失败时才提示。
         onImport = { uri, report ->
@@ -178,6 +184,10 @@ fun AiChatScreen(
     onImport: (Uri, (String) -> Unit) -> Unit,
     onRemoveAttachment: (String) -> Unit,
     onSetPermissionMode: (AgentPermissionMode) -> Unit,
+    /** 回应敏感工具审批：id + 是否允许。 */
+    onDecideApproval: (String, Boolean) -> Unit,
+    /** 顶栏快捷切换模型。 */
+    onSelectModel: (String) -> Unit,
     /** 图片产物解码器：授权输出目录时产物在 SAF 里，需要先物化；为 null 时按普通文件路径解码。 */
     resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)? = null,
     modifier: Modifier = Modifier,
@@ -209,7 +219,7 @@ fun AiChatScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { AiTopBarTitle(state) },
+                title = { AiTopBarTitle(state = state, onSelectModel = onSelectModel) },
                 navigationIcon = {
                     AppIconButton(
                         onClick = onBack,
@@ -352,30 +362,135 @@ fun AiChatScreen(
             },
         )
     }
+
+    // 敏感工具审批：引擎在真正执行前挂起等待，用户点「允许」后本会话内该工具不再重复询问。
+    state.pendingApproval?.let { approval ->
+        val dangerous = approval.permission == ToolPermission.DANGEROUS
+        AppAlertDialog(
+            onDismissRequest = { onDecideApproval(approval.id, false) },
+            title = { AppText(text = stringResource(R.string.ai_approval_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AppText(
+                        text = if (dangerous) {
+                            stringResource(R.string.ai_approval_message_dangerous, approval.toolName)
+                        } else {
+                            stringResource(R.string.ai_approval_message, approval.toolName)
+                        },
+                    )
+                    if (approval.arguments.isNotBlank()) {
+                        AppText(
+                            text = approval.arguments,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    AppText(
+                        text = stringResource(R.string.ai_approval_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                AppTextButton(
+                    text = stringResource(R.string.ai_approval_allow),
+                    onClick = { onDecideApproval(approval.id, true) },
+                )
+            },
+            dismissButton = {
+                AppTextButton(
+                    text = stringResource(R.string.ai_approval_deny),
+                    onClick = { onDecideApproval(approval.id, false) },
+                    contentColor = MaterialTheme.colorScheme.error,
+                )
+            },
+        )
+    }
 }
 
-/** 顶栏标题：主标题固定，副标题展示当前模型或未配置提示。 */
+/**
+ * 顶栏标题：主标题固定，副标题展示当前模型。
+ *
+ * 当配置了多个模型时，副标题可点击展开下拉菜单直接切换，无需退出到配置页。
+ */
 @Composable
-private fun AiTopBarTitle(state: AiChatUiState, modifier: Modifier = Modifier) {
+private fun AiTopBarTitle(
+    state: AiChatUiState,
+    onSelectModel: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val modelName = state.modelDisplayName
-    Column(modifier = modifier) {
-        AppText(
-            text = stringResource(R.string.ai_title),
-            style = MaterialTheme.typography.titleLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        AppText(
-            text = if (state.hasUsableModel && modelName.isNotBlank()) {
-                stringResource(R.string.ai_subtitle_ready, modelName)
+    val switchable = state.models.size > 1
+    var menuExpanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        Column(
+            modifier = if (switchable) {
+                Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { menuExpanded = true }
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
             } else {
-                stringResource(R.string.ai_subtitle_no_model)
+                Modifier
             },
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        ) {
+            AppText(
+                text = stringResource(R.string.ai_title),
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AppText(
+                    text = if (state.hasUsableModel && modelName.isNotBlank()) {
+                        stringResource(R.string.ai_subtitle_ready, modelName)
+                    } else {
+                        stringResource(R.string.ai_subtitle_no_model)
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (switchable) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDropDown,
+                        contentDescription = stringResource(R.string.ai_desc_switch_model),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+            state.models.forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        AppText(
+                            text = option.label,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    trailingIcon = {
+                        if (option.id == state.activeModelId) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    },
+                    onClick = {
+                        menuExpanded = false
+                        if (option.id != state.activeModelId) onSelectModel(option.id)
+                    },
+                )
+            }
+        }
     }
 }
 
@@ -402,9 +517,18 @@ private fun AiConversationList(
         (if (state.error != null) 1 else 0)
     // 尾项内容长度参与键，使流式追加 / 内容增长时持续贴底。
     val tailLength = messages.lastOrNull()?.let { it.content.length + (it.reasoning?.length ?: 0) } ?: 0
-    LaunchedEffect(itemCount, tailLength, state.streaming) {
-        if (itemCount > 0) {
-            // LazyColumn 会把越界目标夹到内容末尾，滚到末项即等价于贴底。
+    // 换会话后重新回到"首次定位"状态：新会话的历史同样应该一进来就贴底。
+    var positioned by remember(state.conversationId) { mutableStateOf(false) }
+    LaunchedEffect(state.conversationId, itemCount, tailLength, state.streaming) {
+        if (itemCount <= 0) return@LaunchedEffect
+        if (!positioned) {
+            // 首次进入不做长距离滚动动画：animateScrollToItem 会从第 0 项一路滚过去，
+            // 长会话在动画走完之前看到的都是开头，表现成"进入后停在聊天记录开头"。
+            // 这里直接同步定位到末项（越界会被夹到内容末尾，等价于贴底）。
+            listState.scrollToItem(itemCount - 1)
+            positioned = true
+        } else {
+            // 之后的新消息 / 流式增长才用动画，尾部平滑跟随。
             listState.animateScrollToItem(itemCount - 1)
         }
     }
@@ -1517,6 +1641,8 @@ private fun AiChatScreenPreview() {
         onImport = { _, report -> report("已上传") },
         onRemoveAttachment = {},
         onSetPermissionMode = {},
+        onDecideApproval = { _, _ -> },
+        onSelectModel = {},
     )
 }
 

@@ -16,10 +16,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 /**
  * 产物输出路径（全局设置）。
@@ -95,20 +93,9 @@ class DataStoreOutputPathRepository @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
-        runCatching {
-            val first = runBlocking {
-                context.outputPathDataStore.data
-                    .map { pref ->
-                        OutputPref(
-                            dirName = pref[KEY_OUTPUT_DIR] ?: OUTPUT_DIR_DEFAULT,
-                            treeUri = pref[KEY_OUTPUT_TREE] ?: "",
-                        )
-                    }
-                    .first()
-            }
-            _outputDirName.value = sanitize(first.dirName)
-            _outputTreeUri.value = first.treeUri.takeIf { it.isNotBlank() }
-        }
+        // 不在构造期做 runBlocking 首读：该单例在首页/导出路径上都可能被注入，
+        // 同步读 DataStore 等于在主线程做一次磁盘 I/O。下面的订阅会在首个值
+        // 到达时（毫秒级）回填，语义不变且不阻塞首帧。
         scope.launch {
             context.outputPathDataStore.data
                 .map { pref ->

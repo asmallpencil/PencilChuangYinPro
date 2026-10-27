@@ -6,11 +6,14 @@ import com.pencil.chuangyin.desktop.ai.AgentPermissionMode
 import com.pencil.chuangyin.desktop.ai.AgentPermissionPolicy
 import com.pencil.chuangyin.desktop.ai.AgentPrompts
 import com.pencil.chuangyin.desktop.ai.AgentRunResult
+import com.pencil.chuangyin.desktop.ai.AnthropicChatClient
 import com.pencil.chuangyin.desktop.ai.ChatMessage
 import com.pencil.chuangyin.desktop.ai.ChatRole
 import com.pencil.chuangyin.desktop.ai.ContextFolder
+import com.pencil.chuangyin.desktop.ai.GeminiChatClient
 import com.pencil.chuangyin.desktop.ai.MutableAgentPermissionModeProvider
 import com.pencil.chuangyin.desktop.ai.OkHttpOpenAiChatClient
+import com.pencil.chuangyin.desktop.ai.ProtocolChatClient
 import com.pencil.chuangyin.desktop.ai.ToolArtifact
 import com.pencil.chuangyin.desktop.ai.ToolArtifactKind
 import com.pencil.chuangyin.desktop.ai.ToolRegistry
@@ -61,7 +64,12 @@ object AiChatStore {
 
     /** 引擎按需构建：工具注册表依赖工作区，初始化一次即可复用。 */
     private val engine: AgentEngine by lazy {
-        val client = OkHttpOpenAiChatClient()
+        // 三协议共用同一个引擎：按模型配置的 protocol 分派到对应实现。
+        val client = ProtocolChatClient(
+            openAi = OkHttpOpenAiChatClient(),
+            anthropic = AnthropicChatClient(),
+            gemini = GeminiChatClient(),
+        )
         AgentEngine(
             client = client,
             registry = ToolRegistry(AgentTools.build(workspace)),

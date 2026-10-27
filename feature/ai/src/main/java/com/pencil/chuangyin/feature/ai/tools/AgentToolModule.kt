@@ -51,6 +51,10 @@ object GeneratedAgentToolsModule {
 
     @Provides
     @ElementsIntoSet
+    fun videoTools(impl: VideoTools, scope: MutableToolCallScope): Set<AgentTool> = impl.generatedTools().asAgentTools(scope)
+
+    @Provides
+    @ElementsIntoSet
     fun tableTools(impl: TableTools, scope: MutableToolCallScope): Set<AgentTool> = impl.generatedTools().asAgentTools(scope)
 
     @Provides

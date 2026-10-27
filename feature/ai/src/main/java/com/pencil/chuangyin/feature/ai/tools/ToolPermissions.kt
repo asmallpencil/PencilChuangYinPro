@@ -21,6 +21,7 @@ object ToolPermissions {
         ToolNames.EXTRACT_ARCHIVE,
         ToolNames.CREATE_ARCHIVE,
         ToolNames.EDIT_IMAGE,
+        ToolNames.EXTRACT_VIDEO_FRAMES,
         ToolNames.DRAW_IMAGE,
     )
 

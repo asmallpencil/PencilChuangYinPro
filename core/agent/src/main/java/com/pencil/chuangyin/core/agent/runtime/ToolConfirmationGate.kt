@@ -1,6 +1,7 @@
 package com.pencil.chuangyin.core.agent.runtime
 
 import com.pencil.chuangyin.core.agent.model.ChatMessage
+import com.pencil.chuangyin.core.agent.model.ToolPermission
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -17,8 +18,14 @@ interface ToolConfirmationGate {
      *
      * @param toolName 工具名。
      * @param arguments 模型给出的调用参数。
-     * @param transcript 当前会话消息（含本次运行新增），可用于判断用户是否已回应确认请求。
+     * @param transcript 当前会话消息（含本次运行新增）。
+     * @param permission 该工具的权限等级，用于界面提示风险程度。
      * @return true 表示放行执行；false 表示拦截。
      */
-    suspend fun requestConfirmation(toolName: String, arguments: JsonObject, transcript: List<ChatMessage>): Boolean
+    suspend fun requestConfirmation(
+        toolName: String,
+        arguments: JsonObject,
+        transcript: List<ChatMessage>,
+        permission: ToolPermission,
+    ): Boolean
 }

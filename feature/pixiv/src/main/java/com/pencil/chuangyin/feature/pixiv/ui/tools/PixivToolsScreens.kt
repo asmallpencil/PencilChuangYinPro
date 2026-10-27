@@ -19,8 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +32,7 @@ import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +48,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
@@ -59,17 +57,13 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pencil.chuangyin.core.theme.LiquidGlassLayer
-import com.pencil.chuangyin.core.ui.components.AppAlertDialog
 import com.pencil.chuangyin.core.ui.components.AppLiquidDialog
-import com.pencil.chuangyin.core.ui.components.AppTextButton
 import com.pencil.chuangyin.core.ui.components.AppIconButton
 import com.pencil.chuangyin.core.ui.components.AppOutlinedButton
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppSegmentedRow
 import com.pencil.chuangyin.core.ui.components.AppTextField
 import com.pencil.chuangyin.core.ui.components.AppText
-import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
 import com.pencil.chuangyin.core.ui.motion.animateGridItemMotion
 import com.pencil.chuangyin.core.ui.motion.animateItemMotion
 import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
@@ -81,6 +75,7 @@ import com.pencil.chuangyin.feature.pixiv.data.local.NovelBookmarkEntry
 import com.pencil.chuangyin.feature.pixiv.ui.PixivImageProvider
 import com.pencil.chuangyin.feature.pixiv.ui.common.FullScreenEmpty
 import com.pencil.chuangyin.feature.pixiv.ui.common.PixivCoverImage
+import com.pencil.chuangyin.feature.pixiv.ui.common.PixivImageViewerDialog
 import com.pencil.chuangyin.feature.pixiv.ui.common.PixivSubScaffold
 import com.pencil.chuangyin.feature.pixiv.ui.common.formatBytes
 import com.pencil.chuangyin.feature.pixiv.ui.drawer.PixivToolsViewModel
@@ -536,7 +531,7 @@ fun PixivDownloadsRoute(
                             // 进度条用 spring 追进度，避免每一帧都"跳格"。
                             val fraction by animateFloatAsState(
                                 targetValue = if (task.total == 0) 0f else task.done.toFloat() / task.total,
-                                animationSpec = motion.spatialSpec(),
+                                animationSpec = motion.effectSpec(),
                                 label = "pixivDownloadProgress",
                             )
                             LinearProgressIndicator(
@@ -831,110 +826,88 @@ private fun GalleryMultiPageDialog(
     DisposableEffect(image.illustId) {
         onDispose { viewModel.closeArchive(image.illustId) }
     }
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface),
+    val pageList = pages
+    val title = if (isArchive) {
+        stringResource(
+            ResR.string.pixiv_gallery_archive_title,
+            image.illustId,
+            image.pageCount,
+            formatBytes(image.sizeBytes),
+        )
+    } else {
+        stringResource(
+            ResR.string.pixiv_gallery_multi_title,
+            image.illustId,
+            image.pageCount,
+            formatBytes(image.sizeBytes),
+        )
+    }
+    if (pageList.isNullOrEmpty()) {
+        // 解压 / 读取失败与进行中：保留全屏空态提示
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
-                        vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface),
             ) {
-                AppText(
-                    text = if (isArchive) {
-                        stringResource(
-                            ResR.string.pixiv_gallery_archive_title,
-                            image.illustId,
-                            image.pageCount,
-                            formatBytes(image.sizeBytes),
-                        )
-                    } else {
-                        stringResource(
-                            ResR.string.pixiv_gallery_multi_title,
-                            image.illustId,
-                            image.pageCount,
-                            formatBytes(image.sizeBytes),
-                        )
-                    },
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f),
-                )
-                AppIconButton(
-                    onClick = onDelete,
-                    imageVector = Icons.Filled.DeleteSweep,
-                    contentDescription = stringResource(ResR.string.action_delete),
-                )
-                AppIconButton(
-                    onClick = onDismiss,
-                    imageVector = Icons.Filled.Close,
-                    contentDescription = stringResource(ResR.string.pixiv_gallery_close_preview),
-                )
-            }
-            val pageList = pages
-            when {
-                failed -> FullScreenEmpty(
-                    message = stringResource(
-                        if (isArchive) ResR.string.pixiv_gallery_archive_open_failed
-                        else ResR.string.pixiv_gallery_open_failed,
-                    ),
-                )
-                pageList == null -> FullScreenEmpty(
-                    message = stringResource(
-                        if (isArchive) ResR.string.pixiv_gallery_archive_loading
-                        else ResR.string.pixiv_gallery_loading,
-                    ),
-                )
-                pageList.isEmpty() -> FullScreenEmpty(
-                    message = stringResource(
-                        if (isArchive) ResR.string.pixiv_gallery_archive_open_failed
-                        else ResR.string.pixiv_gallery_open_failed,
-                    ),
-                )
-                else -> {
-                    val pagerState = rememberPagerState(initialPage = 0) { pageList.size }
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                            PixivCoverImage(
-                                model = pageList[page],
-                                contentDescription = pageList[page].name,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                        AppText(
-                            text = stringResource(
-                                ResR.string.pixiv_browser_find_result,
-                                pagerState.currentPage + 1,
-                                pageList.size,
-                            ),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White,
-                            align = TextAlign.Center,
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = dimensionResource(ResR.dimen.dimen_global_padding_m))
-                                .clip(MaterialTheme.shapes.small)
-                                .background(Color.Black.copy(alpha = 0.6f))
-                                .padding(
-                                    horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
-                                    vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
-                                ),
-                        )
-                    }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                            vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AppText(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f),
+                    )
+                    AppIconButton(
+                        onClick = onDelete,
+                        imageVector = Icons.Filled.DeleteSweep,
+                        contentDescription = stringResource(ResR.string.action_delete),
+                    )
+                    AppIconButton(
+                        onClick = onDismiss,
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = stringResource(ResR.string.pixiv_gallery_close_preview),
+                    )
                 }
+                FullScreenEmpty(
+                    message = stringResource(
+                        when {
+                            failed -> if (isArchive) ResR.string.pixiv_gallery_archive_open_failed
+                            else ResR.string.pixiv_gallery_open_failed
+                            else -> if (isArchive) ResR.string.pixiv_gallery_archive_loading
+                            else ResR.string.pixiv_gallery_loading
+                        },
+                    ),
+                )
             }
         }
+        return
     }
+    // 查看器换成开源 ZoomImage（手势缩放 / 双击放大 / 超大图子采样）
+    PixivImageViewerDialog(
+        models = pageList,
+        title = title,
+        onDismiss = onDismiss,
+        contentDescription = image.label ?: image.illustId.toString(),
+        actions = {
+            AppIconButton(
+                onClick = onDelete,
+                imageVector = Icons.Filled.DeleteSweep,
+                contentDescription = stringResource(ResR.string.action_delete),
+                tint = Color.White,
+            )
+        },
+    )
 }
 
 /** 小说正文查看（REQ6/REQ8）：本地 txt 直接展示。 */
@@ -1011,38 +984,32 @@ private fun GalleryImageDialog(
     onShare: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    LiquidGlassLayerScope(LiquidGlassLayer.MODAL) {
-        AppAlertDialog(
-            onDismissRequest = onDismiss,
-            title = {
-                AppText(
-                    text = stringResource(
-                        ResR.string.pixiv_gallery_caption,
-                        image.illustId,
-                        image.pageIndex + 1,
-                        formatBytes(image.sizeBytes),
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            },
-            text = {
-                PixivCoverImage(
-                    model = image.file,
-                    contentDescription = image.file.name,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(dimensionResource(ResR.dimen.dimen_pixiv_detail_media_min)),
-                )
-            },
-            confirmButton = {
-                AppTextButton(text = stringResource(ResR.string.action_share), onClick = onShare)
-            },
-            dismissButton = {
-                AppTextButton(text = stringResource(ResR.string.action_delete), onClick = onDelete)
-            },
-        )
-    }
+    // 单图查看也换成 ZoomImage：支持双击放大 / 双指捏合，右侧保留分享与删除
+    PixivImageViewerDialog(
+        models = listOf(image.file),
+        title = stringResource(
+            ResR.string.pixiv_gallery_caption,
+            image.illustId,
+            image.pageIndex + 1,
+            formatBytes(image.sizeBytes),
+        ),
+        onDismiss = onDismiss,
+        contentDescription = image.file.name,
+        actions = {
+            AppIconButton(
+                onClick = onShare,
+                imageVector = Icons.Filled.Share,
+                contentDescription = stringResource(ResR.string.action_share),
+                tint = Color.White,
+            )
+            AppIconButton(
+                onClick = onDelete,
+                imageVector = Icons.Filled.DeleteSweep,
+                contentDescription = stringResource(ResR.string.action_delete),
+                tint = Color.White,
+            )
+        },
+    )
 }
 
 /** 经 FileProvider 授权分享已保存原图（系统相册/聊天等可接收）。 */

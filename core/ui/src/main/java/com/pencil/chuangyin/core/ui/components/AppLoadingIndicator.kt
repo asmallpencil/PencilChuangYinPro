@@ -2,7 +2,6 @@
 package com.pencil.chuangyin.core.ui.components
 
 import android.graphics.Matrix
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -24,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -134,28 +134,28 @@ private object LoadingShapes {
     const val SpinMillis = 4650
 
     /**
-     * 全部形状统一用 12 个顶点：Morph 要求两端 cubic 数量一致，
+     * 全部形状统一用 8 个顶点：Morph 要求两端 cubic 数量一致，
      * 顶点数相同即可保证这一点，形状差异只靠半径/圆角/顶点半径起伏表达。
      */
-    private const val Vertices = 12
+    private const val Vertices = 8
 
-    private fun polygon(radius: Float, rounding: Float, smoothing: Float, rotation: Float): RoundedPolygon {
+    private fun polygon(radius: Float, rounding: Float, smoothing: Float, rotationDeg: Float): RoundedPolygon {
         val base = RoundedPolygon(
             numVertices = Vertices,
             radius = radius,
             rounding = CornerRounding(rounding, smoothing),
         )
-        if (rotation == 0f) return base
+        if (rotationDeg == 0f) return base
         // 库自带的 Matrix 变换（Shapes_androidKt.transformed）比手写 PointTransformer 省事且无类型坑。
-        val matrix = Matrix().apply { setRotate(rotation) }
+        val matrix = Matrix().apply { setRotate(rotationDeg) }
         return base.transformed(matrix)
     }
 
-    /** 顶点半径交替起伏 → 花瓣/星形的观感（仍是 12 顶点，可安全 morph）。 */
-    private fun flower(outer: Float, inner: Float, rounding: Float, rotation: Float): RoundedPolygon {
+    /** 顶点半径交替起伏 → 花瓣/星形的观感（仍是同一顶点数，可安全 morph）。 */
+    private fun flower(outer: Float, inner: Float, rounding: Float, rotationRad: Float): RoundedPolygon {
         val vertices = FloatArray(Vertices * 2)
         for (i in 0 until Vertices) {
-            val angle = (2.0 * PI * i / Vertices) + rotation
+            val angle = (2.0 * PI * i / Vertices) + rotationRad
             val r = if (i % 2 == 0) outer else inner
             vertices[i * 2] = (r * cos(angle)).toFloat()
             vertices[i * 2 + 1] = (r * sin(angle)).toFloat()
@@ -168,13 +168,13 @@ private object LoadingShapes {
      */
     val polygons: List<RoundedPolygon> by lazy {
         listOf(
-            polygon(radius = 1f, rounding = 0.95f, smoothing = 1f, rotation = 0f),
-            flower(outer = 1f, inner = 0.86f, rounding = 0.75f, rotation = 0.1f),
-            polygon(radius = 0.94f, rounding = 0.55f, smoothing = 0.75f, rotation = 15f),
-            flower(outer = 1f, inner = 0.72f, rounding = 0.52f, rotation = 0.35f),
-            polygon(radius = 0.88f, rounding = 0.32f, smoothing = 0.6f, rotation = 30f),
-            flower(outer = 0.98f, inner = 0.62f, rounding = 0.42f, rotation = 0.6f),
-            polygon(radius = 0.9f, rounding = 0.68f, smoothing = 0.9f, rotation = 45f),
+            polygon(radius = 1f, rounding = 1.0f, smoothing = 1f, rotationDeg = 0f),
+            flower(outer = 1f, inner = 0.72f, rounding = 0.35f, rotationRad = 0.1f),
+            polygon(radius = 0.92f, rounding = 0.20f, smoothing = 0.7f, rotationDeg = 22.5f),
+            flower(outer = 1f, inner = 0.50f, rounding = 0.30f, rotationRad = 0.35f),
+            polygon(radius = 0.85f, rounding = 0.12f, smoothing = 0.6f, rotationDeg = 45f),
+            flower(outer = 0.98f, inner = 0.36f, rounding = 0.28f, rotationRad = 0.6f),
+            polygon(radius = 0.95f, rounding = 0.45f, smoothing = 0.8f, rotationDeg = 67.5f),
         )
     }
 
@@ -203,8 +203,8 @@ private fun DrawScope.drawMorphingShape(
     val stepCount = shapes.size
     val raw = ((progress % stepCount) + stepCount) % stepCount
     val index = raw.toInt() % stepCount
-    // 段内进度做一次缓入缓出，形变更"呼吸"（M3 的 morph 也是非线性的）。
-    val local = FastOutSlowInEasing.transform(raw - index)
+    // 段内线性推进：形状差异与旋转同速，段边界不再有「先停再走」的顿点。
+    val local = LinearEasing.transform(raw - index)
     val morph = LoadingShapes.morphs[index]
     val cubics: List<Cubic> = morph.asCubics(local)
 
@@ -235,19 +235,33 @@ private fun DrawScope.drawMorphingShape(
 
 /** 供 DrawScope 复用的 morph 缓存入口（[LoadingShapes.morphs] 已按需 lazy 初始化）。 */
 
+/** 光带宽度占容器宽度的比例：光带与扫过距离都随容器尺寸缩放，因此窄卡片与宽容器观感一致。 */
+private const val SkeletonBandFraction = 0.55f
+
 /**
  * 骨架屏占位块（Shimmer）：比任何 spinner 都更能表达「内容正在填充」的结构感，
  * 用于超过 5 秒的等待（列表首屏、详情页加载）。微光扫过用线性渐变 + 无限位移动画。
+ *
+ * Reduced 动效预设下不启动任何无限动画，直接铺 `surfaceVariant` 静态占位色。
  */
 @Composable
 fun AppSkeletonBox(
     modifier: Modifier = Modifier,
     shape: Shape = MaterialTheme.shapes.small,
 ) {
+    val motion = rememberAppMotion()
+    if (motion.preset == MotionPreset.Reduced) {
+        Box(
+            modifier = modifier
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        )
+        return
+    }
     val transition = rememberInfiniteTransition(label = "appSkeleton")
     val shimmer by transition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 1250, easing = LinearEasing),
         ),
@@ -258,13 +272,20 @@ fun AppSkeletonBox(
     Box(
         modifier = modifier
             .clip(shape)
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(base, highlight, base),
-                    start = Offset(shimmer * 900f - 600f, 0f),
-                    end = Offset(shimmer * 900f, 400f),
-                ),
-            ),
+            .drawBehind {
+                // 梯度几何完全由实测尺寸派生：光带宽度 = 容器宽度 × 比例，
+                // 扫过距离 = 容器宽度 + 光带宽度，shimmer 0→1 恰好把光带从左侧外部送到右侧外部。
+                val bandWidth = size.width * SkeletonBandFraction
+                val travel = size.width + bandWidth
+                val startX = shimmer * travel - bandWidth
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(base, highlight, base),
+                        start = Offset(startX, 0f),
+                        end = Offset(startX + bandWidth, size.height),
+                    ),
+                )
+            },
     )
 }
 

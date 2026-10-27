@@ -35,6 +35,9 @@ class AiChatViewModel @Inject constructor(
 
     fun stop() = session.stop()
 
+    /** 回应用户对敏感工具的审批请求（允许 / 拒绝）。 */
+    fun decideApproval(id: String, approved: Boolean) = session.decideApproval(id, approved)
+
     fun dismissError() = session.dismissError()
 
     fun startNewConversation() = session.startNewConversation()
@@ -53,6 +56,9 @@ class AiChatViewModel @Inject constructor(
     fun removeAttachment(id: String) = session.removeAttachment(id)
 
     fun setPermissionMode(mode: AgentPermissionMode) = session.setPermissionMode(mode)
+
+    /** 顶栏快捷切换当前模型。 */
+    fun setActiveModel(id: String) = session.setActiveModel(id)
 
     /** 解码产物缩略图：授权输出目录时产物在 SAF 树里，需要先物化到缓存。 */
     suspend fun resolveImage(artifact: AiUiArtifact): ImageBitmap? = artifact.decodePreview(workspace)

@@ -280,7 +280,7 @@ fun PixivBrowserRoute(
     // 网页加载进度用弹簧追赶，避免 0→12%→37% 一格一格硬跳。
     val animatedProgress by animateFloatAsState(
         targetValue = progress / 100f,
-        animationSpec = motion.spatialSpec(),
+        animationSpec = motion.effectSpec(),
         label = "browserPageProgress",
     )
 

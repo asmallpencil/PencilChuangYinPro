@@ -20,6 +20,10 @@ object ToolNames {
     // 图片类
     const val EDIT_IMAGE = "edit_image"
 
+    // 视频类
+    const val VIDEO_INFO = "video_info"
+    const val EXTRACT_VIDEO_FRAMES = "extract_video_frames"
+
     // 打印类
     const val PRINT_TEXT = "print_text"
     const val PRINT_TABLE = "print_table"

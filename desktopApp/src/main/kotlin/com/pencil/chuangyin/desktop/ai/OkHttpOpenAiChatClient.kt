@@ -272,12 +272,6 @@ class OkHttpOpenAiChatClient(
         }
     }
 
-    private fun String.toSsePayload(): String? {
-        val line = trim()
-        if (!line.startsWith(SSE_DATA_PREFIX)) return null
-        return line.removePrefix(SSE_DATA_PREFIX).trim().ifEmpty { null }
-    }
-
     private fun decodeChunk(payload: String): ChatCompletionChunk? = try {
         AgentJson.decodeFromString(CHUNK_SERIALIZER, payload)
     } catch (e: SerializationException) {
@@ -353,7 +347,6 @@ class OkHttpOpenAiChatClient(
         private const val AUTH_BEARER_PREFIX = "Bearer "
         private const val CONTENT_TYPE_JSON = "application/json; charset=utf-8"
         private const val ACCEPT_EVENT_STREAM = "text/event-stream"
-        private const val SSE_DATA_PREFIX = "data:"
         private const val SSE_DONE_MARKER = "[DONE]"
         private const val FIELD_MODEL = "model"
         private const val FIELD_STREAM = "stream"

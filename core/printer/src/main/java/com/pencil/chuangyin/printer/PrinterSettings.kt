@@ -13,10 +13,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 /**
  * 打印机硬件相关的用户设置（当前为热敏纸宽度）。
@@ -66,14 +64,9 @@ class DataStorePrinterSettings @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
-        // 同步取首个值做初始播种（DataStore 首读很快），保证管线立刻读到正确值。
-        runCatching {
-            val first = runBlocking {
-                context.dataStore.data.map { it[KEY_PAPER_WIDTH_MM] ?: PAPER_WIDTH_MM_DEFAULT }.first()
-            }
-            _paperWidthMm.value = first.coerceIn(PAPER_WIDTH_MM_MIN, PAPER_WIDTH_MM_MAX)
-        }
-        // 之后持续订阅更新（非阻塞）。
+        // 不在构造期做 runBlocking 首读：该单例在首页就绪路径上会被注入，
+        // 同步读 DataStore 等于在主线程上做一次磁盘 I/O（冷启动几十毫秒）。
+        // 下面的订阅会在首个值到达时（毫秒级）回填，语义不变且不阻塞首帧。
         scope.launch {
             context.dataStore.data.map { it[KEY_PAPER_WIDTH_MM] ?: PAPER_WIDTH_MM_DEFAULT }
                 .collect { value ->
