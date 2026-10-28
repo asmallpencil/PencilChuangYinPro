@@ -478,6 +478,14 @@ class DefaultPrinterController @Inject constructor(
         val outcome = connection.write(bytes, 0, bytes.size)
         return if (outcome is WriteOutcome.Failure) {
             Log.e(TAG, "$label 发送失败：${outcome.reason}")
+            // 数据异常兜底：状态仍显示「已连接」但字节已无法送达（设备断联/固件异常）
+            // → 立即断开刷新全局状态，交由 PrinterAutoConnect 重新连接；
+            // 同时取消当前任务，避免继续对失效通道发送剩余内容。
+            if (connection.isConnected) {
+                cancelRequested = true
+                Log.w(TAG, "检测到设备数据异常，主动断开以触发自动重连")
+                connection.disconnect()
+            }
             PrintResult.Error(PrintError.WriteFailed, "$label：${outcome.reason}")
         } else {
             null

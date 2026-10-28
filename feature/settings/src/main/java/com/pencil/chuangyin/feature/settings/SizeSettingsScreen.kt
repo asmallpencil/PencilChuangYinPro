@@ -68,6 +68,8 @@ fun SizeSettingsScreen(
                         onClick = onBack,
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(ResR.string.label_back),
+                        // 设置子页返回按钮与主设置页一致：保持实心，不做玻璃。
+                        glass = false,
                     )
                 },
                 modifier = Modifier.nativeGlassSurface(

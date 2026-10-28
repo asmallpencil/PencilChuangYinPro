@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val themeState: ThemeState = ThemeState.Default,
     val paperWidthMm: Int = com.pencil.chuangyin.printer.PAPER_WIDTH_MM_DEFAULT,
+    val autoConnectEnabled: Boolean = true,
     val outputDirName: String = OUTPUT_DIR_DEFAULT,
     /** 用户通过系统目录选择器授权的输出目录展示名；为空表示未授权，使用默认目录。 */
     val outputTreeName: String = "",
@@ -48,6 +49,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             printerSettings.paperWidthMm.collect { mm ->
                 _state.update { it.copy(paperWidthMm = mm) }
+            }
+        }
+        viewModelScope.launch {
+            printerSettings.autoConnectEnabled.collect { enabled ->
+                _state.update { it.copy(autoConnectEnabled = enabled) }
             }
         }
         viewModelScope.launch {
@@ -223,5 +229,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setPaperWidthMm(mm: Int) {
         viewModelScope.launch { printerSettings.setPaperWidthMm(mm) }
+    }
+
+    fun setAutoConnectEnabled(enabled: Boolean) {
+        viewModelScope.launch { printerSettings.setAutoConnectEnabled(enabled) }
     }
 }

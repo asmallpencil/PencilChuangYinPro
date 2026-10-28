@@ -4,15 +4,19 @@
     <!-- 设置主菜单 -->
     <string name="settings_group_ai">智能能力</string>
     <string name="settings_group_appearance">外观与动效</string>
+    <string name="settings_group_function">功能设定</string>
     <string name="settings_group_output">输出与关于</string>
     <string name="settings_menu_ai">AI 配置设置</string>
-    <string name="settings_menu_ai_desc">配置 OpenAI 兼容接口的模型</string>
+    <string name="settings_menu_ai_desc">配置 AI 接口与模型（兼容全部主流接口）</string>
     <string name="settings_menu_visual">画面设置</string>
     <string name="settings_menu_visual_desc">主题、描边、粒子、背景</string>
     <string name="settings_menu_liquid_glass">液态玻璃</string>
     <string name="settings_menu_liquid_glass_desc">渲染实现与详细参数</string>
     <string name="settings_menu_size">尺寸设置</string>
     <string name="settings_menu_size_desc">热敏纸宽度</string>
+    <string name="settings_menu_auto_connect">自动连接</string>
+    <string name="settings_menu_auto_connect_desc">断线后静默重连上次设备</string>
+    <string name="settings_auto_connect_logic">开启后，应用在前台任意页面、任意操作期间都会在后台静默尝试连接上次成功连接的设备。\n\n· 未连接且存在上次设备时，每 5 秒自动尝试一次，成功即停止，失败继续重试，前台不显示任何提示。\n· 进入设备配置页会立即暂停自动连接，离开后仍保持暂停，直到在该页手动连接成功一次才恢复。\n· 打印中若设备断联或数据异常（界面仍显示已连接，但下发任务无效或报错），会立刻断开并刷新状态，随后重新开始自动重连。\n· 关闭本开关后不再发起任何自动连接。</string>
     <string name="settings_menu_output">产物输出路径</string>
     <string name="settings_menu_output_desc">目录：%1$s</string>
     <string name="settings_menu_output_default">Pictures/%1$s（默认）</string>

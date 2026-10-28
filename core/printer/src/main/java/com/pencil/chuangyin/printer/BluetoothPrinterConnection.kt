@@ -385,10 +385,21 @@ class BluetoothPrinterConnection @Inject constructor() : PrinterConnection {
                 // 打印任务进行中：禁止下发任何查询字节，否则会污染 GS v 0 光栅数据流。
                 // 过热等故障由打印机异步上报，接收线程照常解析，不依赖轮询诱导。
                 if (!printing) {
-                    if (tick % PrinterCommand.BATTERY_POLL_EVERY_N_TICKS == 0) {
-                        requestBattery()
+                    val outcome = if (tick % PrinterCommand.BATTERY_POLL_EVERY_N_TICKS == 0) {
+                        batteryQueryPending = true
+                        batteryQueryAtMs = System.currentTimeMillis()
+                        write(PrinterCommand.QUERY_BATTERY)
                     } else {
-                        requestStatus()
+                        write(PrinterCommand.QUERY_STATUS)
+                    }
+                    // 保活查询都写不出去：说明链路已失效但状态仍显示「已连接」。
+                    // 立即断开刷新全局状态，由 PrinterAutoConnect 重新连接。
+                    if (outcome is WriteOutcome.Failure &&
+                        connectionStateInternal.value is ConnectionState.Connected
+                    ) {
+                        Log.w(TAG, "保活查询写入失败，判定设备已断联：${outcome.reason}")
+                        disconnect()
+                        continue
                     }
                 }
                 pruneExpiredStatuses()

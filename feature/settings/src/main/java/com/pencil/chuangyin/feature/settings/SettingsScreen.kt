@@ -37,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FolderOpen
@@ -144,6 +145,8 @@ fun SettingsRoute(
         onOpenSize = onOpenSize,
         onOpenLicenses = onOpenLicenses,
         onOpenAiConfig = onOpenAiConfig,
+        autoConnectEnabled = state.autoConnectEnabled,
+        onAutoConnectChange = viewModel::setAutoConnectEnabled,
         outputDirName = state.outputDirName,
         outputTreeName = state.outputTreeName,
         onSetOutputDirName = viewModel::setOutputDirName,
@@ -162,6 +165,8 @@ fun SettingsScreen(
     onOpenSize: () -> Unit,
     onOpenLicenses: () -> Unit,
     onOpenAiConfig: () -> Unit = {},
+    autoConnectEnabled: Boolean = true,
+    onAutoConnectChange: (Boolean) -> Unit = {},
     outputDirName: String = com.pencil.chuangyin.core.ui.data.OUTPUT_DIR_DEFAULT,
     outputTreeName: String = "",
     onSetOutputDirName: (String) -> Unit = {},
@@ -239,18 +244,39 @@ fun SettingsScreen(
                     desc = stringResource(R.string.settings_menu_liquid_glass_desc),
                     onClick = onOpenLiquidGlass,
                 )
-                SettingsEntryDivider()
+            }
+            // 纸张/设备相关设置从「外观与动效」中独立出来，归入「功能设定」。
+            SettingsGroup(
+                label = stringResource(R.string.settings_group_function),
+                visible = appeared,
+                delayMillis = 140,
+            ) {
                 SettingsEntry(
                     icon = Icons.Filled.FormatSize,
                     title = stringResource(R.string.settings_menu_size),
                     desc = stringResource(R.string.settings_menu_size_desc),
                     onClick = onOpenSize,
                 )
+                SettingsEntryDivider()
+                AutoConnectEntry(
+                    checked = autoConnectEnabled,
+                    onCheckedChange = onAutoConnectChange,
+                )
+                AppText(
+                    text = stringResource(R.string.settings_auto_connect_logic),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(
+                        start = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                        end = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                        bottom = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                    ),
+                )
             }
             SettingsGroup(
                 label = stringResource(R.string.settings_group_output),
                 visible = appeared,
-                delayMillis = 140,
+                delayMillis = 210,
             ) {
                 SettingsEntry(
                     icon = Icons.Filled.FolderOpen,
@@ -436,6 +462,51 @@ private fun SettingsEntry(
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/** 自动连接开关行：图标 + 标题/说明 + 开关，仅切换状态，不进入子页。 */
+@Composable
+private fun AutoConnectEntry(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                vertical = dimensionResource(ResR.dimen.dimen_global_padding_m),
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_m)),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(dimensionResource(ResR.dimen.dimen_global_touch_target) - 8.dp)
+                .clip(RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_m)))
+                .background(MaterialTheme.colorScheme.secondaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Bluetooth,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            AppText(
+                text = stringResource(R.string.settings_menu_auto_connect),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            AppText(
+                text = stringResource(R.string.settings_menu_auto_connect_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        AppSwitch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

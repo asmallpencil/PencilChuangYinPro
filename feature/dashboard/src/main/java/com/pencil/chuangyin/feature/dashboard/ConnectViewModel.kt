@@ -7,6 +7,7 @@ import com.pencil.chuangyin.printer.ConnectionResult
 import com.pencil.chuangyin.printer.ConnectionState
 import com.pencil.chuangyin.printer.PrintError
 import com.pencil.chuangyin.printer.PrintResult
+import com.pencil.chuangyin.printer.PrinterAutoConnect
 import com.pencil.chuangyin.printer.PrinterController
 import com.pencil.chuangyin.printer.PrinterDevice
 import com.pencil.chuangyin.printer.PrinterScanner
@@ -45,12 +46,16 @@ data class ConnectUiState(
 class ConnectViewModel @Inject constructor(
     private val printerController: PrinterController,
     private val printerScanner: PrinterScanner,
+    private val autoConnect: PrinterAutoConnect,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ConnectUiState())
     val state: StateFlow<ConnectUiState> = _state.asStateFlow()
 
     init {
+        // 进入设备配置页即停止后台自动连接；离开后仍保持停止，
+        // 直到用户在本页手动连接成功一次（见 connect()）。
+        autoConnect.pauseForDeviceConfig()
         viewModelScope.launch {
             printerController.connectionState.collect { connection ->
                 _state.update { it.copy(connection = connection) }
@@ -108,10 +113,12 @@ class ConnectViewModel @Inject constructor(
             return
         }
         printerController.connect(device.address, device.name) { result ->
-            if (result is ConnectionResult.Failure) {
-                _state.update {
-                    it.copy(error = mapConnectionError(result.code))
-                }
+            when (result) {
+                // 手动连接成功：记录该设备并恢复自动连接。
+                ConnectionResult.Success ->
+                    viewModelScope.launch { autoConnect.onManualConnected(device) }
+                is ConnectionResult.Failure ->
+                    _state.update { it.copy(error = mapConnectionError(result.code)) }
             }
         }
     }

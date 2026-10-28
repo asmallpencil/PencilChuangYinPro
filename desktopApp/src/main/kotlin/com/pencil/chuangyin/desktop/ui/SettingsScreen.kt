@@ -149,7 +149,7 @@ private fun SettingsMenuPage(
                     MenuEntry(
                         icon = AppIcon.AiTool,
                         title = "AI 配置设置",
-                        desc = "配置 OpenAI 兼容接口的模型",
+                        desc = "配置 AI 接口与模型（兼容全部主流接口）",
                         onClick = { onOpen(SettingsRoute.AiConfig) },
                     )
                 }
@@ -169,7 +169,10 @@ private fun SettingsMenuPage(
                         desc = "渲染实现与详细参数",
                         onClick = { onOpen(SettingsRoute.LiquidGlass) },
                     )
-                    SettingsEntryDivider()
+                }
+            }
+            StaggerIn(index = 2) {
+                SettingsGroupCard(label = "功能设定") {
                     MenuEntry(
                         icon = AppIcon.Paper,
                         title = "尺寸设置",
@@ -178,7 +181,7 @@ private fun SettingsMenuPage(
                     )
                 }
             }
-            StaggerIn(index = 2) {
+            StaggerIn(index = 3) {
                 SettingsGroupCard(label = "输出与关于") {
                     MenuEntry(
                         icon = AppIcon.FolderZip,
