@@ -2,6 +2,7 @@ package com.pencil.chuangyin.feature.ai.tools
 
 import android.content.Context
 import android.net.Uri
+import com.pencil.chuangyin.core.ui.data.OutputDomain
 import com.pencil.chuangyin.core.ui.data.OutputPathRepository
 import com.pencil.chuangyin.core.ui.data.SafOutputDir
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -270,7 +271,7 @@ class Workspace @Inject constructor(
         return dir
     }
 
-    /** 可读根目录集合（含私有兜底 agent 根）。 */
+    /** 可读根目录集合（含私有兜底 agent 根与各产物域目录）。 */
     private val readRoots: List<File>
         get() = listOfNotNull(
             resolveAgentRoot(),
@@ -278,6 +279,9 @@ class Workspace @Inject constructor(
             context.cacheDir,
             context.getExternalFilesDir(null),
             runCatching { outputPathRepository.legacyPublicDir() }.getOrNull(),
+            // 未授权 SAF 时 P 站下载 / 创作导出各自落在 Pictures 下的域子目录，AI 也应能读取。
+            runCatching { outputPathRepository.legacyPublicDir(OutputDomain.PIXIV) }.getOrNull(),
+            runCatching { outputPathRepository.legacyPublicDir(OutputDomain.CREATIVE) }.getOrNull(),
         ).distinctBy { runCatching { it.absolutePath }.getOrDefault(it.name) }
 
     /**
@@ -346,8 +350,8 @@ class Workspace @Inject constructor(
     private fun isInsideAny(file: File, roots: List<File>): Boolean = roots.any { isInside(file, it) }
 
     companion object {
-        /** agent 子目录名（位于产物输出路径之下）。 */
-        const val AGENT_DIR_NAME = "agent"
+        /** agent 子目录名（位于统一产物输出路径之下，与 P 站 / 创作导出同级）。 */
+        val AGENT_DIR_NAME: String = OutputDomain.AGENT.folderName
 
         private const val MAX_FILE_NAME_LENGTH = 120
 

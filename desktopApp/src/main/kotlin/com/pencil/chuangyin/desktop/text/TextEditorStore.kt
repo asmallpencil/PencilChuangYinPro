@@ -200,7 +200,7 @@ object TextEditorStore {
             val saved = withContext(Dispatchers.IO) {
                 runCatching {
                     val bytes = TextPreviewRenderer.encodePng(image) ?: return@runCatching false
-                    val dir = OutputPathStore.ensureDir() ?: return@runCatching false
+                    val dir = OutputPathStore.ensureDir(OutputPathStore.OutputDomain.CREATIVE) ?: return@runCatching false
                     val file = File(dir, "pencil_text_${System.currentTimeMillis()}.png")
                     file.writeBytes(bytes)
                     true

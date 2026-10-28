@@ -72,8 +72,31 @@ interface OutputPathRepository {
     /** MediaStore（Q+）可用的相对路径，如 Pictures/PencilChuangyinPro。 */
     fun relativeMediaStorePath(): String
 
+    /** MediaStore（Q+）某个产物域的相对路径，如 Pictures/PencilChuangyinPro/Pixiv。 */
+    fun relativeMediaStorePath(domain: OutputDomain): String
+
     /** API 29 及以下可用的公共输出目录。 */
     fun legacyPublicDir(): File
+
+    /** API 29 及以下某个产物域的公共目录。 */
+    fun legacyPublicDir(domain: OutputDomain): File
+}
+
+/**
+ * 统一输出根下的一级子目录。
+ *
+ * 所有功能都写进「设置 → 产物输出路径」授权的同一个根目录，但各自使用固定子目录，
+ * 不再把 P 站原图、创作导出平铺在根上，也不会和 AI 工作区互相覆盖。
+ */
+enum class OutputDomain(val folderName: String) {
+    /** AI 工作区：上传附件与生成产物。 */
+    AGENT("agent"),
+
+    /** P 站下载：原图、多图 zip、小说文本。 */
+    PIXIV("Pixiv"),
+
+    /** 创作与打印导出：文字打印、图片打印、黑白化预览图。 */
+    CREATIVE("Creative"),
 }
 
 /** 默认输出目录名。 */
@@ -149,8 +172,13 @@ class DataStoreOutputPathRepository @Inject constructor(
 
     override fun relativeMediaStorePath(): String = "${Environment.DIRECTORY_PICTURES}/${_outputDirName.value.limitLength()}"
 
+    override fun relativeMediaStorePath(domain: OutputDomain): String =
+        "${relativeMediaStorePath()}/${domain.folderName}"
+
     override fun legacyPublicDir(): File =
         File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), _outputDirName.value.limitLength())
+
+    override fun legacyPublicDir(domain: OutputDomain): File = File(legacyPublicDir(), domain.folderName)
 
     private fun takePersistablePermission(uri: String) = runCatching {
         context.contentResolver.takePersistableUriPermission(

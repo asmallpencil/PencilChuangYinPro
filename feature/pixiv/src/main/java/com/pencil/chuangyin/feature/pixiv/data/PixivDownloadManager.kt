@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import com.pencil.chuangyin.core.ui.data.OutputDomain
 import com.pencil.chuangyin.core.ui.data.OutputPathRepository
 import com.pencil.chuangyin.core.ui.data.SafOutputDir
 import com.pencil.chuangyin.feature.pixiv.di.PixivImageClient
@@ -153,7 +154,7 @@ class PixivDownloadManager @Inject constructor(
                     downloadArchive(illust) { done -> updateDone(done) }
                 } else {
                     val pageFile = downloadPageFile(illust.id, 0, illust.pages[0].original)
-                    mirrorImageToPublic(pageFile)
+                    mirrorToPublic(pageFile)
                     updateDone(1)
                 }
             }
@@ -175,13 +176,16 @@ class PixivDownloadManager @Inject constructor(
     /** 多图作品：逐页下载到临时目录，全部完成后打包为单个 zip（REQ8）。 */
     private fun downloadArchive(illust: PixivIllust, onProgress: (Int) -> Unit): File {
         val zip = File(dir, "pixiv_${illust.id}.zip")
-        if (zip.exists() && zip.length() > 0L) return zip
+        if (zip.exists() && zip.length() > 0L) {
+            // 之前下载过：目录设置可能刚改过，补一次镜像保证输出目录里也有。
+            mirrorToPublic(zip)
+            return zip
+        }
 
         val tempDir = File(context.cacheDir, "pixiv_zip_tmp_${illust.id}").apply { mkdirs() }
         try {
             val pageFiles = illust.pages.mapIndexed { index, page ->
                 val pageFile = downloadPageFile(illust.id, index, page.original, tempDir)
-                mirrorImageToPublic(pageFile)
                 onProgress(index + 1)
                 pageFile
             }
@@ -197,6 +201,8 @@ class PixivDownloadManager @Inject constructor(
         } finally {
             tempDir.deleteRecursively()
         }
+        // 多图只镜像打包后的 zip：以前逐页平铺在输出目录根上，作品一多就散成几十张图。
+        mirrorToPublic(zip)
         return zip
     }
 
@@ -360,6 +366,8 @@ class PixivDownloadManager @Inject constructor(
     fun saveNovel(novelId: Int, title: String, text: String): File {
         val target = File(dir, "pixiv_novel_${novelId}.txt")
         target.writeText("$title\n\n$text")
+        // 小说落在应用私有目录时用户在文件管理器里看不到，同步镜像到统一输出目录的 P 站子目录。
+        mirrorToPublic(target)
         refreshSavedImages()
         enqueueNovelDone(novelId, title)
         return target
@@ -428,28 +436,33 @@ class PixivDownloadManager @Inject constructor(
     }
 
     /**
-     * 把下载成功的单张图片镜像到配置的产物输出目录。
-     * 若用户在设置里授权了输出目录（SAF），优先写入该目录；
-     * 未授权时 Android Q+ 走 MediaStore（默认 Pictures/PencilChuangyinPro），
-     * API 29 及以下尝试拷贝到公共 Pictures 目录。
+     * 把下载成功的文件镜像到配置的产物输出目录下的 [OutputDomain.PIXIV] 子目录。
+     * 若用户在设置里授权了输出目录（SAF），优先写入该目录（任何格式都能落盘）；
+     * 未授权时只有图片能经 MediaStore（Q+）进入相册，API 29 及以下拷到公共 Pictures 域目录。
      * 失败不影响主流程（应用内部仍以 filesDir 为数据源）。
      */
-    private fun mirrorImageToPublic(file: File): Boolean = runCatching {
+    private fun mirrorToPublic(file: File): Boolean = runCatching {
         if (!file.exists() || !file.isFile) return false
         val displayName = file.name
+        val mime = mimeTypeOf(file)
         val treeUri = outputPathRepository.outputTreeUri.value?.takeIf { it.isNotBlank() }
-        var mirrored = false
         if (treeUri != null) {
-            mirrored = SafOutputDir.copyFile(context, Uri.parse(treeUri), displayName, file)
+            return SafOutputDir.copyFile(
+                context,
+                Uri.parse(treeUri),
+                "${OutputDomain.PIXIV.folderName}/$displayName",
+                file,
+            )
         }
-        if (mirrored) {
-            true
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        // MediaStore 只接受媒体类型；zip / 小说这类文件没有授权目录时无法对外可见，
+        // 留在应用私有目录由「图片管理」页承载，而不是塞进相册变成无效条目。
+        if (!mime.startsWith("image/")) return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
-            val relativePath = outputPathRepository.relativeMediaStorePath() + "/"
+            val relativePath = outputPathRepository.relativeMediaStorePath(OutputDomain.PIXIV) + "/"
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
-                put(MediaStore.Images.Media.MIME_TYPE, imageMimeType(file))
+                put(MediaStore.Images.Media.MIME_TYPE, mime)
                 put(MediaStore.Images.Media.RELATIVE_PATH, relativePath)
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
@@ -461,20 +474,21 @@ class PixivDownloadManager @Inject constructor(
             true
         } else {
             @Suppress("DEPRECATION")
-            val outFile = outputPathRepository.activeOutputDirFile()
-            outFile.parentFile?.mkdirs()
-            val target = File(outFile, displayName)
-            target.parentFile?.mkdirs()
-            file.copyTo(target, overwrite = true)
+            val outDir = outputPathRepository.legacyPublicDir(OutputDomain.PIXIV)
+            outDir.mkdirs()
+            file.copyTo(File(outDir, displayName), overwrite = true)
             true
         }
     }.getOrDefault(false)
 
-    private fun imageMimeType(file: File): String = when (file.extension.lowercase()) {
+    private fun mimeTypeOf(file: File): String = when (file.extension.lowercase()) {
         "png" -> "image/png"
         "webp" -> "image/webp"
         "gif" -> "image/gif"
-        else -> "image/jpeg"
+        "jpg", "jpeg" -> "image/jpeg"
+        "zip" -> "application/zip"
+        "txt" -> "text/plain"
+        else -> "application/octet-stream"
     }
 
     private fun viewDirFor(illustId: Int): File = File(context.cacheDir, "${VIEW_TMP_DIR}_$illustId")

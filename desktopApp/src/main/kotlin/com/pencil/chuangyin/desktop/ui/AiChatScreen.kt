@@ -27,7 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -423,7 +423,8 @@ private fun AiConversationList(
     val messages = remember(state.messages) { state.messages.filter { it.isRenderable() } }
     val showWelcome = messages.isEmpty() && state.toolActivities.isEmpty()
 
-    val listState = rememberLazyListState()
+    // 切换会话时重建列表状态：否则旧会话的滚动位置与退出动画中的旧项会残留在背景里。
+    val listState = remember(state.conversationId) { LazyListState() }
     val itemCount = (if (showWelcome) 1 else 0) +
         messages.size +
         state.toolActivities.size +

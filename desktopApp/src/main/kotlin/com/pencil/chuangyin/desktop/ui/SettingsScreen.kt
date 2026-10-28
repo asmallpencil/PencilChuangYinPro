@@ -183,7 +183,7 @@ private fun SettingsMenuPage(
                     MenuEntry(
                         icon = AppIcon.FolderZip,
                         title = "产物输出路径",
-                        desc = "目录：${customOutputPath.ifBlank { OutputPathStore.displayPath() }}",
+                        desc = "根目录：${customOutputPath.ifBlank { OutputPathStore.displayPath() }}（AI/P站/创作各自子目录）",
                         onClick = { outputDialogOpen = true },
                     )
                     SettingsEntryDivider()

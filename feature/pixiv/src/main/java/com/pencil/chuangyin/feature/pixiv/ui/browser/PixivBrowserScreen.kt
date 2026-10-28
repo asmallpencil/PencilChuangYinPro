@@ -174,6 +174,9 @@ fun PixivBrowserRoute(
     }
     var selectedTabId by remember { mutableStateOf(1L) }
     var nextTabId by remember { mutableStateOf(2L) }
+    // WebView 建好后的首次加载只在 update 里做一次：在 factory 里直接 loadUrl 时视图尚未
+    // 参与布局，部分机型会把这次请求丢掉，表现为「进来后标签页和地址都在，但页面不动」。
+    var initialLoadDone by remember { mutableStateOf(false) }
 
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
@@ -391,8 +394,17 @@ fun PixivBrowserRoute(
                                     onStarted = { snackbarMessage = it },
                                 )
                             }
-                            loadUrl(PIXIV_HOME_URL)
+                            // 首次加载放在 update 里（见 initialLoadDone），这里只登记引用。
                             webViewRef = this
+                        }
+                    },
+                    update = { view ->
+                        if (!initialLoadDone) {
+                            initialLoadDone = true
+                            currentUrl = PIXIV_HOME_URL
+                            urlDraft = PIXIV_HOME_URL
+                            progress = 1
+                            view.loadUrl(PIXIV_HOME_URL)
                         }
                     },
                 )

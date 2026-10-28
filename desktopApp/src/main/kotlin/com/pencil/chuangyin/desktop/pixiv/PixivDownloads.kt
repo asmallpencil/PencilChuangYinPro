@@ -454,7 +454,7 @@ class PixivDownloadManager {
      */
     private fun mirrorImageToPublic(file: File): Boolean = runCatching {
         if (!file.exists() || !file.isFile) return false
-        val outDir = OutputPathStore.ensureDir() ?: return false
+        val outDir = OutputPathStore.ensureDir(OutputPathStore.OutputDomain.PIXIV) ?: return false
         file.copyTo(File(outDir, file.name), overwrite = true)
         true
     }.getOrDefault(false)

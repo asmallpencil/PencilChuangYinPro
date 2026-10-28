@@ -53,7 +53,7 @@ internal object PrintBridge {
                 if (device.activeStatuses.isEmpty()) "无" else device.activeStatuses.joinToString("、") { statusLabel(it) },
         )
         appendLine("热敏纸宽度：58 mm（打印头 ${PrinterProtocol.PRINT_WIDTH_PX} px）")
-        appendLine("输出目录：${OutputPathStore.displayPath()}")
+        appendLine("产物输出根目录：${OutputPathStore.displayPath()}（AI 工作区 agent/、P 站 Pixiv/、创作 Creative/）")
         if (!isPrinterConnected()) {
             append("提示：未连接打印机，打印类工具会将排版结果保存到输出目录；可在首页「打印机」胶囊进入「连接打印机」页配对。")
         }
@@ -102,7 +102,7 @@ internal object PrintBridge {
 
     /** 输出目录中按前缀 + 时间戳生成一个新的输出文件。 */
     fun newOutputFile(prefix: String, extension: String): File {
-        val dir = OutputPathStore.activeDir()
+        val dir = OutputPathStore.ensureDir(OutputPathStore.OutputDomain.CREATIVE) ?: OutputPathStore.domainDir(OutputPathStore.OutputDomain.CREATIVE)
         dir.mkdirs()
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
         var candidate = File(dir, "$prefix$stamp.$extension")

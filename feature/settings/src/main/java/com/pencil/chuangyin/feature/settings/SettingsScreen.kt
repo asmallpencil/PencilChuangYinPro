@@ -146,6 +146,7 @@ fun SettingsRoute(
         onOpenAiConfig = onOpenAiConfig,
         outputDirName = state.outputDirName,
         outputTreeName = state.outputTreeName,
+        onSetOutputDirName = viewModel::setOutputDirName,
         onSetOutputTree = viewModel::setOutputTree,
         onClearOutputTree = viewModel::clearOutputTree,
         modifier = modifier,
@@ -163,6 +164,7 @@ fun SettingsScreen(
     onOpenAiConfig: () -> Unit = {},
     outputDirName: String = com.pencil.chuangyin.core.ui.data.OUTPUT_DIR_DEFAULT,
     outputTreeName: String = "",
+    onSetOutputDirName: (String) -> Unit = {},
     onSetOutputTree: (String) -> Unit = {},
     onClearOutputTree: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -270,6 +272,8 @@ fun SettingsScreen(
     if (showOutputDialog) {
         OutputPathDialog(
             currentName = outputTreeName,
+            dirName = outputDirName,
+            onDirNameChange = onSetOutputDirName,
             onPick = { pickOutputTree.launch(null) },
             onClear = {
                 onClearOutputTree()
@@ -283,10 +287,15 @@ fun SettingsScreen(
 @Composable
 private fun OutputPathDialog(
     currentName: String,
+    dirName: String,
+    onDirNameChange: (String) -> Unit,
     onPick: () -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // 目录名写入 DataStore 是异步的，输入框若直接绑 dirName 会逐字延迟/吞字，
+    // 因此本地维护一份输入值，每次输入即同步回写设置。
+    var nameInput by remember { mutableStateOf(dirName) }
     LiquidGlassLayerScope(LiquidGlassLayer.MODAL) {
         AppAlertDialog(
             onDismissRequest = onDismiss,
@@ -297,6 +306,18 @@ private fun OutputPathDialog(
                         text = stringResource(R.string.settings_output_dialog_hint),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
+                    // 目录名决定未授权 SAF 时的公共目录（Pictures/<目录名>/…）。
+                    AppTextField(
+                        value = nameInput,
+                        onValueChange = {
+                            nameInput = it
+                            onDirNameChange(it)
+                        },
+                        label = stringResource(R.string.settings_output_dialog_name_label),
+                        placeholder = com.pencil.chuangyin.core.ui.data.OUTPUT_DIR_DEFAULT,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
                     AppText(

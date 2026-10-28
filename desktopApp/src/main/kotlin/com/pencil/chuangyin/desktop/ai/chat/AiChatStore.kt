@@ -164,6 +164,22 @@ object AiChatStore {
     /** 打开指定历史会话。 */
     fun openConversation(id: String) {
         if (_state.value.streaming) return
+        if (id == _state.value.conversationId) {
+            _state.update { it.copy(historyVisible = false) }
+            return
+        }
+        // 读取磁盘会话是异步的：先把当前会话的可见内容清空，否则加载期间仍渲染旧消息，
+        // 切过去时会看到上一个对话的聊天记录残留在背景里（与安卓端一致）。
+        _state.update {
+            it.copy(
+                messages = emptyList(),
+                toolActivities = emptyList(),
+                attachments = emptyList(),
+                error = null,
+                historyVisible = false,
+                canRetry = false,
+            )
+        }
         scope.launch {
             val conversation = store.load(id)
             if (conversation == null) applyConversation(store.newConversation()) else applyConversation(conversation)

@@ -17,7 +17,8 @@
     <string name="settings_menu_output_desc">目录：%1$s</string>
     <string name="settings_menu_output_default">Pictures/%1$s（默认）</string>
     <string name="settings_output_dialog_title">产物输出路径</string>
-    <string name="settings_output_dialog_hint">选择一个文件夹作为产物输出目录：P 站下载、打印导出，以及 AI 功能的上传附件与生成文件都会保存到该目录下的对应子文件夹。Android 11 起系统不允许应用直接写公共目录，只有在这里授权后才真正可写；未授权时产物只能存到应用私有目录，其他应用和文件管理器看不到。</string>
+    <string name="settings_output_dialog_hint">所有产物都写进同一个输出根目录，并按功能分三个子文件夹：agent（AI 上传与生成）、Pixiv（P 站原图 / 多图压缩包 / 小说）、Creative（打印与图片创作导出）。\n\nAndroid 11 起系统不允许应用直接写公共目录，只有在这里授权文件夹后才真正可写；未授权时图片会落到相册的 Pictures/目录名/ 下，其它格式只能留在应用私有目录（文件管理器看不到）。系统也不允许授权「存储根目录」本身，请选择内部存储里的具体文件夹。</string>
+    <string name="settings_output_dialog_name_label">输出目录名</string>
     <string name="settings_output_dialog_current">当前目录：%1$s</string>
     <string name="settings_output_dialog_none">当前未选择目录，使用默认相册目录。</string>
     <string name="settings_output_dialog_pick">选择目录</string>

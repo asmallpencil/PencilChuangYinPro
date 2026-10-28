@@ -46,14 +46,19 @@ class GallerySaver @Inject constructor(
     }
 
     /**
-     * 优先写入用户在设置里授权的输出目录（SAF，Android 11+ 唯一能真正写出可见文件的途径）；
-     * 未授权时回退到 MediaStore（Q+）/ 公共 Pictures 目录（API 29 及以下）。
+     * 优先写入用户在设置里授权的输出目录（SAF，Android 11+ 唯一能真正写出可见文件的途径），
+     * 落到统一根目录的 [OutputDomain.CREATIVE] 子目录；
+     * 未授权时回退到 MediaStore（Q+）/ 公共 Pictures 目录（API 29 及以下）的同名子目录。
      */
     private fun saveNow(bitmap: Bitmap, displayName: String): Boolean {
         val treeUri = outputPathRepository.outputTreeUri.value?.takeIf { it.isNotBlank() }
         if (treeUri != null) {
             val ok = runCatching {
-                SafOutputDir.openOutputStream(context, Uri.parse(treeUri), displayName)?.use {
+                SafOutputDir.openOutputStream(
+                    context,
+                    Uri.parse(treeUri),
+                    "${OutputDomain.CREATIVE.folderName}/$displayName",
+                )?.use {
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
                 } != null
             }.getOrDefault(false)
@@ -68,7 +73,9 @@ class GallerySaver @Inject constructor(
 
     private fun saveViaMediaStore(bitmap: Bitmap, displayName: String): Boolean = runCatching {
         val resolver = context.contentResolver
-        val relativePath = requiresRelativePathSuffix(outputPathRepository.relativeMediaStorePath())
+        val relativePath = requiresRelativePathSuffix(
+            outputPathRepository.relativeMediaStorePath(OutputDomain.CREATIVE),
+        )
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
             put(MediaStore.Images.Media.MIME_TYPE, MIME_PNG)
@@ -86,7 +93,7 @@ class GallerySaver @Inject constructor(
 
     @Suppress("DEPRECATION")
     private fun saveLegacy(bitmap: Bitmap, displayName: String): Boolean = runCatching {
-        val dir = outputPathRepository.legacyPublicDir()
+        val dir = outputPathRepository.legacyPublicDir(OutputDomain.CREATIVE)
         if (!dir.exists()) dir.mkdirs()
         FileOutputStream(File(dir, displayName)).use {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)

@@ -555,7 +555,9 @@ private fun AiConversationList(
     }
     val showWaiting = state.streaming && !hasLiveAssistant
 
-    val listState = rememberLazyListState()
+    // 列表状态随会话重建：换会话时若复用旧的 LazyListState，滚动位置与动画中的旧项
+    // 会短暂残留在新会话画面上。
+    val listState = remember(state.conversationId) { androidx.compose.foundation.lazy.LazyListState() }
     val itemCount = (if (showWelcome) 1 else 0) +
         messages.size +
         state.toolActivities.size +

@@ -492,7 +492,7 @@ object ImageEditorStore {
         indices: List<Int>,
         overrides: Map<Int, ImageProcessOptions>,
     ): Int {
-        val dir = OutputPathStore.ensureDir() ?: return 0
+        val dir = OutputPathStore.ensureDir(OutputPathStore.OutputDomain.CREATIVE) ?: return 0
         val baseName = "pencil_${System.currentTimeMillis()}"
         val multi = indices.size > 1
         var count = 0
