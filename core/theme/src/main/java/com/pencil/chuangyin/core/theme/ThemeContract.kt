@@ -63,6 +63,20 @@ data class ThemeState(
     val liquidGlassGlassOn: Boolean = LIQUID_GLASS_GLASS_DEFAULT,
     /** 液态玻璃：是否绘制轮廓高光边缘。 */
     val liquidGlassContourEdge: Boolean = LIQUID_GLASS_CONTOUR_DEFAULT,
+    /** 加载动画曲线样式（math-curve-loaders 曲线集 + 项目原生多形状）。 */
+    val loadingAnimationStyle: LoadingAnimationStyle = LOADING_STYLE_DEFAULT,
+    /** 加载动画粒子数，范围 [LOADING_PARTICLE_MIN]..[LOADING_PARTICLE_MAX]。 */
+    val loadingParticleCount: Int = LOADING_PARTICLE_DEFAULT,
+    /** 加载动画尾迹长度，范围 [LOADING_TRAIL_MIN]..[LOADING_TRAIL_MAX]。 */
+    val loadingTrailSpan: Float = LOADING_TRAIL_DEFAULT,
+    /** 加载动画循环时长（毫秒），范围 [LOADING_DURATION_MIN_MS]..[LOADING_DURATION_MAX_MS]。 */
+    val loadingDurationMs: Int = LOADING_DURATION_DEFAULT_MS,
+    /** 加载动画呼吸（细节缩放）时长（毫秒）。 */
+    val loadingPulseDurationMs: Int = LOADING_PULSE_DEFAULT_MS,
+    /** 加载动画整体旋转时长（毫秒）。 */
+    val loadingRotationDurationMs: Int = LOADING_ROTATION_DEFAULT_MS,
+    /** 加载动画轨迹线宽（0..100 视口单位），范围 [LOADING_STROKE_MIN]..[LOADING_STROKE_MAX]。 */
+    val loadingStrokeWidth: Float = LOADING_STROKE_DEFAULT,
 ) {
     companion object {
         val Default = ThemeState(
@@ -195,6 +209,130 @@ enum class MotionPreset(val id: String) {
     Reduced("motion_reduced"),
 }
 
+// ===================== 加载动画（math-curve-loaders） =====================
+
+/** 加载动画粒子数下限。 */
+const val LOADING_PARTICLE_MIN = 24
+
+/** 加载动画粒子数上限。 */
+const val LOADING_PARTICLE_MAX = 140
+
+/** 加载动画粒子数默认值。 */
+const val LOADING_PARTICLE_DEFAULT = 64
+
+/** 加载动画尾迹长度下限。 */
+const val LOADING_TRAIL_MIN = 0.12f
+
+/** 加载动画尾迹长度上限。 */
+const val LOADING_TRAIL_MAX = 0.68f
+
+/** 加载动画尾迹长度默认值。 */
+const val LOADING_TRAIL_DEFAULT = 0.38f
+
+/** 加载动画循环时长下限（毫秒）。 */
+const val LOADING_DURATION_MIN_MS = 2400
+
+/** 加载动画循环时长上限（毫秒）。 */
+const val LOADING_DURATION_MAX_MS = 12000
+
+/** 加载动画循环时长默认值（毫秒）。 */
+const val LOADING_DURATION_DEFAULT_MS = 4600
+
+/** 加载动画呼吸时长下限（毫秒）。 */
+const val LOADING_PULSE_MIN_MS = 1800
+
+/** 加载动画呼吸时长上限（毫秒）。 */
+const val LOADING_PULSE_MAX_MS = 10000
+
+/** 加载动画呼吸时长默认值（毫秒）。 */
+const val LOADING_PULSE_DEFAULT_MS = 4200
+
+/** 加载动画旋转时长下限（毫秒）。 */
+const val LOADING_ROTATION_MIN_MS = 6000
+
+/** 加载动画旋转时长上限（毫秒）。 */
+const val LOADING_ROTATION_MAX_MS = 60000
+
+/** 加载动画旋转时长默认值（毫秒）。 */
+const val LOADING_ROTATION_DEFAULT_MS = 28000
+
+/** 加载动画轨迹线宽下限（0..100 视口单位）。 */
+const val LOADING_STROKE_MIN = 2.5f
+
+/** 加载动画轨迹线宽上限（0..100 视口单位）。 */
+const val LOADING_STROKE_MAX = 7.5f
+
+/** 加载动画轨迹线宽默认值（0..100 视口单位）。 */
+const val LOADING_STROKE_DEFAULT = 5.5f
+
+/**
+ * 加载动画曲线样式：
+ * - [Classic]：项目原有的 7 形状 morph 加载动画（graphics-shapes）；
+ * - 其余为 math-curve-loaders 的 20 条数学曲线（粒子尾迹沿曲线流动）。
+ *
+ * 渲染实现见 core:ui 的 `MathCurveLoadingIndicator`；展示文案由 settings 模块经 stringResource 提供。
+ */
+enum class LoadingAnimationStyle(val id: String) {
+    Classic("loading_classic"),
+    ThinkingRose("loading_thinking_rose"),
+    ThinkingFive("loading_thinking_five"),
+    ThinkingNine("loading_thinking_nine"),
+    RoseOrbit("loading_rose_orbit"),
+    RoseTwo("loading_rose_two"),
+    RoseThree("loading_rose_three"),
+    RoseFour("loading_rose_four"),
+    LissajousDrift("loading_lissajous_drift"),
+    LemniscateBloom("loading_lemniscate_bloom"),
+    HypotrochoidLoop("loading_hypotrochoid_loop"),
+    SpiralThree("loading_spiral_three"),
+    SpiralFour("loading_spiral_four"),
+    SpiralFive("loading_spiral_five"),
+    SpiralSix("loading_spiral_six"),
+    ButterflyPhase("loading_butterfly_phase"),
+    CardioidGlow("loading_cardioid_glow"),
+    CardioidHeart("loading_cardioid_heart"),
+    HeartWave("loading_heart_wave"),
+    SpiralSearch("loading_spiral_search"),
+    FourierFlow("loading_fourier_flow"),
+}
+
+/** 加载动画样式默认值（保持项目原生观感）。 */
+val LOADING_STYLE_DEFAULT = LoadingAnimationStyle.Classic
+
+/**
+ * 加载动画运行时描述：由 [ThemeState] 派生，经 [LocalLoadingAnimation] 下发给 core:ui。
+ *
+ * 之所以单独抽一个不可变快照而不是直接把 [ThemeState] 塞进 CompositionLocal：
+ * core:ui 只需要这 7 个字段，独立类型能让「加载动画」的依赖边界清晰，
+ * 也避免 core:ui 因主题状态里其它字段变化而重组。
+ */
+data class LoadingAnimationSpec(
+    val style: LoadingAnimationStyle = LOADING_STYLE_DEFAULT,
+    val particleCount: Int = LOADING_PARTICLE_DEFAULT,
+    val trailSpan: Float = LOADING_TRAIL_DEFAULT,
+    val durationMs: Int = LOADING_DURATION_DEFAULT_MS,
+    val pulseDurationMs: Int = LOADING_PULSE_DEFAULT_MS,
+    val rotationDurationMs: Int = LOADING_ROTATION_DEFAULT_MS,
+    val strokeWidth: Float = LOADING_STROKE_DEFAULT,
+)
+
+/** 把持久化的主题状态投影为加载动画运行时描述（含上下限兜底）。 */
+fun ThemeState.toLoadingAnimationSpec(): LoadingAnimationSpec = LoadingAnimationSpec(
+    style = loadingAnimationStyle,
+    particleCount = loadingParticleCount.coerceIn(LOADING_PARTICLE_MIN, LOADING_PARTICLE_MAX),
+    trailSpan = loadingTrailSpan.coerceIn(LOADING_TRAIL_MIN, LOADING_TRAIL_MAX),
+    durationMs = loadingDurationMs.coerceIn(LOADING_DURATION_MIN_MS, LOADING_DURATION_MAX_MS),
+    pulseDurationMs = loadingPulseDurationMs.coerceIn(LOADING_PULSE_MIN_MS, LOADING_PULSE_MAX_MS),
+    rotationDurationMs = loadingRotationDurationMs.coerceIn(
+        LOADING_ROTATION_MIN_MS,
+        LOADING_ROTATION_MAX_MS,
+    ),
+    strokeWidth = loadingStrokeWidth.coerceIn(LOADING_STROKE_MIN, LOADING_STROKE_MAX),
+)
+
+/** 当前加载动画偏好的 CompositionLocal（由 [AppTheme] 下发）。 */
+val LocalLoadingAnimation = compositionLocalOf { LoadingAnimationSpec() }
+
 /**
  * 当前动效偏好的 CompositionLocal。
  *
@@ -296,4 +434,25 @@ interface ThemeRepository {
 
     /** 设置液态玻璃轮廓高光开关。 */
     suspend fun setLiquidGlassContourEdge(enabled: Boolean)
+
+    /** 设置加载动画曲线样式。 */
+    suspend fun setLoadingAnimationStyle(style: LoadingAnimationStyle)
+
+    /** 设置加载动画粒子数（24..140）。 */
+    suspend fun setLoadingParticleCount(count: Int)
+
+    /** 设置加载动画尾迹长度（0.12..0.68）。 */
+    suspend fun setLoadingTrailSpan(span: Float)
+
+    /** 设置加载动画循环时长（毫秒，2400..12000）。 */
+    suspend fun setLoadingDurationMs(durationMs: Int)
+
+    /** 设置加载动画呼吸时长（毫秒，1800..10000）。 */
+    suspend fun setLoadingPulseDurationMs(durationMs: Int)
+
+    /** 设置加载动画旋转时长（毫秒，6000..60000）。 */
+    suspend fun setLoadingRotationDurationMs(durationMs: Int)
+
+    /** 设置加载动画轨迹线宽（2.5..7.5）。 */
+    suspend fun setLoadingStrokeWidth(width: Float)
 }

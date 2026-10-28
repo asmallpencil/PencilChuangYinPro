@@ -119,6 +119,7 @@ fun AppTheme(
             LocalCornerStrength provides themeState.cornerStrength,
             LocalLiquidGlassWindowView provides windowView,
             LocalMotionPreset provides themeState.motionPreset,
+            LocalLoadingAnimation provides themeState.toLoadingAnimationSpec(),
         ) {
             MaterialTheme(
                 colorScheme = themeColorScheme,

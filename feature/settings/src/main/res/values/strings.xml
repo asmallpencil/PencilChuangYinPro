@@ -49,6 +49,39 @@
     <string name="motion_expressive">动感</string>
     <string name="motion_reduced">减弱</string>
 
+    <!-- 加载动画（math-curve-loaders） -->
+    <string name="settings_label_loading">加载动画</string>
+    <string name="settings_loading_hint">全局加载动画样式与参数，调整后立即生效；动效等级为「减弱」时退化为静态轨迹。</string>
+    <string name="settings_loading_preview">实时预览</string>
+    <string name="settings_loading_particles">粒子数</string>
+    <string name="settings_loading_trail">尾迹长度</string>
+    <string name="settings_loading_loop">循环时长</string>
+    <string name="settings_loading_pulse">呼吸时长</string>
+    <string name="settings_loading_rotate">旋转时长</string>
+    <string name="settings_loading_stroke">轨迹粗细</string>
+    <string name="settings_loading_seconds">%1$.1f 秒</string>
+    <string name="loading_classic">经典多形状</string>
+    <string name="loading_thinking_rose">七瓣花环</string>
+    <string name="loading_thinking_five">五瓣花环</string>
+    <string name="loading_thinking_nine">九瓣花环</string>
+    <string name="loading_rose_orbit">玫瑰轨道</string>
+    <string name="loading_rose_two">双瓣玫瑰</string>
+    <string name="loading_rose_three">三瓣玫瑰</string>
+    <string name="loading_rose_four">四瓣玫瑰</string>
+    <string name="loading_lissajous_drift">李萨如编织</string>
+    <string name="loading_lemniscate_bloom">双纽线呼吸</string>
+    <string name="loading_hypotrochoid_loop">内旋轮线</string>
+    <string name="loading_spiral_three">三瓣螺旋</string>
+    <string name="loading_spiral_four">四瓣螺旋</string>
+    <string name="loading_spiral_five">五瓣螺旋</string>
+    <string name="loading_spiral_six">六瓣螺旋</string>
+    <string name="loading_butterfly_phase">蝴蝶曲线</string>
+    <string name="loading_cardioid_glow">心形脉冲</string>
+    <string name="loading_cardioid_heart">正立爱心</string>
+    <string name="loading_heart_wave">心形波纹</string>
+    <string name="loading_spiral_search">阿基米德螺线</string>
+    <string name="loading_fourier_flow">傅里叶波形</string>
+
     <string name="settings_label_outline">控件描边</string>
     <string name="settings_outline_enabled">启用控件描边</string>
     <string name="settings_label_outline_width">描边粗细</string>

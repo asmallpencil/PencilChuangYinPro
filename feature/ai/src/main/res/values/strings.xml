@@ -20,6 +20,9 @@
     <string name="ai_reasoning_expand">展开</string>
     <string name="ai_reasoning_collapse">收起</string>
     <string name="ai_thinking">正在思考…</string>
+    <string name="ai_waiting_reply">已收到任务，正在组织回答…</string>
+    <string name="ai_copy_bubble">复制这条消息</string>
+    <string name="ai_copied">已复制到剪贴板</string>
 
     <!-- 工具活动 -->
     <string name="ai_tool_running">正在执行：%1$s</string>

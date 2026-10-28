@@ -28,6 +28,14 @@ data class ShellStatus(
     val termuxInstalled: Boolean,
     val termuxRootPath: String,
     val termuxExecutable: Boolean,
+    /** 系统终端自检是否真的能跑起一条命令（不是「文件存在」就算数）。 */
+    val systemShellProbe: Boolean,
+    /** 自检输出（成功时是 `ok`，失败时是错误信息），用于让模型/用户看到真实原因。 */
+    val systemShellProbeDetail: String,
+    /** 工作区 bin 目录：里面提供 bash→sh 兼容 shim，并已加入 PATH。 */
+    val workspaceBinPath: String,
+    /** 是否存在可用的 bash（Termux 自带 或 兼容 shim）。 */
+    val bashAvailable: Boolean,
 )
 
 /**
@@ -72,14 +80,65 @@ class ShellRuntime @Inject constructor(
     /** Termux 可执行性探测结果缓存（探测需起子进程，缓存避免重复）。 */
     @Volatile private var termuxExecCache: Boolean? = null
 
+    /**
+     * 兼容 bin 目录：提供 `bash → sh` shim（以及 `python3` 之类的缺命令提示）。
+     *
+     * 模型生成脚本时最常踩的坑就是写 `bash script.sh`，而 Android 系统终端只有 toybox `sh`，
+     * 于是报 `bash: not found`。这里在 PATH 最前面放一个同名 shim，等于把「bash 语法子集」
+     * 直接接到 sh 上，无需用户装任何东西。
+     */
+    private val binDir: File by lazy {
+        val dir = File(context.filesDir, BIN_DIR_NAME)
+        if (!dir.exists()) dir.mkdirs()
+        ensureBashShim(dir)
+        dir
+    }
+
+    private fun ensureBashShim(dir: File) {
+        val bash = File(dir, "bash")
+        if (bash.exists()) return
+        val target = systemShell?.absolutePath ?: return
+        // 优先真实符号链接；部分文件系统不支持软链时退化为 tiny wrapper 脚本。
+        val linked = runCatching {
+            android.system.Os.symlink(target, bash.absolutePath)
+            true
+        }.getOrDefault(false)
+        if (!linked) {
+            runCatching { bash.writeText("#!/system/bin/sh\nexec $target \"$@\"\n") }
+            bash.setExecutable(true, false)
+        }
+    }
+
     fun status(): ShellStatus {
         val installed = installedMarker.exists() && termuxRoot.isDirectory
+        val probe = probeSystemShell()
+        val bash = File(binDir, "bash")
         return ShellStatus(
             systemShellPath = systemShell?.absolutePath,
             termuxInstalled = installed,
             termuxRootPath = termuxRoot.absolutePath,
             termuxExecutable = installed && canExecuteTermuxShell(),
+            systemShellProbe = probe.first,
+            systemShellProbeDetail = probe.second,
+            workspaceBinPath = binDir.absolutePath,
+            bashAvailable = bash.exists(),
         )
+    }
+
+    /** 真的起一个进程跑 `echo pencil-ok`，验证系统终端可用性并保留失败原因。 */
+    private fun probeSystemShell(): Pair<Boolean, String> {
+        val shell = systemShell ?: return false to "未找到 /system/bin/sh"
+        return runCatching {
+            val process = ProcessBuilder(shell.absolutePath, "-c", "echo pencil-ok")
+                .redirectErrorStream(true)
+                .start()
+            runCatching { process.outputStream.close() }
+            val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
+            val done = process.waitFor(PROBE_SECONDS, TimeUnit.SECONDS)
+            if (!done) process.destroyForcibly()
+            val ok = done && output.contains("pencil-ok")
+            ok to (output.ifBlank { if (done) "无输出" else "超时" })
+        }.getOrElse { false to (it.message ?: it.javaClass.simpleName) }
     }
 
     /**
@@ -139,8 +198,21 @@ class ShellRuntime @Inject constructor(
         command: String,
         cwd: File,
         timeoutMs: Long,
+        stdin: String? = null,
         onOutput: (String) -> Unit = {},
     ): ShellRunResult {
+        val cmd = sanitizeCommand(command)
+        if (cmd.isEmpty()) return ShellRunResult("命令不能为空。", -1, false, "none")
+
+        // 装包类命令在「Termux 用户land不可执行」的设备上必然失败，
+        // 直接给出可执行的替代方案，而不是让模型看到一堆 `command not found`。
+        if (!canExecuteTermuxShell() && isPackageManagerCommand(cmd)) {
+            return ShellRunResult(PACKAGE_UNAVAILABLE_MESSAGE, 127, false, "none")
+        }
+
+        // 让脚本可以直接 `./x.sh`：把工作目录里的 .sh 补上执行位（Android 上常被忽略）。
+        prepareScripts(cwd)
+
         if (canExecuteTermuxShell()) {
             val loader = termuxLoader()
             val bash = File(termuxRoot, "bin/bash")
@@ -148,21 +220,55 @@ class ShellRuntime @Inject constructor(
                 val args = listOf(
                     loader.absolutePath,
                     "--library-path", File(termuxRoot, "lib").absolutePath,
-                    bash.absolutePath, "-c", command,
+                    bash.absolutePath, "-c", cmd,
                 )
-                val result = execute(args, cwd, timeoutMs, "Termux bash", termuxMode = true, onOutput = onOutput)
+                val result = execute(
+                    args = args,
+                    cwd = cwd,
+                    timeoutMs = timeoutMs,
+                    backend = "Termux bash",
+                    termuxMode = true,
+                    stdin = stdin,
+                    onOutput = onOutput,
+                )
                 if (result.exitCode != EXIT_START_FAILED) return result
             }
         }
         val shell = systemShell
             ?: return ShellRunResult("未找到可用的系统终端（/system/bin/sh），无法执行命令。", -1, false, "none")
         return execute(
-            args = listOf(shell.absolutePath, "-c", command),
+            args = listOf(shell.absolutePath, "-c", cmd),
             cwd = cwd,
             timeoutMs = timeoutMs,
             backend = "系统终端 ${shell.absolutePath}",
+            stdin = stdin,
             onOutput = onOutput,
         )
+    }
+
+    /** 清洗模型给的命令：去掉 CRLF / Markdown 代码围栏 / 首尾空白。 */
+    private fun sanitizeCommand(command: String): String {
+        var cmd = command.replace("\r\n", "\n").replace('\r', '\n').trim()
+        if (cmd.startsWith("```")) {
+            cmd = cmd.substringAfter('\n', "").substringBeforeLast("```").trim()
+        }
+        return cmd.trim()
+    }
+
+    private fun isPackageManagerCommand(command: String): Boolean {
+        val head = command.trimStart().substringBefore(' ').substringBefore('\n')
+        return head in PACKAGE_MANAGERS
+    }
+
+    /** 工作目录顶层的 `.sh` 补执行位，避免 `./script.sh: permission denied`。 */
+    private fun prepareScripts(cwd: File) {
+        runCatching {
+            cwd.listFiles()?.forEach { file ->
+                if (file.isFile && file.name.endsWith(".sh", ignoreCase = true) && !file.canExecute()) {
+                    file.setExecutable(true, false)
+                }
+            }
+        }
     }
 
     // ---- 子进程执行 ----
@@ -173,6 +279,7 @@ class ShellRuntime @Inject constructor(
         timeoutMs: Long,
         backend: String,
         termuxMode: Boolean = false,
+        stdin: String? = null,
         onOutput: (String) -> Unit = {},
     ): ShellRunResult = withContext(Dispatchers.IO) {
         val process = runCatching {
@@ -180,10 +287,26 @@ class ShellRuntime @Inject constructor(
                 directory(cwd)
                 redirectErrorStream(true)
                 environment().apply {
+                    // HOME / TMPDIR 指向工作区与缓存目录，脚本里的相对写入落在这里。
                     put("HOME", workspace.writeRootPath())
                     put("TMPDIR", context.cacheDir.absolutePath)
-                    put("PATH", if (termuxMode) "$termuxRootPath/bin:/system/bin:/system/xbin"
-                    else "/system/bin:/system/xbin:/bin:/usr/bin")
+                    put("PWD", cwd.absolutePath)
+                    put("WORKSPACE", workspace.writeRootPath())
+                    val path = buildString {
+                        // 工作区 bin 优先：那里有 bash→sh shim。
+                        append(binDir.absolutePath)
+                        if (termuxMode) {
+                            append(':').append(termuxRootPath).append("/bin")
+                            append(':').append(termuxRootPath).append("/bin/applets")
+                        }
+                        append(":/system/bin:/system/xbin:/bin:/usr/bin:/system/sbin")
+                    }
+                    put("PATH", path)
+                    if (termuxMode) {
+                        put("PREFIX", termuxRootPath)
+                        put("LD_LIBRARY_PATH", "${termuxRootPath}/lib")
+                    }
+                    put("SHELL", systemShell?.absolutePath ?: "/system/bin/sh")
                     put("TERM", "dumb")
                     put("LANG", "en_US.UTF-8")
                 }
@@ -192,7 +315,14 @@ class ShellRuntime @Inject constructor(
             return@withContext ShellRunResult("命令启动失败：${it.message ?: it.javaClass.simpleName}", EXIT_START_FAILED, false, backend)
         }
 
-        runCatching { process.outputStream.close() }
+        // 写入 stdin 后关闭：既支持 `cat > file` 这类读输入的命令，
+        // 又保证不写 stdin 时立即 EOF，不会让命令卡在等待输入上。
+        runCatching {
+            process.outputStream.use { out ->
+                if (!stdin.isNullOrEmpty()) out.write(stdin.toByteArray(Charsets.UTF_8))
+                out.flush()
+            }
+        }
         // 按字符流式读取：InputStreamReader 内部处理跨块的多字节 UTF-8 序列，
         // 每读一段即回调 onOutput，同时积累完整输出用于最终结果。
         val text = StringBuilder()
@@ -324,10 +454,31 @@ class ShellRuntime @Inject constructor(
         )
 
         const val TERMUX_DIR_NAME = "termux"
+        const val BIN_DIR_NAME = "bin"
         const val BOOTSTRAP_CACHE_NAME = "termux-bootstrap.zip"
         const val BOOTSTRAP_BASE_URL = "https://github.com/termux/termux-packages/releases/latest/download"
-        const val EXEC_PROBE_SECONDS = 8L
+
+        /** Termux 可执行性探测上限：只在已安装时才发起，超时即判不可用。 */
+        const val EXEC_PROBE_SECONDS = 3L
+
+        /** 系统终端自检上限。 */
+        const val PROBE_SECONDS = 5L
+
         const val MAX_OUTPUT_CHARS = 40_000
+
+        /** 这些命令依赖 apt/dpkg 数据库，只有真正可执行的 Termux 用户land才支持。 */
+        val PACKAGE_MANAGERS = setOf("apt", "apt-get", "pkg", "dpkg")
+
+        val PACKAGE_UNAVAILABLE_MESSAGE = """
+            无法安装额外的 Linux 包：当前 Android 版本禁止应用从私有目录执行下载的二进制（W^X），
+            因此 Termux 用户land即使解压也无法运行，apt / pkg / dpkg 不可用。
+            可用的替代方案：
+            - 直接用系统终端内置的 toybox 工具编写脚本：sh、echo、cat、ls、cp、mv、rm、mkdir、
+              find、grep、sed、awk、sort、head、tail、wc、xxd、tar、unzip、base64、md5sum 等；
+            - 需要新能力时，把「纯脚本」（不依赖额外二进制）写进工作区再执行；
+            - 图像 / 文件 / 压缩 / 打印需求直接用项目内置工具（draw_image、edit_image、
+              extract_archive、create_archive、print_* 等）。
+        """.trimIndent()
 
         /** 流式读取的字符块大小。 */
         const val READ_CHUNK_CHARS = 2_048

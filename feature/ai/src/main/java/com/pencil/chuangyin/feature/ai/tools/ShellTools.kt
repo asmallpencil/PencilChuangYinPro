@@ -27,7 +27,7 @@ class ShellTools @Inject constructor(
     private val scope: ToolCallScope,
 ) {
 
-    /** 查询终端环境：系统终端路径、Termux 是否安装/可执行。 */
+    /** 查询终端环境：系统终端路径、Termux 是否安装/可执行、以及一次真实自检结果。 */
     @Tool
     suspend fun shell_status(): ToolOutput {
         val status = runtime.status()
@@ -35,20 +35,38 @@ class ShellTools @Inject constructor(
         builder.appendLine("终端环境状态：")
         builder.appendLine(
             if (status.systemShellPath != null) {
-                "- 系统终端：${status.systemShellPath}（可用，随时可执行）"
+                "- 系统终端：${status.systemShellPath}（随时可执行）"
             } else {
                 "- 系统终端：未找到 /system/bin/sh（异常设备）"
             },
         )
         builder.appendLine(
+            if (status.systemShellProbe) {
+                "- 自检：通过（`echo` 往返正常）"
+            } else {
+                "- 自检：失败（${status.systemShellProbeDetail}）"
+            },
+        )
+        builder.appendLine("- 兼容 bin 目录：${status.workspaceBinPath}（已加入 PATH）")
+        builder.appendLine(
+            if (status.bashAvailable) {
+                "- bash：可用（Termux 自带或 bash→sh 兼容 shim，可直接写 `bash 脚本.sh`）"
+            } else {
+                "- bash：不可用，请统一用 `sh 脚本.sh`"
+            },
+        )
+        builder.appendLine(
             when {
-                !status.termuxInstalled -> "- Termux 环境：未安装（可调用 shell_setup 安装）"
+                !status.termuxInstalled -> "- Termux 环境：未安装（apt/pkg 不可用）"
                 status.termuxExecutable -> "- Termux 环境：已安装且可执行（${status.termuxRootPath}）"
-                else -> "- Termux 环境：已安装但当前系统禁止直接执行（${status.termuxRootPath}），run_command 将使用系统终端"
+                else -> "- Termux 环境：已安装但系统禁止直接执行（${status.termuxRootPath}），apt/pkg 不可用，run_command 使用系统终端"
             },
         )
         builder.appendLine()
-        builder.append("用法：run_command 可直接执行命令；需要脚本时先用 write_file 写入 .sh 文件，再执行 `sh 文件名.sh`。")
+        builder.appendLine("用法：")
+        builder.appendLine("- 直接执行命令：run_command(command = \"ls -la\")，支持管道 / 重定向 / 多行脚本；")
+        builder.appendLine("- 需要脚本：先用 write_file 写入 `xxx.sh`，再 run_command(command = \"sh xxx.sh\")；")
+        builder.appendLine("- 需要喂输入：把内容放进 stdin 参数，例如 command=\"cat > a.txt\" + stdin=\"hello\"。")
         return ToolOutput(builder.toString().trim())
     }
 
@@ -82,6 +100,7 @@ class ShellTools @Inject constructor(
         @Param(description = "要执行的 shell 命令，可含管道/重定向/多行脚本。") command: String,
         @Param(description = "工作目录，省略则使用工作区根目录；须位于工作区内。") cwd: String?,
         @Param(description = "超时毫秒数，默认 60000，最大 300000。") timeout_ms: Int?,
+        @Param(description = "可选：写入命令标准输入的内容，用于需要读取输入的命令。") stdin: String?,
     ): ToolOutput {
         val cmd = command.trim()
         if (cmd.isEmpty()) return ToolOutput("命令不能为空。", isError = true)
@@ -97,7 +116,7 @@ class ShellTools @Inject constructor(
         // 节流上报（两次间隔不小于 STREAM_REPORT_INTERVAL_MS），避免每个输出块都触发重组。
         val tail = StringBuilder()
         var lastReportAt = 0L
-        val result = runtime.run(cmd, dir, timeout) { chunk ->
+        val result = runtime.run(cmd, dir, timeout, stdin) { chunk ->
             tail.append(chunk)
             if (tail.length > STREAM_TAIL_CHARS) tail.delete(0, tail.length - STREAM_TAIL_CHARS)
             val now = System.currentTimeMillis()

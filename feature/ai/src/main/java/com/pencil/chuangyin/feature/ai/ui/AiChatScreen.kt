@@ -10,6 +10,12 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,7 +39,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -44,6 +52,7 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Image
@@ -82,9 +91,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -92,6 +103,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pencil.chuangyin.core.theme.LiquidGlassLayer
+import com.pencil.chuangyin.core.theme.MotionPreset
 import com.pencil.chuangyin.core.agent.runtime.AgentPermissionMode
 import com.pencil.chuangyin.core.agent.model.ToolPermission
 import com.pencil.chuangyin.core.ui.components.AppAlertDialog
@@ -201,6 +213,13 @@ fun AiChatScreen(
     var permissionSheetVisible by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val clipboard = LocalClipboardManager.current
+    val copiedHint = stringResource(R.string.ai_copied)
+    // 气泡右下角的一键复制：整条消息写入剪贴板，并用 Snackbar 给出明确反馈。
+    val onCopyMessage: (String) -> Unit = { text ->
+        clipboard.setText(AnnotatedString(text))
+        scope.launch { snackbarHostState.showSnackbar(copiedHint) }
+    }
     val reportImport: (String) -> Unit = { message ->
         scope.launch { snackbarHostState.showSnackbar(message) }
     }
@@ -284,6 +303,7 @@ fun AiChatScreen(
                     onRetry = onRetry,
                     onDismissError = onDismissError,
                     resolveImage = resolveImage,
+                    onCopyMessage = onCopyMessage,
                 )
             }
         }
@@ -502,6 +522,7 @@ private fun AiConversationList(
     onRetry: () -> Unit,
     onDismissError: () -> Unit,
     resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
+    onCopyMessage: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val padM = dimensionResource(ResR.dimen.dimen_global_padding_m)
@@ -509,11 +530,18 @@ private fun AiConversationList(
     // 纯工具调用载体的空助手消息不渲染，避免出现空白气泡。
     val messages = remember(state.messages) { state.messages.filter { it.isRenderable() } }
     val showWelcome = messages.isEmpty() && state.toolActivities.isEmpty()
+    // 发出任务后、第一段回答到来前：若还没有可渲染的助手气泡，就展示一条「等待回答」占位，
+    // 让用户立刻拿到「任务已送达」的反馈，而不是盯着静止的列表。
+    val hasLiveAssistant = messages.any {
+        it.role == AiMessageRole.Assistant && (it.isStreaming || it.content.isBlank())
+    }
+    val showWaiting = state.streaming && !hasLiveAssistant
 
     val listState = rememberLazyListState()
     val itemCount = (if (showWelcome) 1 else 0) +
         messages.size +
         state.toolActivities.size +
+        (if (showWaiting) 1 else 0) +
         (if (state.error != null) 1 else 0)
     // 尾项内容长度参与键，使流式追加 / 内容增长时持续贴底。
     val tailLength = messages.lastOrNull()?.let { it.content.length + (it.reasoning?.length ?: 0) } ?: 0
@@ -550,12 +578,23 @@ private fun AiConversationList(
         items(messages, key = { MESSAGE_KEY_PREFIX + it.id }) { message ->
             // 新气泡带着弹簧就位，流式增长时下方内容会平滑让位。
             Box(modifier = animateItemMotion(motion)) {
-                AiMessageBubble(message = message, resolveImage = resolveImage)
+                AiMessageBubble(
+                    message = message,
+                    resolveImage = resolveImage,
+                    onCopyMessage = onCopyMessage,
+                )
             }
         }
         items(state.toolActivities, key = { TOOL_KEY_PREFIX + it.toolCallId }) { activity ->
             Box(modifier = animateItemMotion(motion)) {
                 AiToolActivityRow(activity = activity)
+            }
+        }
+        if (showWaiting) {
+            item(key = KEY_WAITING) {
+                Box(modifier = animateItemMotion(motion)) {
+                    AiWaitingBubble()
+                }
             }
         }
         state.error?.let { error ->
@@ -601,9 +640,20 @@ private fun AiWelcomeCard(modifier: Modifier = Modifier) {
 private fun AiMessageBubble(
     message: AiUiMessage,
     resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
+    onCopyMessage: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isUser = message.role == AiMessageRole.User
+    // 「复制整个气泡」= 深度思考（若有）+ 正文，避免用户还要分两次复制。
+    val copyText = remember(message.content, message.reasoning) {
+        buildString {
+            if (!message.reasoning.isNullOrBlank()) {
+                append(message.reasoning.trim())
+                if (message.content.isNotBlank()) append("\n\n")
+            }
+            append(message.content)
+        }.trim()
+    }
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
@@ -616,7 +666,11 @@ private fun AiMessageBubble(
                 AiReasoningSection(reasoning = message.reasoning, streaming = message.isStreaming)
                 Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
             }
-            AiBubbleSurface(message = message)
+            AiBubbleSurface(
+                message = message,
+                copyText = copyText,
+                onCopyMessage = onCopyMessage,
+            )
             if (message.artifacts.isNotEmpty()) {
                 Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
                 Column(verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s))) {
@@ -629,9 +683,14 @@ private fun AiMessageBubble(
     }
 }
 
-/** 气泡本体：按角色取底色，工具消息额外带一行工具名。 */
+/** 气泡本体：按角色取底色，工具消息额外带一行工具名，右下角带一键复制按钮。 */
 @Composable
-private fun AiBubbleSurface(message: AiUiMessage, modifier: Modifier = Modifier) {
+private fun AiBubbleSurface(
+    message: AiUiMessage,
+    copyText: String,
+    onCopyMessage: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val container = when (message.role) {
         AiMessageRole.User -> MaterialTheme.colorScheme.primaryContainer
         AiMessageRole.Error -> MaterialTheme.colorScheme.errorContainer
@@ -682,10 +741,117 @@ private fun AiBubbleSurface(message: AiUiMessage, modifier: Modifier = Modifier)
                 )
             }
         } else if (message.isStreaming && message.reasoning == null) {
-            AppText(
+            // 回答前夕：形变/曲线指示器 + 跳动的省略号 + 明确的状态文案。
+            AiThinkingRow(
                 text = stringResource(R.string.ai_thinking),
-                style = MaterialTheme.typography.bodyMedium,
                 color = contentColor,
+            )
+        }
+        if (copyText.isNotBlank()) {
+            Spacer(Modifier.height(2.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .clickable { onCopyMessage(copyText) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ContentCopy,
+                        contentDescription = stringResource(R.string.ai_copy_bubble),
+                        tint = contentColor.copy(alpha = 0.62f),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** 等待回答占位气泡：任务已送达但还没有任何助手内容时的即时反馈。 */
+@Composable
+private fun AiWaitingBubble(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = dimensionResource(R.dimen.ai_bubble_max_width))
+                .pseudoGlassSurface(
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                )
+                .padding(dimensionResource(R.dimen.ai_bubble_padding)),
+        ) {
+            AiThinkingRow(
+                text = stringResource(R.string.ai_waiting_reply),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
+
+/**
+ * 「正在思考」行：全局加载指示器（会跟随画面设置里选的曲线样式）+ 文案 + 呼吸圆点。
+ * 动效等级为「减弱」时不放无限循环的圆点，只保留指示器与文案。
+ */
+@Composable
+private fun AiThinkingRow(
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    val reduced = rememberAppMotion().preset == MotionPreset.Reduced
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        AppLoadingIndicator(
+            size = 20.dp,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.width(10.dp))
+        AppText(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = color,
+        )
+        if (!reduced) {
+            Spacer(Modifier.width(6.dp))
+            AiTypingDots(color = color)
+        }
+    }
+}
+
+/** 三个错峰呼吸的圆点，表示「模型正在输出」。 */
+@Composable
+private fun AiTypingDots(color: Color) {
+    val transition = rememberInfiniteTransition(label = "aiTypingDots")
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(3) { index ->
+            val alpha by transition.animateFloat(
+                initialValue = 0.25f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(
+                        durationMillis = 520,
+                        delayMillis = index * 140,
+                        easing = FastOutSlowInEasing,
+                    ),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+                label = "aiTypingDot$index",
+            )
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = alpha)),
             )
         }
     }
@@ -707,13 +873,16 @@ private fun AiToolAwareText(
     var expanded by remember { mutableStateOf(false) }
     val collapsibleContent = collapsible && content.length > TOOL_RESULT_COLLAPSE_CHARS
     Column(modifier = modifier) {
-        AppText(
-            text = content,
-            style = MaterialTheme.typography.bodyMedium,
-            color = color,
-            maxLines = if (collapsibleContent && !expanded) TOOL_RESULT_COLLAPSED_LINES else Int.MAX_VALUE,
-            overflow = TextOverflow.Ellipsis,
-        )
+        // 长按可选择正文片段做局部复制；整条复制走气泡右下角按钮。
+        SelectionContainer {
+            AppText(
+                text = content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = color,
+                maxLines = if (collapsibleContent && !expanded) TOOL_RESULT_COLLAPSED_LINES else Int.MAX_VALUE,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         if (collapsibleContent) {
             AppTextButton(
                 text = stringResource(
@@ -740,13 +909,15 @@ private fun AiTerminalPanel(content: String, modifier: Modifier = Modifier) {
             .background(color = MaterialTheme.colorScheme.inverseSurface, shape = MaterialTheme.shapes.medium)
             .padding(dimensionResource(R.dimen.ai_bubble_padding)),
     ) {
-        AppText(
-            text = content,
-            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-            color = MaterialTheme.colorScheme.inverseOnSurface,
-            maxLines = if (collapsible && !expanded) TOOL_RESULT_COLLAPSED_LINES else Int.MAX_VALUE,
-            overflow = TextOverflow.Ellipsis,
-        )
+        SelectionContainer {
+            AppText(
+                text = content,
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.inverseOnSurface,
+                maxLines = if (collapsible && !expanded) TOOL_RESULT_COLLAPSED_LINES else Int.MAX_VALUE,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         if (collapsible) {
             AppTextButton(
                 text = stringResource(if (expanded) R.string.ai_reasoning_collapse else R.string.ai_reasoning_expand),
@@ -807,19 +978,20 @@ private fun AiReasoningSection(
                         .heightIn(max = dimensionResource(R.dimen.ai_reasoning_max_height))
                         .verticalScroll(rememberScrollState()),
                 ) {
-                    AppText(
-                        text = text,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    SelectionContainer {
+                        AppText(
+                            text = text,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
             streaming && !hasText -> {
                 Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-                AppText(
+                AiThinkingRow(
                     text = stringResource(R.string.ai_thinking),
-                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -1590,6 +1762,9 @@ private const val MESSAGE_KEY_PREFIX = "m:"
 private const val TOOL_KEY_PREFIX = "t:"
 private const val KEY_WELCOME = "welcome"
 private const val KEY_ERROR = "error"
+
+/** 「等待回答」占位项的列表键。 */
+private const val KEY_WAITING = "waiting"
 
 @Preview(showBackground = true, heightDp = 720)
 @Composable

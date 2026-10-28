@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pencil.chuangyin.core.theme.CornerStyle
 import com.pencil.chuangyin.core.theme.LiquidGlassRenderer
+import com.pencil.chuangyin.core.theme.LoadingAnimationStyle
 import com.pencil.chuangyin.core.theme.MotionPreset
 import com.pencil.chuangyin.core.theme.OutlineColorMode
 import com.pencil.chuangyin.core.theme.ParticleType
@@ -190,6 +191,34 @@ class SettingsViewModel @Inject constructor(
 
     fun setLiquidGlassContourEdge(enabled: Boolean) {
         viewModelScope.launch { themeRepository.setLiquidGlassContourEdge(enabled) }
+    }
+
+    fun setLoadingAnimationStyle(style: LoadingAnimationStyle) {
+        viewModelScope.launch { themeRepository.setLoadingAnimationStyle(style) }
+    }
+
+    fun setLoadingParticleCount(count: Int) {
+        viewModelScope.launch { themeRepository.setLoadingParticleCount(count) }
+    }
+
+    fun setLoadingTrailSpan(span: Float) {
+        viewModelScope.launch { themeRepository.setLoadingTrailSpan(span) }
+    }
+
+    fun setLoadingDurationMs(durationMs: Int) {
+        viewModelScope.launch { themeRepository.setLoadingDurationMs(durationMs) }
+    }
+
+    fun setLoadingPulseDurationMs(durationMs: Int) {
+        viewModelScope.launch { themeRepository.setLoadingPulseDurationMs(durationMs) }
+    }
+
+    fun setLoadingRotationDurationMs(durationMs: Int) {
+        viewModelScope.launch { themeRepository.setLoadingRotationDurationMs(durationMs) }
+    }
+
+    fun setLoadingStrokeWidth(width: Float) {
+        viewModelScope.launch { themeRepository.setLoadingStrokeWidth(width) }
     }
 
     fun setPaperWidthMm(mm: Int) {

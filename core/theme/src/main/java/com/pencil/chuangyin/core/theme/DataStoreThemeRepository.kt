@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -61,6 +62,14 @@ class DataStoreThemeRepository @Inject constructor(
         val KEY_LG_SHADOW = booleanPreferencesKey("liquidGlassShadowOn")
         val KEY_LG_GLASS = booleanPreferencesKey("liquidGlassGlassOn")
         val KEY_LG_CONTOUR = booleanPreferencesKey("liquidGlassContourEdge")
+
+        val KEY_LOADING_STYLE = stringPreferencesKey("loadingAnimationStyle")
+        val KEY_LOADING_PARTICLES = intPreferencesKey("loadingParticleCount")
+        val KEY_LOADING_TRAIL = floatPreferencesKey("loadingTrailSpan")
+        val KEY_LOADING_DURATION = intPreferencesKey("loadingDurationMs")
+        val KEY_LOADING_PULSE = intPreferencesKey("loadingPulseDurationMs")
+        val KEY_LOADING_ROTATION = intPreferencesKey("loadingRotationDurationMs")
+        val KEY_LOADING_STROKE = floatPreferencesKey("loadingStrokeWidth")
 
         val KEY_SHAPE_LEGACY = stringPreferencesKey("shapePreset")
         const val LEGACY_SHAPE_SHARP = "shape_sharp"
@@ -124,6 +133,26 @@ class DataStoreThemeRepository @Inject constructor(
                     liquidGlassShadowOn = prefs[KEY_LG_SHADOW] ?: defaults.liquidGlassShadowOn,
                     liquidGlassGlassOn = prefs[KEY_LG_GLASS] ?: defaults.liquidGlassGlassOn,
                     liquidGlassContourEdge = prefs[KEY_LG_CONTOUR] ?: defaults.liquidGlassContourEdge,
+                    loadingAnimationStyle = LoadingAnimationStyle.entries
+                        .firstOrNull { it.id == prefs[KEY_LOADING_STYLE] }
+                        ?: defaults.loadingAnimationStyle,
+                    loadingParticleCount = (prefs[KEY_LOADING_PARTICLES]
+                        ?: defaults.loadingParticleCount)
+                        .coerceIn(LOADING_PARTICLE_MIN, LOADING_PARTICLE_MAX),
+                    loadingTrailSpan = (prefs[KEY_LOADING_TRAIL] ?: defaults.loadingTrailSpan)
+                        .coerceIn(LOADING_TRAIL_MIN, LOADING_TRAIL_MAX),
+                    loadingDurationMs = (prefs[KEY_LOADING_DURATION]
+                        ?: defaults.loadingDurationMs)
+                        .coerceIn(LOADING_DURATION_MIN_MS, LOADING_DURATION_MAX_MS),
+                    loadingPulseDurationMs = (prefs[KEY_LOADING_PULSE]
+                        ?: defaults.loadingPulseDurationMs)
+                        .coerceIn(LOADING_PULSE_MIN_MS, LOADING_PULSE_MAX_MS),
+                    loadingRotationDurationMs = (prefs[KEY_LOADING_ROTATION]
+                        ?: defaults.loadingRotationDurationMs)
+                        .coerceIn(LOADING_ROTATION_MIN_MS, LOADING_ROTATION_MAX_MS),
+                    loadingStrokeWidth = (prefs[KEY_LOADING_STROKE]
+                        ?: defaults.loadingStrokeWidth)
+                        .coerceIn(LOADING_STROKE_MIN, LOADING_STROKE_MAX),
                 )
             },
         )
@@ -208,6 +237,33 @@ class DataStoreThemeRepository @Inject constructor(
 
     override suspend fun setLiquidGlassContourEdge(enabled: Boolean) =
         editState { set(KEY_LG_CONTOUR, enabled) }
+
+    override suspend fun setLoadingAnimationStyle(style: LoadingAnimationStyle) =
+        editState { set(KEY_LOADING_STYLE, style.id) }
+
+    override suspend fun setLoadingParticleCount(count: Int) =
+        editState { set(KEY_LOADING_PARTICLES, count.coerceIn(LOADING_PARTICLE_MIN, LOADING_PARTICLE_MAX)) }
+
+    override suspend fun setLoadingTrailSpan(span: Float) =
+        editState { set(KEY_LOADING_TRAIL, span.coerceIn(LOADING_TRAIL_MIN, LOADING_TRAIL_MAX)) }
+
+    override suspend fun setLoadingDurationMs(durationMs: Int) =
+        editState {
+            set(KEY_LOADING_DURATION, durationMs.coerceIn(LOADING_DURATION_MIN_MS, LOADING_DURATION_MAX_MS))
+        }
+
+    override suspend fun setLoadingPulseDurationMs(durationMs: Int) =
+        editState {
+            set(KEY_LOADING_PULSE, durationMs.coerceIn(LOADING_PULSE_MIN_MS, LOADING_PULSE_MAX_MS))
+        }
+
+    override suspend fun setLoadingRotationDurationMs(durationMs: Int) =
+        editState {
+            set(KEY_LOADING_ROTATION, durationMs.coerceIn(LOADING_ROTATION_MIN_MS, LOADING_ROTATION_MAX_MS))
+        }
+
+    override suspend fun setLoadingStrokeWidth(width: Float) =
+        editState { set(KEY_LOADING_STROKE, width.coerceIn(LOADING_STROKE_MIN, LOADING_STROKE_MAX)) }
 
     /** 旧形状预设 → 新边角类型的一次性迁移；迁移完成后删除旧 key。 */
     private suspend fun migrateLegacyShape() {

@@ -17,8 +17,11 @@ import okhttp3.Response
 /**
  * 联网检索工具集合：让 Agent 能像官方客户端一样查询网络资料。
  *
- * 不依赖任何付费 API Key：`web_search` 抓取公开搜索页（Bing RSS 为主、DuckDuckGo HTML 兜底）
- * 解析出标题/链接/摘要；`web_fetch` 抓取指定 URL 并转为纯文本供模型阅读。
+ * 不依赖任何付费 API Key，也不依赖百度（百度对非浏览器请求的人机验证极重，命中率极低）。
+ * `web_search` 走「多引擎链」：先 cn.bing.com 的 RSS（结构化），再 cn.bing.com 的 HTML 结果页
+ * （解析 `b_algo` 列表并还原 bing 跳转链接），随后 Mojeek、DuckDuckGo 轻量页、SearXNG 实例兜底；
+ * 命中即返回，并在结果头如实标注实际使用的引擎。`web_fetch` 抓取指定 URL 并转为纯文本，
+ * 对常见的「人机验证 / 安全验证」拦截页给出明确提示而不是把验证码文本当成正文。
  *
  * 两者都属只读操作（见 [ToolPermissions]），在「每次审批 / 工作区外审批」模式下免二次确认，
  * 保证联网检索随时可用；失败以 [ToolOutput.isError] 回灌给模型，不抛异常中断任务。
@@ -34,10 +37,17 @@ class WebTools @Inject constructor() {
         .followSslRedirects(true)
         .build()
 
+    /** 搜索用的短超时客户端：某个引擎被墙/限流时尽快切下一个，不拖死整条链。 */
+    private val searchClient: OkHttpClient = client.newBuilder()
+        .connectTimeout(SEARCH_CONNECT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(SEARCH_READ_SECONDS, TimeUnit.SECONDS)
+        .callTimeout(SEARCH_CALL_SECONDS, TimeUnit.SECONDS)
+        .build()
+
     /**
      * 联网搜索：返回若干条「标题 + 链接 + 摘要」。
      *
-     * 主用 Bing 的 RSS 输出（结构化、抗改版），失败时回退到 DuckDuckGo 的轻量 HTML 页。
+     * @param max_results 条数上限（1..20）
      */
     @Tool
     suspend fun web_search(
@@ -49,16 +59,25 @@ class WebTools @Inject constructor() {
         val limit = (max_results ?: DEFAULT_RESULTS).coerceIn(1, MAX_RESULTS)
 
         return withContext(Dispatchers.IO) {
-            val bing = runCatching { searchBing(term, limit) }.getOrNull()
-            if (!bing.isNullOrEmpty()) {
-                return@withContext ToolOutput(formatResults("Bing", term, bing))
-            }
-            val ddg = runCatching { searchDuckDuckGo(term, limit) }.getOrNull()
-            if (!ddg.isNullOrEmpty()) {
-                return@withContext ToolOutput(formatResults("DuckDuckGo", term, ddg))
+            val attempts = mutableListOf<String>()
+            val engines = listOf(
+                "Bing" to { searchBingRss(term, limit) },
+                "Bing(网页)" to { searchBingHtml(term, limit) },
+                "Mojeek" to { searchMojeek(term, limit) },
+                "DuckDuckGo" to { searchDuckDuckGo(term, limit) },
+                "SearXNG" to { searchSearx(term, limit) },
+            )
+            for ((name, search) in engines) {
+                val hits = runCatching { search() }.getOrNull()
+                if (!hits.isNullOrEmpty()) {
+                    val note = if (attempts.isEmpty()) "" else "（前序引擎无结果：${attempts.joinToString("、")}）"
+                    return@withContext ToolOutput(formatResults(name, term, hits) + note)
+                }
+                attempts += name
             }
             ToolOutput(
-                "未能获取「$term」的搜索结果：可能是网络不可用、搜索引擎改版或请求被限流。可稍后重试或改用 web_fetch 直接抓取已知网址。",
+                "未能获取「$term」的搜索结果：已依次尝试 ${attempts.joinToString("、")}，" +
+                    "均无返回。常见原因是网络不可达或被限流。可稍后重试，或把已知网址交给 web_fetch 直接抓取。",
                 isError = true,
             )
         }
@@ -93,6 +112,16 @@ class WebTools @Inject constructor() {
                 val raw = readLimited(resp, MAX_HTML_BYTES)
                 val contentType = resp.header("Content-Type").orEmpty()
                 if (contentType.contains("text/html", ignoreCase = true) || raw.trimStart().startsWith("<")) {
+                    // 很多国内站点会对非浏览器请求返回「安全验证 / 人机验证」页，
+                    // 直接当成正文喂给模型会得到一堆无意义内容，这里显式识别并回报。
+                    val blocked = ANTI_BOT_MARKERS.firstOrNull { raw.contains(it) }
+                    if (blocked != null) {
+                        return@withContext ToolOutput(
+                            "抓取被拦截：$target 返回了人机/安全验证页（命中「$blocked」）。" +
+                                "该站点限制非浏览器访问，建议改用其它来源，或先 web_search 找同主题的其它站点。",
+                            isError = true,
+                        )
+                    }
                     val title = extractTitle(raw)
                     val text = htmlToText(raw)
                     if (text.isBlank()) {
@@ -107,24 +136,109 @@ class WebTools @Inject constructor() {
         }
     }
 
-    // ---- 搜索引擎实现 ----
+    // ---- 搜索引擎实现（多引擎链，命中即返回） ----
 
-    private fun searchBing(query: String, limit: Int): List<SearchHit> {
+    /** Bing RSS：结构化、最省解析成本；国内走 cn.bing.com。 */
+    private fun searchBingRss(query: String, limit: Int): List<SearchHit> {
         val encoded = URLEncoder.encode(query, "UTF-8")
-        val url = "https://www.bing.com/search?q=$encoded&format=rss&count=$limit"
-        val xml = fetchText(url) ?: return emptyList()
-        return parseRssItems(xml).take(limit)
+        val urls = listOf(
+            "https://cn.bing.com/search?q=$encoded&format=rss&count=$limit",
+            "https://www.bing.com/search?q=$encoded&format=rss&count=$limit",
+        )
+        for (url in urls) {
+            val xml = fetchText(url) ?: continue
+            val hits = parseRssItems(xml).take(limit)
+            if (hits.isNotEmpty()) return hits
+        }
+        return emptyList()
+    }
+
+    /** Bing HTML 结果页：解析 `b_algo` 条目，并还原 `bing.com/ck/a?...&u=` 跳转链接。 */
+    private fun searchBingHtml(query: String, limit: Int): List<SearchHit> {
+        val encoded = URLEncoder.encode(query, "UTF-8")
+        val html = fetchText("https://cn.bing.com/search?q=$encoded&count=$limit") ?: return emptyList()
+        val hits = mutableListOf<SearchHit>()
+        for (item in BING_ITEM.findAll(html)) {
+            val block = item.value
+            val link = BING_LINK.find(block) ?: continue
+            val href = decodeBingUrl(decodeEntities(link.groupValues[1]))
+            val title = htmlToText(link.groupValues[2])
+            if (href.isBlank() || title.isBlank()) continue
+            val snippet = BING_SNIPPET.find(block)?.groupValues?.get(1)
+                ?.let { htmlToText(it) }
+                .orEmpty()
+            hits += SearchHit(title, href, snippet)
+            if (hits.size >= limit) break
+        }
+        return hits
+    }
+
+    /** Mojeek：独立索引、对脚本请求友好，作为 bing 之外的第二个可用源。 */
+    private fun searchMojeek(query: String, limit: Int): List<SearchHit> {
+        val encoded = URLEncoder.encode(query, "UTF-8")
+        val html = fetchText("https://www.mojeek.com/search?q=$encoded") ?: return emptyList()
+        val hits = mutableListOf<SearchHit>()
+        for (match in MOJEEK_LINK.findAll(html)) {
+            val href = decodeEntities(match.groupValues[1])
+            val title = htmlToText(match.groupValues[2])
+            if (href.isBlank() || title.isBlank()) continue
+            hits += SearchHit(title, href, "")
+            if (hits.size >= limit) break
+        }
+        return hits
     }
 
     private fun searchDuckDuckGo(query: String, limit: Int): List<SearchHit> {
         val encoded = URLEncoder.encode(query, "UTF-8")
-        val url = "https://html.duckduckgo.com/html/?q=$encoded"
-        val html = fetchText(url) ?: return emptyList()
-        return parseDuckDuckGo(html).take(limit)
+        for (url in listOf("https://html.duckduckgo.com/html/?q=$encoded", "https://lite.duckduckgo.com/lite/?q=$encoded")) {
+            val html = fetchText(url) ?: continue
+            val hits = parseDuckDuckGo(html).take(limit)
+            if (hits.isNotEmpty()) return hits
+        }
+        return emptyList()
     }
 
-    private fun fetchText(url: String): String? {
-        val response = runCatching { client.newCall(request(url)).execute() }.getOrNull() ?: return null
+    /** SearXNG 公共实例：HTML 结果页，实例之间互为备份。 */
+    private fun searchSearx(query: String, limit: Int): List<SearchHit> {
+        val encoded = URLEncoder.encode(query, "UTF-8")
+        for (host in SEARX_HOSTS) {
+            val html = fetchText("$host/search?q=$encoded") ?: continue
+            val hits = mutableListOf<SearchHit>()
+            for (item in SEARX_ARTICLE.findAll(html)) {
+                val block = item.value
+                val link = SEARX_LINK.find(block) ?: continue
+                val href = decodeEntities(link.groupValues[1])
+                val title = htmlToText(link.groupValues[2])
+                if (href.isBlank() || title.isBlank() || !href.startsWith("http")) continue
+                val snippet = SEARX_CONTENT.find(block)?.groupValues?.get(1)
+                    ?.let { htmlToText(it) }
+                    .orEmpty()
+                hits += SearchHit(title, href, snippet)
+                if (hits.size >= limit) break
+            }
+            if (hits.isNotEmpty()) return hits
+        }
+        return emptyList()
+    }
+
+    /**
+     * 还原 bing 的跳转链接：
+     * `https://www.bing.com/ck/a?!&&p=...&u=a1aHR0cHM6...` 里的 `u` 参数是 `a1` + base64url(真实地址)。
+     */
+    private fun decodeBingUrl(href: String): String {
+        if (!href.contains("/ck/a")) return href
+        val marker = Regex("[?&]u=a1([^&]+)")
+        val encoded = marker.find(href)?.groupValues?.get(1) ?: return href
+        val decoded = runCatching {
+            val bytes = android.util.Base64.decode(encoded, android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING)
+            String(bytes, Charsets.UTF_8)
+        }.getOrNull()
+        return if (decoded.isNullOrBlank()) href else decoded
+    }
+
+    private fun fetchText(url: String, search: Boolean = true): String? {
+        val call = if (search) searchClient else client
+        val response = runCatching { call.newCall(request(url)).execute() }.getOrNull() ?: return null
         response.use { resp ->
             if (!resp.isSuccessful) return null
             return readLimited(resp, MAX_HTML_BYTES)
@@ -306,6 +420,11 @@ class WebTools @Inject constructor() {
         const val CONNECT_TIMEOUT_SECONDS = 15L
         const val READ_TIMEOUT_SECONDS = 30L
         const val CALL_TIMEOUT_SECONDS = 45L
+
+        /** 搜索链中单个引擎的超时：慢引擎要被快速跳过。 */
+        const val SEARCH_CONNECT_SECONDS = 8L
+        const val SEARCH_READ_SECONDS = 12L
+        const val SEARCH_CALL_SECONDS = 15L
         const val DEFAULT_RESULTS = 8
         const val MAX_RESULTS = 20
         const val DEFAULT_FETCH_CHARS = 20_000
@@ -315,7 +434,39 @@ class WebTools @Inject constructor() {
         const val USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
+        /** 公共 SearXNG 实例（HTML 结果页，互为备份）。 */
+        val SEARX_HOSTS = listOf(
+            "https://searx.be",
+            "https://search.inetol.net",
+        )
+
+        /** 常见「人机 / 安全验证」页特征串，命中即判定为被拦截。 */
+        val ANTI_BOT_MARKERS = listOf(
+            "百度安全验证",
+            "请输入验证码",
+            "人机验证",
+            "安全验证",
+            "访问验证",
+            "cf-browser-verification",
+            "Just a moment...",
+            "Attention Required",
+            "unusual traffic",
+        )
+
         val RSS_ITEM = Regex("<item>(.*?)</item>", RegexOption.DOT_MATCHES_ALL)
+        val BING_ITEM = Regex("<li class=\"b_algo\".*?</li>", RegexOption.DOT_MATCHES_ALL)
+        val BING_LINK = Regex(
+            "<h2[^>]*>\\s*<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>",
+            setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE),
+        )
+        val BING_SNIPPET = Regex("<p[^>]*>(.*?)</p>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+        val MOJEEK_LINK = Regex(
+            "<a[^>]+href=\"(https?://[^\"]+)\"[^>]*>(.*?)</a>",
+            setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE),
+        )
+        val SEARX_ARTICLE = Regex("<article class=\"result[^\"]*\">(.*?)</article>", RegexOption.DOT_MATCHES_ALL)
+        val SEARX_LINK = Regex("<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>", RegexOption.DOT_MATCHES_ALL)
+        val SEARX_CONTENT = Regex("<p class=\"content\">(.*?)</p>", RegexOption.DOT_MATCHES_ALL)
         val DDG_RESULT = Regex(
             "<div class=\"result(?:\\s[^\"]*)?\"[^>]*>(.*?)</div>\\s*(?:</div>|<div class=\"result__body)",
             RegexOption.DOT_MATCHES_ALL,

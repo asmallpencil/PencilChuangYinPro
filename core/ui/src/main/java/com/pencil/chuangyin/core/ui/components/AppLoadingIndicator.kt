@@ -40,6 +40,8 @@ import androidx.graphics.shapes.Cubic
 import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.transformed
+import com.pencil.chuangyin.core.theme.LoadingAnimationStyle
+import com.pencil.chuangyin.core.theme.LocalLoadingAnimation
 import com.pencil.chuangyin.core.theme.MotionPreset
 import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import kotlin.math.PI
@@ -67,6 +69,18 @@ fun AppLoadingIndicator(
     color: Color = LocalContentColor.current,
     size: Dp = 44.dp,
 ) {
+    // 用户在「画面设置 → 加载动画」里选了数学曲线时走曲线渲染器，
+    // 未选择（Classic）保持 M3 Expressive 的 7 形状形变实现。
+    val loadingSpec = LocalLoadingAnimation.current
+    if (loadingSpec.style != LoadingAnimationStyle.Classic) {
+        MathCurveLoadingIndicator(
+            modifier = modifier,
+            spec = loadingSpec,
+            color = color,
+            size = size,
+        )
+        return
+    }
     val motion = rememberAppMotion()
     val shapes = remember { LoadingShapes.polygons }
     // 形变进度：0..7 连续推进，取整段决定当前形变的两端。
