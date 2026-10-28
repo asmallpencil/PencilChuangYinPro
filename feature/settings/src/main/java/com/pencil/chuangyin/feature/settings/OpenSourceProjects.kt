@@ -307,6 +307,13 @@ internal val OPEN_SOURCE_PROJECTS: List<OpenSourceProject> = listOf(
         contribution = "由壁纸/图片生成动态配色，是壁纸取色与自适应主题的算法来源。",
     ),
     OpenSourceProject(
+        name = "Math Curve Loaders",
+        author = "paidax01",
+        license = "上游未声明",
+        url = "https://github.com/paidax01/math-curve-loaders",
+        contribution = "加载动画的曲线来源：玫瑰线、李萨如、内摆线、心脏线、傅里叶波形等 20 条数学参数化曲线，以及「粒子尾迹 + 淡轨迹」的数据驱动渲染模型。core:ui 的 MathCurveLoadingIndicator 按其曲线定义与驱动参数移植，画面设置里的样式与可调参数区间也与它一致。",
+    ),
+    OpenSourceProject(
         name = "OkHttp",
         author = "Square",
         license = "Apache-2.0",

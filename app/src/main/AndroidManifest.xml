@@ -62,5 +62,16 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/pixiv_file_paths" />
         </provider>
+
+        <!-- AI 聊天产物：交给系统播放器/相册打开时经 FileProvider 授权读取 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.ai.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/ai_file_paths" />
+        </provider>
     </application>
 </manifest>

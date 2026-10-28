@@ -69,4 +69,8 @@ dependencies {
 
     // 联网检索 / 终端下载使用的 HTTP 客户端
     implementation(libs.okhttp)
+
+    // 聊天页媒体查看器：图片加载与手势缩放 / 超大图子采样，与 P 站全屏查看器同源
+    implementation(libs.coil.compose)
+    implementation(libs.zoomimage.compose.coil2)
 }

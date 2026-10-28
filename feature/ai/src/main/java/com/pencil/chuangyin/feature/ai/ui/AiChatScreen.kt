@@ -59,6 +59,9 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
@@ -166,6 +169,7 @@ fun AiChatRoute(
         onDecideApproval = viewModel::decideApproval,
         onSelectModel = viewModel::setActiveModel,
         resolveImage = viewModel::resolveImage,
+        resolveFile = viewModel::resolveFile,
         // 上传：把内容拷贝进 agent 目录，挂到输入框上方的挂载区；失败时才提示。
         onImport = { uri, report ->
             viewModel.importFromUri(
@@ -202,11 +206,15 @@ fun AiChatScreen(
     onSelectModel: (String) -> Unit,
     /** 图片产物解码器：授权输出目录时产物在 SAF 里，需要先物化；为 null 时按普通文件路径解码。 */
     resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)? = null,
+    /** 产物可读路径解析器：查看器播放与转交系统应用前，需要把 SAF 产物物化到缓存。 */
+    resolveFile: (suspend (AiUiArtifact) -> String?)? = null,
     modifier: Modifier = Modifier,
 ) {
     val glassActive = rememberLiquidGlassActive()
     // 待删除会话：不直接落库，先经确认弹窗，避免误触删除。
     var pendingDelete by remember { mutableStateOf<ConversationSummary?>(null) }
+    // 正在查看的产物：点开聊天里的图片/视频/文件后进入全屏查看器。
+    var viewingArtifact by remember { mutableStateOf<AiUiArtifact?>(null) }
     // 上传入口：底部表单先让用户选择「图片 / 任意文件」，再各自拉起系统文档选择器。
     var attachSheetVisible by remember { mutableStateOf(false) }
     // 权限模式入口：与上传同级，点开后选择审批粒度。
@@ -304,9 +312,18 @@ fun AiChatScreen(
                     onDismissError = onDismissError,
                     resolveImage = resolveImage,
                     onCopyMessage = onCopyMessage,
+                    onOpenArtifact = { viewingArtifact = it },
                 )
             }
         }
+    }
+
+    viewingArtifact?.let { artifact ->
+        AiMediaViewer(
+            artifact = artifact,
+            resolveFile = resolveFile,
+            onDismiss = { viewingArtifact = null },
+        )
     }
 
     if (state.historyVisible) {
@@ -523,6 +540,7 @@ private fun AiConversationList(
     onDismissError: () -> Unit,
     resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
     onCopyMessage: (String) -> Unit,
+    onOpenArtifact: (AiUiArtifact) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val padM = dimensionResource(ResR.dimen.dimen_global_padding_m)
@@ -582,6 +600,7 @@ private fun AiConversationList(
                     message = message,
                     resolveImage = resolveImage,
                     onCopyMessage = onCopyMessage,
+                    onOpenArtifact = onOpenArtifact,
                 )
             }
         }
@@ -641,6 +660,7 @@ private fun AiMessageBubble(
     message: AiUiMessage,
     resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
     onCopyMessage: (String) -> Unit,
+    onOpenArtifact: (AiUiArtifact) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isUser = message.role == AiMessageRole.User
@@ -675,7 +695,11 @@ private fun AiMessageBubble(
                 Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
                 Column(verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s))) {
                     message.artifacts.forEach { artifact ->
-                        AiArtifactItem(artifact = artifact, resolveImage = resolveImage)
+                        AiArtifactItem(
+                            artifact = artifact,
+                            resolveImage = resolveImage,
+                            onOpen = onOpenArtifact,
+                        )
                     }
                 }
             }
@@ -1095,17 +1119,23 @@ private fun AiErrorCard(
     }
 }
 
-/** 产物条目：图片直接解码预览，其它类型展示文件名。 */
+/** 产物条目：图片直接解码预览，其它类型展示文件名；点击进入查看器。 */
 @Composable
 private fun AiArtifactItem(
     artifact: AiUiArtifact,
     resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
+    onOpen: (AiUiArtifact) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (artifact.isImage) {
-        AiImageArtifact(artifact = artifact, resolveImage = resolveImage, modifier = modifier)
+        AiImageArtifact(
+            artifact = artifact,
+            resolveImage = resolveImage,
+            onOpen = onOpen,
+            modifier = modifier,
+        )
     } else {
-        AiFileArtifact(artifact = artifact, modifier = modifier)
+        AiFileArtifact(artifact = artifact, onOpen = onOpen, modifier = modifier)
     }
 }
 
@@ -1113,6 +1143,7 @@ private fun AiArtifactItem(
 private fun AiImageArtifact(
     artifact: AiUiArtifact,
     resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
+    onOpen: (AiUiArtifact) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val shape = MaterialTheme.shapes.medium
@@ -1131,7 +1162,8 @@ private fun AiImageArtifact(
         modifier = modifier
             .size(dimensionResource(R.dimen.ai_artifact_size))
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .clickable { onOpen(artifact) },
         contentAlignment = Alignment.Center,
     ) {
         val bitmap = image
@@ -1149,11 +1181,31 @@ private fun AiImageArtifact(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        // 右下角角标提示「可点开原图」，与 P 站缩略图的全屏入口观感一致。
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(4.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.42f))
+                .padding(4.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.OpenInFull,
+                contentDescription = stringResource(R.string.ai_media_open_preview),
+                tint = Color.White,
+                modifier = Modifier.size(14.dp),
+            )
+        }
     }
 }
 
 @Composable
-private fun AiFileArtifact(artifact: AiUiArtifact, modifier: Modifier = Modifier) {
+private fun AiFileArtifact(
+    artifact: AiUiArtifact,
+    onOpen: (AiUiArtifact) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -1161,11 +1213,16 @@ private fun AiFileArtifact(artifact: AiUiArtifact, modifier: Modifier = Modifier
                 shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
             )
+            .clickable { onOpen(artifact) }
             .padding(dimensionResource(R.dimen.ai_bubble_padding)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
+            imageVector = if (artifact.mediaKind() == AiMediaKind.Video) {
+                Icons.Filled.PlayCircleOutline
+            } else {
+                Icons.AutoMirrored.Filled.InsertDriveFile
+            },
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(dimensionResource(R.dimen.ai_inline_icon_size)),
@@ -1184,6 +1241,12 @@ private fun AiFileArtifact(artifact: AiUiArtifact, modifier: Modifier = Modifier
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Icon(
+            imageVector = Icons.Filled.OpenInNew,
+            contentDescription = stringResource(R.string.ai_media_open_preview),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp),
+        )
     }
 }
 

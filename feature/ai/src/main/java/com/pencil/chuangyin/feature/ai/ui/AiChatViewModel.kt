@@ -62,4 +62,7 @@ class AiChatViewModel @Inject constructor(
 
     /** 解码产物缩略图：授权输出目录时产物在 SAF 树里，需要先物化到缓存。 */
     suspend fun resolveImage(artifact: AiUiArtifact): ImageBitmap? = artifact.decodePreview(workspace)
+
+    /** 解析产物的可读本地路径，供查看器播放或转交系统应用；不可读时返回 null。 */
+    suspend fun resolveFile(artifact: AiUiArtifact): String? = artifact.previewPath(workspace)
 }

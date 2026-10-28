@@ -31,6 +31,21 @@
     <string name="ai_artifact_image">图片产物</string>
     <string name="ai_artifact_file">文件产物</string>
 
+    <!-- 产物查看器 -->
+    <string name="ai_media_kind_image">图片</string>
+    <string name="ai_media_kind_video">视频</string>
+    <string name="ai_media_kind_audio">音频</string>
+    <string name="ai_media_kind_file">文件</string>
+    <string name="ai_media_open_external">用其他应用打开</string>
+    <string name="ai_media_open_manager">在文件管理器中打开</string>
+    <string name="ai_media_open_preview">打开预览</string>
+    <string name="ai_media_close">关闭预览</string>
+    <string name="ai_media_loading">正在准备文件…</string>
+    <string name="ai_media_unavailable">无法读取这个文件</string>
+    <string name="ai_media_unsupported">这类文件暂不支持应用内预览</string>
+    <string name="ai_media_no_app">系统里没有可打开此格式的应用</string>
+    <string name="ai_media_no_manager">没有找到可用的文件管理器</string>
+
     <!-- 工具名称 -->
     <string name="ai_tool_list_files">浏览文件</string>
     <string name="ai_tool_read_file">读取文件</string>

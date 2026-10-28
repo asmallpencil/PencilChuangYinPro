@@ -990,6 +990,10 @@ private val OPEN_SOURCE_LIST: List<OpenSourceEntry> = listOf(
         "由壁纸/图片生成动态配色，是壁纸取色与自适应主题的算法来源。",
     ),
     OpenSourceEntry(
+        "Math Curve Loaders", "paidax01", "上游未声明",
+        "加载动画的曲线来源：玫瑰线、李萨如、内摆线、心脏线、傅里叶波形等 20 条数学参数化曲线，以及「粒子尾迹 + 淡轨迹」的数据驱动渲染模型。core:ui 的 MathCurveLoadingIndicator 按其曲线定义与驱动参数移植。",
+    ),
+    OpenSourceEntry(
         "OkHttp", "Square", "Apache-2.0",
         "HTTP/2、连接池与 SSE 流式读取；P 站接口、图片下载、AI 流式响应都跑在它上面。",
     ),

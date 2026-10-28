@@ -201,6 +201,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 | **Material Components for Android** | Google | Apache-2.0 | 传统视图体系的组件基座。P 站模块承载 `MainHostFragment` 时，其公开超类型含本库的 `NavigationView.OnNavigationItemSelectedListener`，编译期必须可见 | https://github.com/material-components/material-components-android |
 | **Material Icons Extended** | Google | Apache-2.0 | 扩展图标集，各页面的动作图标来源 | https://developer.android.com/jetpack/androidx/releases/compose-material |
 | **MaterialKolor** | Jordond | MIT | 由壁纸/图片生成 Material 3 Expressive 动态配色，是「壁纸取色」与自适应主题的算法来源，也修好了调色盘里白色永远调不出来的问题 | https://github.com/jordond/MaterialKolor |
+| **Math Curve Loaders** | paidax01 | 上游未声明 | **加载动画的曲线来源**。玫瑰线、李萨如、内摆线、心脏线、傅里叶波形等 20 条数学参数化曲线，连同「粒子尾迹 + 淡轨迹」的数据驱动渲染模型一并移植；`core:ui` 的 `MathCurveLoadingIndicator` 与「画面设置 → 加载动画」的样式、参数区间都以它为蓝本 | https://github.com/paidax01/math-curve-loaders |
 | **OkHttp** | Square | Apache-2.0 | HTTP/2、连接池与 SSE 流式读取。P 站接口、图片下载、AI 流式响应三条链路都跑在它上面 | https://github.com/square/okhttp |
 | **OpenCV** | OpenCV 团队 | Apache-2.0 | 文档扫描的算法引擎：`adaptiveThreshold`、`Otsu`、`Canny`、`approxPolyDP`、透视变换与去阴影 | https://github.com/opencv/opencv |
 | **Operit AI** | AAswordman | LGPL-3.0 | AI Agent 运行时的**架构范本**：工具调用的确认门（不可逆操作先问用户）、分档权限模式（总是询问 / 仅危险操作 / 放行）、上下文折叠与工具结果回灌。`core:agent` 的 `ToolConfirmationGate`、`AgentPermission`、`ContextFolder` 正是按这套模型实现的 | https://github.com/AAswordman/Operit |

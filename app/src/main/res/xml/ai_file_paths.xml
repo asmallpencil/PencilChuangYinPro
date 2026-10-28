@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- AI 工作区：未授权输出目录时产物直接落在 filesDir/agent -->
+    <files-path
+        name="ai_agent"
+        path="agent/" />
+    <!-- 授权 SAF 输出目录后，产物先物化到 cacheDir/agent_materialized 再交给播放器/第三方应用 -->
+    <cache-path
+        name="ai_materialized"
+        path="agent_materialized/" />
+    <!-- 工作区之外的产物（如打印机输出目录）在分享前复制到这里 -->
+    <cache-path
+        name="ai_shared"
+        path="ai_shared_media/" />
+</paths>
