@@ -236,6 +236,9 @@ struct PanelJob {
 
     int shadeIndex = -1;
     bool shadePainted = false;
+
+    /** true = 采样实时窗口快照；false = 采样「仅背景」纹理（默认）。 */
+    bool liveScene = false;
 };
 
 void resetJobs();
@@ -244,6 +247,8 @@ float pixelScaleXOf();
 float pixelScaleYOf();
 void bindBackdrop(unsigned int texture, int width, int height);
 void releaseBackdrop();
+void bindBackgroundBackdrop(unsigned int texture, int width, int height);
+void releaseBackgroundBackdrop();
 
 float frameDelta();
 int frameStamp();

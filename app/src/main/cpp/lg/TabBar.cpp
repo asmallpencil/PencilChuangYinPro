@@ -282,6 +282,9 @@ bool TabStrip::draw(const Box& box) {
     {
         PanelStyle style;
         style.corners = Corners::capsule();
+        // 导航栏是唯一豁免「只透背景」的玻璃：保持采样实时窗口内容，
+        // 让栏下的页面内容仍能在玻璃中隐约可见（用户明确要求的例外）。
+        style.liveScene = true;
         style.optics.colorBoost = true;
         // 升级后的原生导航栏玻璃：低模糊（保证其下页面内容可辨）、透镜/色散置零
         // （与全局「文字无折射」策略一致），玻璃质感由高对比渐变描边 + 强投影 + 低透明
@@ -363,6 +366,7 @@ bool TabStrip::draw(const Box& box) {
 
         PanelStyle style;
         style.corners = Corners::capsule();
+        style.liveScene = true;
         style.optics.colorBoost = false;
         style.optics.blurPx = 0.0f;
         style.optics.lensHeightPx = px(config::Layout::TAB_PRESS_LENS_HEIGHT_DP) * press;

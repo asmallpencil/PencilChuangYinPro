@@ -1,5 +1,6 @@
 package com.pencil.chuangyin.core.theme
 
+import android.graphics.Bitmap
 import android.view.View
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
@@ -59,6 +60,8 @@ interface LiquidGlassWidgetHost {
      * @param selected Button 选中态（芯片选中时以强调色着色）。
      * @param icon Button 图标位图（白色字形 + alpha，Compose 渲染；优先于 iconId）。
      * @param cornerRadius 容器玻璃面（kind=Panel）的圆角半径（物理像素；<=0 由原生层按胶囊处理）。
+     * @param liveScene 容器玻璃面是否采样**实时窗口内容**（默认 false = 只透背景）。
+     *        仅导航栏类面板需要 true：它们保留「透出栏下内容」的观感，不受「只透背景」约束。
      */
     fun sync(
         kind: LiquidGlassWidgetKind,
@@ -72,7 +75,16 @@ interface LiquidGlassWidgetHost {
         selected: Boolean = false,
         icon: ImageBitmap? = null,
         cornerRadius: Float = 0f,
+        liveScene: Boolean = false,
     )
+
+    /**
+     * 下发「仅背景」位图（底色 + 壁纸，尺寸与窗口一致）。
+     *
+     * C++ 路径用它替换「全窗口快照」作为容器玻璃面的采样源：玻璃面下的控件会整体消失，
+     * 只透背景（导航栏仍用实时快照）。主题色 / 壁纸 / 尺寸变化时需重新下发。
+     */
+    fun setBackgroundBackdrop(bitmap: Bitmap)
 
     /** 注销控件并解绑回调（控件离开组合时调用）。 */
     fun dispose(key: Any)

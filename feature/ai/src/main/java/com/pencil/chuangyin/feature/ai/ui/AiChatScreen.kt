@@ -252,6 +252,7 @@ fun AiChatScreen(
                         onClick = onBack,
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(ResR.string.label_back),
+                        glass = false,
                     )
                 },
                 actions = {
@@ -259,11 +260,13 @@ fun AiChatScreen(
                         onClick = onHistoryToggle,
                         imageVector = Icons.Filled.History,
                         contentDescription = stringResource(R.string.ai_desc_history),
+                        glass = false,
                     )
                     AppIconButton(
                         onClick = onNewConversation,
                         imageVector = Icons.Filled.Add,
                         contentDescription = stringResource(R.string.ai_desc_new),
+                        glass = false,
                     )
                 },
                 modifier = Modifier.nativeGlassSurface(
@@ -916,6 +919,7 @@ private fun AiToolAwareText(
                 ),
                 onClick = { expanded = !expanded },
                 contentColor = color,
+                glass = false,
             )
         }
     }
@@ -949,6 +953,7 @@ private fun AiTerminalPanel(content: String, modifier: Modifier = Modifier) {
                 text = stringResource(if (expanded) R.string.ai_reasoning_collapse else R.string.ai_reasoning_expand),
                 onClick = { expanded = !expanded },
                 contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                glass = false,
             )
         }
     }
@@ -1366,6 +1371,7 @@ private fun AiInputBar(
                     imageVector = Icons.Filled.AttachFile,
                     contentDescription = stringResource(R.string.ai_attach),
                     enabled = !streaming,
+                    glass = false,
                 )
                 Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
                 AppTextField(

@@ -40,6 +40,8 @@ class LiquidGlassControllerImpl(private val view: LiquidGlassView) : LiquidGlass
         var icon: ImageBitmap? = null
         var iconUploaded: ImageBitmap? = null
         var cornerRadius: Float = 0f
+        /** Panel 是否采样实时窗口内容（导航栏豁免「只透背景」）。 */
+        var liveScene: Boolean = false
         /** 已下发给原生层的圆角；null = 尚未注册。用于检测圆角变化需重注册。 */
         var radiusApplied: Float? = null
         var layer: Int = 0
@@ -160,6 +162,7 @@ class LiquidGlassControllerImpl(private val view: LiquidGlassView) : LiquidGlass
         selected: Boolean,
         icon: ImageBitmap?,
         cornerRadius: Float,
+        liveScene: Boolean,
     ) {
         val entry = entry(key)
         if (entry.kind != kind) {
@@ -170,6 +173,9 @@ class LiquidGlassControllerImpl(private val view: LiquidGlassView) : LiquidGlass
         // 圆角属于「结构」参数（Panel / Button 注册时随几何一起下发），
         // 由 [track] 通过 entry.radiusApplied 比较决定是否重注册，这里仅记录期望值。
         entry.cornerRadius = cornerRadius
+        // liveScene 同样是结构参数：变化需重注册，原生侧才会切换采样源。
+        val liveSceneChanged = entry.liveScene != liveScene
+        entry.liveScene = liveScene
 
         val labelChanged = entry.label != label
         val stateChanged = entry.state != state
@@ -181,6 +187,7 @@ class LiquidGlassControllerImpl(private val view: LiquidGlassView) : LiquidGlass
         val structureChanged = !sameIcons(entry.segmentedIconIds, segmentedIconIds) ||
             iconIdChanged ||
             entry.textSizeSp != textSizeSp ||
+            (kind == LiquidGlassWidgetKind.Panel && liveSceneChanged) ||
             (kind == LiquidGlassWidgetKind.Slider && sliderRangeChanged(entry.state, state)) ||
             (kind == LiquidGlassWidgetKind.Segmented && entry.label.size != label.size)
 
@@ -232,6 +239,11 @@ class LiquidGlassControllerImpl(private val view: LiquidGlassView) : LiquidGlass
         byId.remove(entry.id)
         if (entry.registered) view.unregisterWidget(entry.id)
         freeIds.addLast(entry.id)
+    }
+
+    /** 下发「仅背景」位图：容器玻璃面据此只透背景（导航栏仍用实时快照）。 */
+    override fun setBackgroundBackdrop(bitmap: android.graphics.Bitmap) {
+        view.setBackgroundBackdrop(bitmap)
     }
 
     // ---- 原生液态玻璃模态弹窗：直接委托 [LiquidGlassView]（lgx::Modal 自绘） ----
@@ -317,7 +329,12 @@ class LiquidGlassControllerImpl(private val view: LiquidGlassView) : LiquidGlass
             )
 
             // 容器玻璃面：只绘制一块原生液态玻璃底，不参与命中、不产生事件。
-            LiquidGlassWidgetKind.Panel -> view.registerPanel(entry.id, box, entry.cornerRadius)
+            LiquidGlassWidgetKind.Panel -> view.registerPanel(
+                entry.id,
+                box,
+                entry.cornerRadius,
+                entry.liveScene,
+            )
         }
         entry.registered = true
         // 记录本次已下发的圆角，供 [track] 判定「圆角是否变化需重注册」。

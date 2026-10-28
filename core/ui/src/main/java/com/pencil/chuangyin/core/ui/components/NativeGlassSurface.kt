@@ -46,12 +46,15 @@ import com.pencil.chuangyin.core.theme.LocalLiquidGlassWidgetHost
  * @param shape 容器形状；圆角半径由它换算为物理像素/折射参数。
  * @param enabled 是否允许使用液态玻璃（通常传 `rememberLiquidGlassActive()`）。
  * @param fallbackColor 关闭液态玻璃 / 渲染不可用时的回退底色（原 M3 容器色）。
+ * @param liveScene 是否采样实时窗口内容（默认 false = 只透背景，玻璃下的控件消失）。
+ *        仅导航栏需要 true（用户明确豁免的例外）。
  */
 @Composable
 fun Modifier.nativeGlassSurface(
     shape: Shape,
     enabled: Boolean = true,
     fallbackColor: Color = Color.Unspecified,
+    liveScene: Boolean = false,
 ): Modifier {
     val renderer = LocalLiquidGlassRenderer.current
     if (!enabled) return fallbackOrSelf(fallbackColor, shape)
@@ -72,6 +75,7 @@ fun Modifier.nativeGlassSurface(
                 label = emptyList(),
                 state = emptyList(),
                 cornerRadius = radiusPx,
+                liveScene = liveScene,
             )
         }
 

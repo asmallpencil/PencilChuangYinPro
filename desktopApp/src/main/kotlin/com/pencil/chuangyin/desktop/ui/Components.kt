@@ -441,20 +441,26 @@ fun AppTextField(
         },
         textStyle = MaterialTheme.typography.bodyMedium,
         shape = MaterialTheme.shapes.medium,
-        modifier = modifier.then(
-            if (onDone != null) {
-                Modifier.onPreviewKeyEvent { event ->
-                    if (event.key == Key.Enter && event.type == KeyEventType.KeyDown) {
-                        onDone()
-                        true
-                    } else {
-                        false
+        modifier = modifier
+            // 输入框统一支持液态玻璃；关闭时回退为 surfaceContainerHighest 纯色底。
+            .glassSurface(
+                shape = MaterialTheme.shapes.medium,
+                fallbackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            )
+            .then(
+                if (onDone != null) {
+                    Modifier.onPreviewKeyEvent { event ->
+                        if (event.key == Key.Enter && event.type == KeyEventType.KeyDown) {
+                            onDone()
+                            true
+                        } else {
+                            false
+                        }
                     }
-                }
-            } else {
-                Modifier
-            }
-        ),
+                } else {
+                    Modifier
+                },
+            ),
     )
 }
 

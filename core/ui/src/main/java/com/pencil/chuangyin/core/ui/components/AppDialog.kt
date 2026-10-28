@@ -160,6 +160,7 @@ private fun AppDialogLayer(entry: AppDialogEntry) {
  * @param containerColor 玻璃不可用时的回退底色（形状随 [shape]）。
  * @param iconContentColor / titleContentColor / textContentColor 各槽的内容色上下文。
  * @param tonalElevation 仅用于与 M3 签名对齐（玻璃面不依赖色调阴影）。
+ * @param glass 是否允许卡片使用液态玻璃（false = 实心 M3 卡片，用于输出目录等设置弹窗）。
  */
 @Composable
 fun AppAlertDialog(
@@ -176,6 +177,7 @@ fun AppAlertDialog(
     titleContentColor: Color = MaterialTheme.colorScheme.onSurface,
     textContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     tonalElevation: Dp = 6.dp,
+    glass: Boolean = true,
 ) {
     val host = LocalAppDialogHost.current
     if (host == null) {
@@ -212,6 +214,7 @@ fun AppAlertDialog(
             iconContentColor = iconContentColor,
             titleContentColor = titleContentColor,
             textContentColor = textContentColor,
+            glass = glass,
         )
     }
     DisposableEffect(host, entry) {
@@ -234,6 +237,7 @@ private fun AppAlertDialogCard(
     iconContentColor: Color,
     titleContentColor: Color,
     textContentColor: Color,
+    glass: Boolean = true,
 ) {
     // 关键门控：只有「用户开启液态玻璃控件 + 渲染器可用」时才注册原生面板。
     // 此前只判断渲染器能力（`rememberLiquidGlassPanelActive`），导致控件开关关闭时弹窗
@@ -242,7 +246,7 @@ private fun AppAlertDialogCard(
     // - 控件关闭 / 渲染器不可用 / 处于独立弹窗窗口 → 走 Compose 实心卡片（fallbackColor）；
     // - glassOn=false 时原生面板会退化为不透明 fallback 表面并整块盖住 Compose 内容（按钮再次消失），
     //   因此必须在此一并排除。
-    val glassUsable = rememberLiquidGlassActive() && LocalLiquidGlassStyle.current.glassOn
+    val glassUsable = glass && rememberLiquidGlassActive() && LocalLiquidGlassStyle.current.glassOn
 
     LiquidGlassLayerScope(LiquidGlassLayer.MODAL) {
         // 弹窗内容必须由 Compose 在窗口内绘制：原生覆盖层恒在窗口之上，其 ImGui 文字不在 backdrop 中，

@@ -174,6 +174,15 @@ void setPanelPaddingPx(float value);
 
 void bindBackdropTexture(unsigned int texture, int width, int height);
 void releaseBackdropTexture();
+
+/**
+ * 绑定「仅背景」纹理（底色 + 壁纸，尺寸须与视口一致）。
+ *
+ * 默认所有容器玻璃面（Panel）采样该纹理：玻璃下不再透出控件，只透背景。
+ * 绑定后仍可用 [bindBackdropTexture] 提供实时窗口快照，供 `liveScene` 的面板使用。
+ */
+void bindBackgroundBackdropTexture(unsigned int texture, int width, int height);
+void releaseBackgroundBackdropTexture();
 Rgba frostedFallbackColor();
 
 void setPointer(const PointerState& state);
@@ -361,6 +370,14 @@ struct PanelStyle {
 
     bool backdropOn = true;
     bool opaqueBackdrop = false;
+
+    /**
+     * 是否采样**实时窗口内容**（true）而非「仅背景」位图（false，默认）。
+     *
+     * 默认只透背景（底色 + 壁纸）：玻璃面下的控件/文字会整体消失，避免多层空间叠加杂乱。
+     * 导航栏（底部 TabStrip / 悬浮导航栏）需要保持「透出上方内容」的观感，显式置 true。
+     */
+    bool liveScene = false;
     float backdropScaleX = 1.0f;
     float backdropScaleY = 1.0f;
     float backdropBlend = 0.0f;

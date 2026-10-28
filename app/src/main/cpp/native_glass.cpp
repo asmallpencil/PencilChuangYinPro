@@ -161,6 +161,9 @@ struct Widget {
 
     float cornerRadius = 0.0f;  // Panel 圆角半径（px；0 = 直角）
     int panelIndex = -1;        // Panel 提交的原生玻璃面板索引
+    // Panel 是否采样实时窗口内容（true）而非「仅背景」纹理（false）。
+    // 仅导航栏类面板需要 true（用户指定的唯一豁免）。
+    bool liveScene = false;
 
     // 是否参与交互（命中 + 事件）。false = 仅绘制玻璃外观（draw-only）：
     // 用于「落在 Compose 滚动容器内的芯片」——触摸交给 Compose 的 LazyRow 处理滑动，
@@ -218,6 +221,9 @@ int g_autoFrames = 0;
 // ---- backdrop（Kotlin PixelCopy 抓取的窗口内容） ----
 unsigned int g_backdropTex = 0u;
 std::vector<unsigned char> g_backdropScratch;
+
+// ---- 仅背景纹理（底色 + 壁纸，不含控件；容器玻璃面默认采样它） ----
+unsigned int g_bgBackdropTex = 0u;
 
 // ---- 字体 ----
 ImFont* g_font = nullptr;
@@ -886,6 +892,8 @@ lgx::PanelStyle makePanelStyle(const Widget& w) {
     style.surface.a = lgx::detail::tintSheetAlpha() * lgx::config::Layout::PANEL_SHEET_ALPHA_SCALE;
     style.surfaceMode = lgx::SurfaceMode::Overlay;
     style.backdropOn = g_style.glassOn;
+    // 默认只透背景（控件在玻璃下消失）；导航栏面板在注册时置 liveScene。
+    style.liveScene = w.liveScene;
     style.alpha = 1.0f;
     // 面色下限仍走设置页的填充不透明度：sheet 透明度过低（暗色）时保证可读性。
     style.surfaceAlphaFloor = g_panelStyle.fillAlpha;
@@ -1602,10 +1610,11 @@ Java_com_pencil_chuangyin_pro_liquid_LiquidGlassView_nativeRegisterSegmented(
 JNIEXPORT void JNICALL
 Java_com_pencil_chuangyin_pro_liquid_LiquidGlassView_nativeRegisterPanel(
         JNIEnv*, jobject, jint id, jfloat left, jfloat top, jfloat right, jfloat bottom,
-        jfloat cornerRadius) {
+        jfloat cornerRadius, jboolean liveScene) {
     Widget* w = upsert(id, WidgetType::Panel);
     w->box = lgx::Box(left, top, right, bottom);
     w->cornerRadius = cornerRadius > 0.0f ? cornerRadius : 0.0f;
+    w->liveScene = liveScene == JNI_TRUE;
     w->panelIndex = -1;
     g_hitDirty = true;
 }
@@ -1885,11 +1894,70 @@ Java_com_pencil_chuangyin_pro_liquid_LiquidGlassView_nativeBindBackdrop(
     return JNI_TRUE;
 }
 
+/**
+ * 绑定「仅背景」位图（底色 + 壁纸，不含任何控件）。
+ *
+ * 容器玻璃面默认采样这张纹理：玻璃下的控件整体消失，只透背景——避免多层空间叠加杂乱。
+ * 导航栏（liveScene）仍使用 [nativeBindBackdrop] 的实时窗口快照。
+ */
+JNIEXPORT jboolean JNICALL
+Java_com_pencil_chuangyin_pro_liquid_LiquidGlassView_nativeBindBackgroundBackdrop(
+        JNIEnv* env, jobject, jobject bitmap) {
+    if (bitmap == nullptr || g_width <= 0.0f || g_height <= 0.0f) return JNI_FALSE;
+    AndroidBitmapInfo info;
+    if (AndroidBitmap_getInfo(env, bitmap, &info) != ANDROID_BITMAP_RESULT_SUCCESS) {
+        LOGE("bgBackdrop: getInfo failed");
+        return JNI_FALSE;
+    }
+    if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
+        LOGE("bgBackdrop: unexpected format %d", info.format);
+        return JNI_FALSE;
+    }
+    void* pixels = nullptr;
+    if (AndroidBitmap_lockPixels(env, bitmap, &pixels) != ANDROID_BITMAP_RESULT_SUCCESS ||
+        pixels == nullptr) {
+        LOGE("bgBackdrop: lockPixels failed");
+        return JNI_FALSE;
+    }
+
+    const int w = (int)info.width;
+    const int h = (int)info.height;
+    const size_t rowBytes = (size_t)w * 4u;
+    g_backdropScratch.resize(rowBytes * (size_t)h);
+    const unsigned char* src = (const unsigned char*)pixels;
+    for (int y = 0; y < h; ++y) {
+        const unsigned char* srcRow = src + (size_t)y * rowBytes;
+        unsigned char* dstRow = g_backdropScratch.data() + (size_t)(h - 1 - y) * rowBytes;
+        memcpy(dstRow, srcRow, rowBytes);
+    }
+    AndroidBitmap_unlockPixels(env, bitmap);
+
+    if (g_bgBackdropTex == 0u) glGenTextures(1, &g_bgBackdropTex);
+    glBindTexture(GL_TEXTURE_2D, g_bgBackdropTex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                 g_backdropScratch.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    lgx::bindBackgroundBackdropTexture(g_bgBackdropTex, w, h);
+    // 背景纹理已就绪后，面板即可走「只透背景」路径；实时快照仍供导航栏使用。
+    lgx::setBackdropEnabled(true);
+    return JNI_TRUE;
+}
+
 JNIEXPORT void JNICALL
 Java_com_pencil_chuangyin_pro_liquid_LiquidGlassView_nativeRelease(JNIEnv*, jobject) {
     if (g_backdropTex != 0u) {
         glDeleteTextures(1, &g_backdropTex);
         g_backdropTex = 0u;
+    }
+    if (g_bgBackdropTex != 0u) {
+        glDeleteTextures(1, &g_bgBackdropTex);
+        g_bgBackdropTex = 0u;
     }
     g_backdropScratch.clear();
 

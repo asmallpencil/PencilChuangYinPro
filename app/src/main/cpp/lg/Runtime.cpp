@@ -461,6 +461,7 @@ bool startup() {
 void shutdown() {
     detail::glShutdown();
     detail::releaseBackdrop();
+    detail::releaseBackgroundBackdrop();
     detail::resetJobs();
 }
 

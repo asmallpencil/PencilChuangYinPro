@@ -50,6 +50,8 @@ fun CreativeScreen(
                         onClick = onOpenSettings,
                         imageVector = Icons.Filled.Settings,
                         contentDescription = stringResource(ResR.string.label_settings),
+                        // 顶栏设置按钮不使用液态玻璃。
+                        glass = false,
                     )
                 },
                 // 顶部导航栏底部交给原生液态玻璃（与首页 / P 站同一套实现）；

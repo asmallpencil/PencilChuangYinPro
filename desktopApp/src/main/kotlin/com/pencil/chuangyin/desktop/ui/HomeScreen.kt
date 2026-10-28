@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -298,71 +299,85 @@ private fun CreativeToolsCard(onToolClick: (String) -> Unit) {
             // 与安卓端一致：标签打印未开放，显示「敬请期待」徽标且不可点击。
             ToolEntry(AppIcon.TagTool, "标签打印", null, "敬请期待"),
         )
-        tools.forEachIndexed { index, tool ->
-            val enabled = tool.badge == null
-            val interaction = remember(tool.title) { MutableInteractionSource() }
-            StaggerIn(index = index + 2, step = 45, offsetDivisor = 40) {
+        // 与安卓端一致：一排 2 个并排的功能瓦片，奇数项末行补一个空位保持对齐。
+        tools.chunked(2).forEachIndexed { rowIndex, rowTools ->
+            StaggerIn(index = rowIndex + 2, step = 45, offsetDivisor = 40) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (enabled) {
-                                Modifier
-                                    .pressScale(interaction, pressedScale = 0.97f)
-                                    .clickable(
-                                        interactionSource = interaction,
-                                        indication = null,
-                                    ) { onToolClick(tool.title) }
-                            } else {
-                                Modifier
-                            }
-                        )
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    AppIconView(
-                        icon = tool.icon,
-                        size = 24.dp,
-                        tint = if (enabled) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.outline
-                        },
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            text = tool.title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (enabled) {
-                                MaterialTheme.colorScheme.onSurface
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                    rowTools.forEach { tool ->
+                        CreativeToolTile(
+                            tool = tool,
+                            onToolClick = onToolClick,
+                            modifier = Modifier.weight(1f),
                         )
-                        if (tool.subtitle != null) {
-                            Text(
-                                text = tool.subtitle,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
                     }
-                    if (tool.badge != null) {
-                        Text(
-                            text = tool.badge,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        AppIconView(
-                            icon = AppIcon.ChevronRight,
-                            size = 20.dp,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    if (rowTools.size == 1) {
+                        Spacer(Modifier.weight(1f))
                     }
                 }
             }
+        }
+    }
+}
+
+/** 单个功能瓦片：图标 + 标题 + 描述，纵向排布（对齐安卓端 CreativeToolEntry）。 */
+@Composable
+private fun CreativeToolTile(
+    tool: ToolEntry,
+    onToolClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val enabled = tool.badge == null
+    val interaction = remember(tool.title) { MutableInteractionSource() }
+    Column(
+        modifier = modifier
+            .then(
+                if (enabled) {
+                    Modifier
+                        .pressScale(interaction, pressedScale = 0.97f)
+                        .clickable(
+                            interactionSource = interaction,
+                            indication = null,
+                        ) { onToolClick(tool.title) }
+                } else {
+                    Modifier
+                }
+            )
+            .padding(vertical = 8.dp),
+    ) {
+        AppIconView(
+            icon = tool.icon,
+            size = 24.dp,
+            tint = if (enabled) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.outline
+            },
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = tool.title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (enabled) {
+                MaterialTheme.colorScheme.onSurface
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
+        if (tool.badge != null) {
+            Text(
+                text = tool.badge,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else if (tool.subtitle != null) {
+            Text(
+                text = tool.subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -47,7 +47,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -115,6 +114,7 @@ import com.pencil.chuangyin.core.ui.components.AppSlider
 import com.pencil.chuangyin.core.ui.components.AppSwitch
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextField
+import com.pencil.chuangyin.core.ui.components.GlassPanel
 import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
 import com.pencil.chuangyin.core.ui.components.RgbColorPicker
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
@@ -341,6 +341,8 @@ private fun OutputPathDialog(
                     AppTextButton(text = stringResource(ResR.string.action_cancel), onClick = onDismiss)
                 }
             },
+            // 产物输出目录弹窗保持实心卡片，不做液态玻璃。
+            glass = false,
         )
     }
 }
@@ -369,11 +371,12 @@ private fun SettingsGroup(
                     bottom = dimensionResource(ResR.dimen.dimen_global_padding_s),
                 ),
             )
-            Surface(
+            // 设置分类栏是内容容器（非控件），按需求启用真液态玻璃；不可用时回退原 M3 容器色。
+            GlassPanel(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_l)),
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                tonalElevation = 0.dp,
+                enabled = rememberLiquidGlassActive(),
+                fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
             ) {
                 Column(content = content)
             }
@@ -456,6 +459,8 @@ internal fun BackIcon(onBack: () -> Unit) {
         onClick = onBack,
         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
         contentDescription = stringResource(ResR.string.label_back),
+        // 设置页返回按钮保持实心，不做玻璃（避免与顶栏玻璃叠加）。
+        glass = false,
     )
 }
 

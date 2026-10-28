@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -107,6 +108,8 @@ fun HomeScreen(
                         onClick = onOpenSettings,
                         imageVector = Icons.Filled.Settings,
                         contentDescription = stringResource(R.string.home_settings),
+                        // 顶栏设置按钮不使用液态玻璃（避免导航区玻璃滥用）。
+                        glass = false,
                     )
                 },
                 modifier = Modifier.nativeGlassSurface(
@@ -351,96 +354,73 @@ private fun CreativeToolsCard(
                 text = stringResource(R.string.home_creative_tools),
                 style = MaterialTheme.typography.titleMedium,
             )
-            CreativeToolEntry(
-                icon = Icons.Filled.Description,
-                title = stringResource(ResR.string.creative_text_print),
-                subtitle = stringResource(ResR.string.creative_text_print_desc),
-                badge = null,
-                onClick = onOpenText,
+            // 一排 2 个功能栏：按入口列表分块，每块一行、等宽并排。
+            val tools = listOf(
+                CreativeTool(Icons.Filled.Description, stringResource(ResR.string.creative_text_print), stringResource(ResR.string.creative_text_print_desc), onOpenText),
+                CreativeTool(Icons.Filled.Image, stringResource(ResR.string.creative_image_print), stringResource(ResR.string.creative_image_print_desc), onOpenImage),
+                CreativeTool(Icons.Filled.PhotoCamera, stringResource(ResR.string.creative_photo_print), stringResource(ResR.string.creative_photo_print_desc), onOpenCamera),
+                CreativeTool(Icons.Filled.AutoAwesome, stringResource(ResR.string.creative_ai_print), stringResource(ResR.string.creative_ai_print_desc), onOpenAi),
             )
-            CreativeToolEntry(
-                icon = Icons.Filled.Image,
-                title = stringResource(ResR.string.creative_image_print),
-                subtitle = stringResource(ResR.string.creative_image_print_desc),
-                badge = null,
-                onClick = onOpenImage,
-            )
-            CreativeToolEntry(
-                icon = Icons.Filled.PhotoCamera,
-                title = stringResource(ResR.string.creative_photo_print),
-                subtitle = stringResource(ResR.string.creative_photo_print_desc),
-                badge = null,
-                onClick = onOpenCamera,
-            )
-            CreativeToolEntry(
-                icon = Icons.Filled.AutoAwesome,
-                title = stringResource(ResR.string.creative_ai_print),
-                subtitle = stringResource(ResR.string.creative_ai_print_desc),
-                badge = null,
-                onClick = onOpenAi,
-            )
+            tools.chunked(2).forEach { rowTools ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
+                ) {
+                    rowTools.forEach { tool ->
+                        CreativeToolEntry(
+                            icon = tool.icon,
+                            title = tool.title,
+                            subtitle = tool.subtitle,
+                            onClick = tool.onClick,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (rowTools.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
         }
     }
 }
+
+/** 功能栏入口数据（标题 + 一句描述 + 点击行为）。 */
+private data class CreativeTool(
+    val icon: ImageVector,
+    val title: String,
+    val subtitle: String,
+    val onClick: () -> Unit,
+)
 
 @Composable
 private fun CreativeToolEntry(
     icon: ImageVector,
     title: String,
     subtitle: String?,
-    badge: String?,
-    onClick: (() -> Unit)?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val enabled = onClick != null
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+    Column(
+        modifier = modifier
+            .clickable(onClick = onClick)
             .padding(dimensionResource(ResR.dimen.dimen_global_padding_s)),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
     ) {
         AppIcon(
             imageVector = icon,
             contentDescription = title,
-            tint = if (enabled) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.outline
-            },
+            tint = MaterialTheme.colorScheme.primary,
         )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = dimensionResource(ResR.dimen.dimen_global_padding_m)),
-        ) {
+        AppText(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        if (subtitle != null) {
             AppText(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (enabled) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            )
-            if (subtitle != null) {
-                AppText(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        if (badge != null) {
-            AppText(
-                text = badge,
+                text = subtitle,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            AppIcon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

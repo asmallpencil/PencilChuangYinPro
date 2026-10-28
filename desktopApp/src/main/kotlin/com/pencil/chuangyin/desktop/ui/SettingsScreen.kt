@@ -1049,8 +1049,14 @@ private fun AboutPage(onBack: () -> Unit) {
 
         SettingsDivider()
 
+        // 与安卓端开源许可页一致：每个项目一张玻璃卡片。
         OPEN_SOURCE_LIST.forEach { entry ->
-            Column(Modifier.padding(vertical = 8.dp)) {
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                elevation = 1f,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            ) {
                 Text(text = entry.name, style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = "${entry.author} · ${entry.license}",
@@ -1063,6 +1069,7 @@ private fun AboutPage(onBack: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            Spacer(Modifier.height(8.dp))
         }
 
         SettingsDivider()

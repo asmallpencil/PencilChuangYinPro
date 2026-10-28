@@ -28,7 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -49,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import com.pencil.chuangyin.core.ui.components.AppIconButton
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextField
+import com.pencil.chuangyin.core.ui.components.GlassPanel
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
 import com.pencil.chuangyin.core.ui.motion.animateItemMotion
@@ -100,6 +100,7 @@ fun LicensesScreen(
                         onClick = onBack,
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(ResR.string.label_back),
+                        glass = false,
                     )
                 },
                 modifier = Modifier.nativeGlassSurface(
@@ -123,10 +124,11 @@ fun LicensesScreen(
             verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
         ) {
             item(key = "intro") {
-                Surface(
+                GlassPanel(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_l)),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    enabled = glassActive,
+                    fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 ) {
                     AppText(
                         text = stringResource(R.string.settings_licenses_intro),
@@ -216,10 +218,11 @@ private fun LicenseRow(
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    Surface(
+    GlassPanel(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_l)),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        enabled = rememberLiquidGlassActive(),
+        fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Row(
             modifier = Modifier

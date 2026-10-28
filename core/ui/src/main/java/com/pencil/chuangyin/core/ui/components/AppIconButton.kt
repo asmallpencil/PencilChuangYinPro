@@ -32,6 +32,7 @@ import com.pencil.chuangyin.resources.R as ResR
  * @param contentDescription 无障碍描述（须来自 stringResource）。
  * @param tint 自定义图标颜色；null 表示沿用主题默认（原生路径仅在此情形生效）。
  * @param size 按钮边长（默认全局触摸目标 48dp，与 M3 IconButton 一致）。
+ * @param glass 是否允许使用液态玻璃（false = 始终走 M3 图标按钮）。
  */
 @Composable
 fun AppIconButton(
@@ -42,9 +43,10 @@ fun AppIconButton(
     enabled: Boolean = true,
     tint: Color? = null,
     size: Dp = dimensionResource(ResR.dimen.dimen_global_touch_target),
+    glass: Boolean = true,
 ) {
     val host = LocalLiquidGlassWidgetHost.current
-    if (enabled && tint == null && rememberLiquidGlassActive() && host != null) {
+    if (glass && enabled && tint == null && rememberLiquidGlassActive() && host != null) {
         // 方形占位框经原生 capsule 圆角即为圆形；图标由位图纹理绘制、原生按文字色着色。
         Box(
             modifier = modifier

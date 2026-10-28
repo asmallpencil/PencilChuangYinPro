@@ -24,6 +24,8 @@ import com.pencil.chuangyin.core.ui.motion.pressScale
  *
  * 原生文字按钮不绘制玻璃面（仅文字与按压反馈），因此 Composable 仍绘制文字（保留
  * 无障碍与精确排版）；原生层只在按压时提供缩放反馈。
+ *
+ * @param glass 是否允许使用液态玻璃（false = 始终走 M3 文字按钮）。
  */
 @Composable
 fun AppTextButton(
@@ -32,9 +34,10 @@ fun AppTextButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     contentColor: Color = MaterialTheme.colorScheme.primary,
+    glass: Boolean = true,
 ) {
     val host = LocalLiquidGlassWidgetHost.current
-    if (enabled && rememberLiquidGlassActive() && host != null) {
+    if (glass && enabled && rememberLiquidGlassActive() && host != null) {
         // 原生层不画玻璃面与文字（[LiquidGlassButtonVariant.Text]），故此处照常绘制文字，
         // 仅用原生通道承载按压反馈。
         Box(

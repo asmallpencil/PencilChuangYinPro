@@ -2,6 +2,9 @@ package com.pencil.chuangyin.core.theme
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -10,20 +13,27 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.IntSize
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
@@ -82,10 +92,14 @@ fun AppTheme(
     val themeShapes = remember(shapeResolver, themeState.cornerStyle, themeState.cornerStrength) {
         shapeResolver.shapes(themeState.cornerStyle, themeState.cornerStrength)
     }
+    // 壁纸（已按滑杆模糊）：既用于绘制底层背景，也用于合成「仅背景」位图。
+    val wallpaper = rememberBackgroundBitmap(themeState.backgroundUri, themeState.backgroundBlur)
+    var windowSize by remember { mutableStateOf(IntSize.Zero) }
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(baseScheme.background),
+            .background(baseScheme.background)
+            .onSizeChanged { windowSize = it },
     ) {
         // 液态玻璃（Kotlin 实现）采样源：把底层「底色 + 背景图」记录进 graphicsLayer，
         // 玻璃面（Modifier.drawBackdrop）据此做折射/模糊采样，与上游 Kyant0/AndroidLiquidGlass
@@ -99,11 +113,28 @@ fun AppTheme(
             Modifier.fillMaxSize()
         }
         Box(modifier = glassBackground) {
-            CustomBackgroundImage(
-                uri = themeState.backgroundUri,
-                alpha = themeState.backgroundAlpha,
-                blurDp = themeState.backgroundBlur,
-            )
+            wallpaper?.let { bitmap ->
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alpha = themeState.backgroundAlpha,
+                )
+            }
+        }
+        // C++ 路径：把「底色 + 壁纸」合成为**仅背景**位图下发给原生层。
+        // 容器玻璃面据此采样——玻璃面下的控件整体消失、只透背景（导航栏走实时快照，不受影响）。
+        if (themeState.liquidGlassRenderer == LiquidGlassRenderer.Cpp && liquidGlassWidgetHost != null) {
+            val bgArgb = baseScheme.background.toArgb()
+            val bgAlpha = themeState.backgroundAlpha
+            LaunchedEffect(liquidGlassWidgetHost, wallpaper, bgArgb, bgAlpha, windowSize) {
+                if (windowSize.width <= 0 || windowSize.height <= 0) return@LaunchedEffect
+                val composed = withContext(Dispatchers.Default) {
+                    composeBackgroundBitmap(windowSize, bgArgb, wallpaper, bgAlpha)
+                }
+                liquidGlassWidgetHost.setBackgroundBackdrop(composed)
+            }
         }
         CompositionLocalProvider(
             LocalControlOutline provides themeState.toControlOutline(),
@@ -132,13 +163,13 @@ fun AppTheme(
 
 /**
  * 全局自定义背景图：按 content URI 异步解码（IO 线程，随 URI 记忆缓存），
- * 以 [ContentScale.Crop] 铺满全屏并按 [alpha] 叠加；模糊采用 [blurBitmap] 软件实现，
+ * 以 [ContentScale.Crop] 铺满全屏并按 alpha 叠加；模糊采用 [blurBitmap] 软件实现，
  * Android 6.0(API23) 起全版本一致生效（Modifier.blur 仅 Android 12+ 可用，旧机会静默失效）。
- * URI 为空或解码失败时不绘制。
+ * URI 为空或解码失败时返回 null。
  */
 @Composable
-private fun CustomBackgroundImage(uri: String?, alpha: Float, blurDp: Float) {
-    if (uri == null) return
+private fun rememberBackgroundBitmap(uri: String?, blurDp: Float): Bitmap? {
+    if (uri == null) return null
     val context = LocalContext.current
     val density = LocalDensity.current.density
     // 第一阶段：仅随 URI 重新解码原图，拖滑杆不会反复读盘解码。
@@ -163,13 +194,36 @@ private fun CustomBackgroundImage(uri: String?, alpha: Float, blurDp: Float) {
             }
         }
     }
-    rendered?.let { bitmap ->
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            alpha = alpha,
-        )
+    return rendered
+}
+
+/**
+ * 合成「仅背景」位图：底色铺满 + 壁纸按 Crop 居中缩放并按 [alpha] 叠加。
+ *
+ * 与页面实际背景的绘制规则（`Image` + `ContentScale.Crop`）保持一致，
+ * 因此原生玻璃采样到的就是用户看到的背景。尺寸必须为窗口物理像素。
+ */
+private fun composeBackgroundBitmap(
+    size: IntSize,
+    colorArgb: Int,
+    wallpaper: Bitmap?,
+    alpha: Float,
+): Bitmap {
+    val width = size.width.coerceAtLeast(1)
+    val height = size.height.coerceAtLeast(1)
+    val out = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(out)
+    canvas.drawColor(colorArgb)
+    if (wallpaper != null && alpha > 0f && wallpaper.width > 0 && wallpaper.height > 0) {
+        val scale = max(width / wallpaper.width.toFloat(), height / wallpaper.height.toFloat())
+        val drawW = wallpaper.width * scale
+        val drawH = wallpaper.height * scale
+        val left = (width - drawW) * 0.5f
+        val top = (height - drawH) * 0.5f
+        val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply {
+            this.alpha = (alpha.coerceIn(0f, 1f) * 255f).roundToInt()
+        }
+        canvas.drawBitmap(wallpaper, null, RectF(left, top, left + drawW, top + drawH), paint)
     }
+    return out
 }

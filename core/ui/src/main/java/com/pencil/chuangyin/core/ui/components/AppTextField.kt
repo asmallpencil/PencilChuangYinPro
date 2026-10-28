@@ -26,9 +26,9 @@ import com.pencil.chuangyin.resources.R as ResR
  * [cornerSafeInset]——M3 1.3 的 OutlinedTextField 不支持 contentPadding 参数，
  * 高档菱形/切角下默认 16dp 内边距不足以避开斜切边，靠边文字会被切掉。
  *
- * 液态玻璃：输入框底色由 **Compose 自绘的伪液态玻璃层**（[pseudoGlassSurface]）绘制。
- * 输入框常随页面/列表一起滚动，若走真玻璃（背景采样）会因纹理滞后一帧而在滑动中抖动，
- * 故此处固定使用伪玻璃；输入框本体保持透明以透出底色。
+ * 液态玻璃：输入框底色走**真液态玻璃**（[nativeGlassSurface]）——采样源已改为静态的
+ * 「仅背景」位图 / 背景图层，不再随滚动内容滞后，故不会出现早期真玻璃输入框的抖动。
+ * 玻璃不可用时回退到 [pseudoGlassSurface] 的半透明磨砂底；输入框本体保持透明以透出底色。
  */
 @Composable
 fun AppTextField(
@@ -44,6 +44,7 @@ fun AppTextField(
 ) {
     val shape = MaterialTheme.shapes.medium
     val outline = LocalControlOutline.current
+    val glassActive = rememberLiquidGlassActive()
     // 形状安全内边距：让输入文字/标签整体向内避开斜切边缘。
     val safeInset = cornerSafeInset(shapeScale = 1f)
     // M3 边框统一透明：边框由外层 Box 按全宽形状绘制，避免内缩后边框与形状脱节。
@@ -75,7 +76,17 @@ fun AppTextField(
                     Modifier
                 },
             )
-            .pseudoGlassSurface(shape = shape)
+            .then(
+                if (glassActive) {
+                    Modifier.nativeGlassSurface(
+                        shape = shape,
+                        enabled = true,
+                        fallbackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    )
+                } else {
+                    Modifier.pseudoGlassSurface(shape = shape)
+                },
+            )
             .controlOutline(shape),
     ) {
         OutlinedTextField(

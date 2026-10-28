@@ -646,11 +646,12 @@ private fun BrowserTopBar(
         Surface(
             modifier = Modifier
                 .weight(1f)
-                // 地址栏是「输入框」，且位于随网页滚动的区域上方：真玻璃采样的是滞后一帧的背景纹理，
-                // 滚动时会与下方网页错位一拍而抖动 → 固定用伪玻璃。
-                .pseudoGlassSurface(
+                // 地址栏属于输入框，按统一政策启用真液态玻璃；引擎只采样静态背景，
+                // 滚动时不会再出现「滞后一帧」的抖动。
+                .nativeGlassSurface(
                     shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_pixiv_browser_url_radius)),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    enabled = rememberLiquidGlassActive(),
+                    fallbackColor = MaterialTheme.colorScheme.surfaceVariant,
                 ),
             shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_pixiv_browser_url_radius)),
             color = Color.Transparent,
