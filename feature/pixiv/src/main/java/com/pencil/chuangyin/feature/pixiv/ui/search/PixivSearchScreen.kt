@@ -110,6 +110,7 @@ private fun PixivSearchContent(
                         onClick = onBack,
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(ResR.string.label_back),
+                        glass = false,
                     )
                 },
                 modifier = Modifier.nativeGlassSurface(

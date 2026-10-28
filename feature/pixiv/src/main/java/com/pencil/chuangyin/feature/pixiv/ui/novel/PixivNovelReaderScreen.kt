@@ -205,16 +205,19 @@ fun PixivNovelReaderRoute(
                             else ResR.string.pixiv_bookmark,
                         ),
                         enabled = !bookmarkBusy,
+                        glass = false,
                     )
                     AppIconButton(
                         onClick = viewModel::download,
                         imageVector = Icons.Filled.Download,
                         contentDescription = stringResource(ResR.string.pixiv_novel_download),
+                        glass = false,
                     )
                     AppIconButton(
                         onClick = viewModel::print,
                         imageVector = Icons.Filled.Print,
                         contentDescription = stringResource(ResR.string.pixiv_print),
+                        glass = false,
                     )
                 }
             },

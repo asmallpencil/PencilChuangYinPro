@@ -163,6 +163,7 @@ private fun PixivBrowseContent(
                                 onClick = { drawerOpen = true },
                                 imageVector = Icons.Filled.Menu,
                                 contentDescription = stringResource(ResR.string.pixiv_menu),
+                                glass = false,
                             )
                         }
                     },
@@ -172,11 +173,13 @@ private fun PixivBrowseContent(
                                 onClick = onOpenSearch,
                                 imageVector = Icons.Filled.Search,
                                 contentDescription = stringResource(ResR.string.pixiv_search),
+                                glass = false,
                             )
                             AppIconButton(
                                 onClick = onRefresh,
                                 imageVector = Icons.Filled.Refresh,
                                 contentDescription = stringResource(ResR.string.pixiv_refresh),
+                                glass = false,
                             )
                         }
                     },

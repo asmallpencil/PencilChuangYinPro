@@ -52,12 +52,6 @@ unsigned int g_backdropTexture = 0;
 int g_backdropWidth = 0;
 int g_backdropHeight = 0;
 
-// 「仅背景」纹理：只含底色 + 壁纸，不含任何控件。默认所有面板采样它，
-// 使玻璃面下的控件整体消失（只透背景），避免多层空间叠加显得杂乱。
-unsigned int g_bgBackdropTexture = 0;
-int g_bgBackdropWidth = 0;
-int g_bgBackdropHeight = 0;
-
 float alphaOf(unsigned int color) {
     return (float)((color >> 24) & 0xFFu) / config::COLOR_CHANNEL;
 }
@@ -69,15 +63,6 @@ float channelOf(unsigned int color, int shift) {
 bool backdropReady() {
     return backdropEnabledFlag() && g_backdropTexture != 0 && g_backdropWidth > 0
         && g_backdropHeight > 0;
-}
-
-bool backgroundBackdropReady() {
-    return g_bgBackdropTexture != 0 && g_bgBackdropWidth > 0 && g_bgBackdropHeight > 0;
-}
-
-/** 该 job 是否应采样仅背景纹理：非 liveScene，且背景纹理已绑定。 */
-bool usesBackgroundScene(const PanelJob& job) {
-    return !job.liveScene && backgroundBackdropReady();
 }
 
 // 采样矩形相对视图视口（0..viewW, 0..viewH）的越界面积占比（0..1）。
@@ -296,9 +281,7 @@ int appendJob(const PanelStyle& style, const Box& box, float pad) {
                        clampRange(style.surface.a, 0.0f, 1.0f));
     job.surfaceMode = style.surfaceMode == SurfaceMode::Overlay ? 2.0f
                     : (style.surfaceMode == SurfaceMode::Hue ? 1.0f : 0.0f);
-    job.sceneOn = (style.backdropOn && (backdropEnabledFlag() || backgroundBackdropReady()))
-        ? 1.0f : 0.0f;
-    job.liveScene = style.liveScene;
+    job.sceneOn = (style.backdropOn && backdropEnabledFlag()) ? 1.0f : 0.0f;
     job.solidBackdrop = style.opaqueBackdrop ? 1.0f : 0.0f;
     job.stretchX = clampRange(style.backdropScaleX, 0.0f, 2.0f);
     job.stretchY = clampRange(style.backdropScaleY, config::Render::BACKDROP_SCALE_MIN, 2.0f);
@@ -383,18 +366,7 @@ void captureScene(int index) {
     PanelJob& job = g_jobs[index];
     if (job.sampleReady || job.shadeMode > 0.5f || job.sceneOn < 0.5f) return;
 
-    if (usesBackgroundScene(job)) {
-        // 仅背景纹理：视口坐标 → 纹理坐标。span 取纹理尺寸、stride 同尺寸，
-        // 使 uv 恰好覆盖整张纹理。
-        job.sampleOriginX = 0.0f;
-        job.sampleOriginY = 0.0f;
-        job.sampleSizeX = (float)g_bgBackdropWidth;
-        job.sampleSizeY = (float)g_bgBackdropHeight;
-        job.sampleStrideX = (float)g_bgBackdropWidth;
-        job.sampleStrideY = (float)g_bgBackdropHeight;
-        job.sampleReady = true;
-    }
-    else if (backdropReady()) {
+    if (backdropReady()) {
         job.sampleOriginX = 0.0f;
         job.sampleOriginY = 0.0f;
         job.sampleSizeX = (float)g_backdropWidth;
@@ -446,17 +418,7 @@ void paintJob(int index, const Box& clip) {
     PanelJob& job = g_jobs[index];
 
     unsigned int sceneTexture = 0u;
-    const bool bgScene = usesBackgroundScene(job);
-    if (bgScene) {
-        sceneTexture = g_bgBackdropTexture;
-        job.sampleOriginX = 0.0f;
-        job.sampleOriginY = 0.0f;
-        job.sampleSizeX = (float)g_bgBackdropWidth;
-        job.sampleSizeY = (float)g_bgBackdropHeight;
-        job.sampleStrideX = (float)g_bgBackdropWidth;
-        job.sampleStrideY = (float)g_bgBackdropHeight;
-        job.sampleReady = true;
-    } else if (backdropReady()) {
+    if (backdropReady()) {
         sceneTexture = g_backdropTexture;
         // backdrop 走全屏快照：同步采样参数，使 uSceneReady 判定成立。
         job.sampleOriginX = 0.0f;
@@ -472,7 +434,7 @@ void paintJob(int index, const Box& clip) {
     if (job.shadeMode <= 0.5f && sceneTexture == 0u) job.sceneOn = 0.0f;
 
     job.gatherActive = false;
-    if (job.shadeMode <= 0.5f && !bgScene && !backdropReady() && sceneTexture != 0u
+    if (job.shadeMode <= 0.5f && !backdropReady() && sceneTexture != 0u
             && job.blurRadius >= config::Render::BLUR_MIN_SIGMA) {
         if (glRunGather((int)job.sampleSizeX, (int)job.sampleSizeY, sceneTexture,
                         glCaptureWidth(), glCaptureHeight(), job.blurRadius)) {
@@ -522,18 +484,6 @@ void releaseBackdrop() {
     g_backdropTexture = 0;
     g_backdropWidth = 0;
     g_backdropHeight = 0;
-}
-
-void bindBackgroundBackdrop(unsigned int texture, int width, int height) {
-    g_bgBackdropTexture = texture;
-    g_bgBackdropWidth = width > 0 ? width : 0;
-    g_bgBackdropHeight = height > 0 ? height : 0;
-}
-
-void releaseBackgroundBackdrop() {
-    g_bgBackdropTexture = 0;
-    g_bgBackdropWidth = 0;
-    g_bgBackdropHeight = 0;
 }
 
 void resetJobs() {
@@ -609,14 +559,6 @@ void clearEnqueuePanelHook() {
 
 int submitPanel(const PanelStyle& style, const Box& box) {
     return detail::submitPanelJob(style, box);
-}
-
-void bindBackgroundBackdropTexture(unsigned int texture, int width, int height) {
-    detail::bindBackgroundBackdrop(texture, width, height);
-}
-
-void releaseBackgroundBackdropTexture() {
-    detail::releaseBackgroundBackdrop();
 }
 
 void runPanelCapture(int index, const Box& clip) {

@@ -39,7 +39,6 @@ internal fun Modifier.nativeGlassWidget(
     icon: ImageBitmap? = null,
     cornerRadius: Float = 0f,
     interactive: Boolean = true,
-    liveScene: Boolean = false,
     onEvent: (Float) -> Unit = {},
 ): Modifier {
     val host = LocalLiquidGlassWidgetHost.current ?: return this
@@ -53,7 +52,7 @@ internal fun Modifier.nativeGlassWidget(
         if (kind != LiquidGlassWidgetKind.Panel) host.bindEvent(key, onEvent)
         host.sync(
             kind, key, label, state, iconId, segmentedIconIds, textSizeSp, variant, selected, icon,
-            cornerRadius, liveScene,
+            cornerRadius,
         )
     }
     // track 必须置于链尾：Modifier 链中除 tail 之外不会调用 onGloballyPositioned 所在的

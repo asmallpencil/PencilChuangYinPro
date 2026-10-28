@@ -37,6 +37,7 @@ fun PixivSubScaffold(
                         onClick = onBack,
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(ResR.string.label_back),
+                        glass = false,
                     )
                 },
                 actions = { actions() },

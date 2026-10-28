@@ -84,8 +84,6 @@ class LiquidGlassView @JvmOverloads constructor(
     private var lastBackdropAt = 0L
     private var capturing = false
     private var backdropBitmap: Bitmap? = null
-    /** 最近一次下发的「仅背景」位图：GL 初始化/重建后需重新绑定。 */
-    private var backgroundBitmap: Bitmap? = null
     /** 强制立即刷新 backdrop（忽略节流）：主题/背景色变化时由 Compose 侧触发。 */
     private var forceBackdrop = false
 
@@ -372,24 +370,10 @@ class LiquidGlassView @JvmOverloads constructor(
      *
      * @param cornerRadius 圆角半径（物理像素）；<=0 时由原生层按胶囊处理。
      */
-    fun registerPanel(id: Int, box: Rect, cornerRadius: Float, liveScene: Boolean = false) {
+    fun registerPanel(id: Int, box: Rect, cornerRadius: Float) {
         queueEvent {
-            nativeRegisterPanel(
-                id, box.left, box.top, box.right, box.bottom, cornerRadius, liveScene,
-            )
+            nativeRegisterPanel(id, box.left, box.top, box.right, box.bottom, cornerRadius)
         }
-        requestRender()
-    }
-
-    /**
-     * 下发「仅背景」位图（底色 + 壁纸，尺寸与窗口一致）。
-     *
-     * 容器玻璃面默认采样它：玻璃面下的控件整体消失，只透背景（导航栏仍用实时快照）。
-     * 主题色 / 壁纸 / 窗口尺寸变化时由 AppTheme 重新下发。
-     */
-    fun setBackgroundBackdrop(bitmap: Bitmap) {
-        backgroundBitmap = bitmap
-        queueEvent { nativeBindBackgroundBackdrop(bitmap) }
         requestRender()
     }
 
@@ -559,10 +543,6 @@ class LiquidGlassView @JvmOverloads constructor(
             } else {
                 nativeResize(width.toFloat(), height.toFloat())
             }
-            // GL 就绪前下发的背景位图在此补绑，避免「合成早于初始化」导致只透背景失效。
-            backgroundBitmap?.let { bitmap ->
-                queueEvent { nativeBindBackgroundBackdrop(bitmap) }
-            }
             scheduleBackdropCapture()
         }
 
@@ -637,7 +617,6 @@ class LiquidGlassView @JvmOverloads constructor(
     private external fun nativeHitTest(x: Float, y: Float): Boolean
     private external fun nativeTouch(action: Int, x: Float, y: Float)
     private external fun nativeBindBackdrop(bitmap: Bitmap): Boolean
-    private external fun nativeBindBackgroundBackdrop(bitmap: Bitmap): Boolean
     private external fun nativeRelease()
 
     private external fun nativeRegisterButton(
@@ -692,7 +671,6 @@ class LiquidGlassView @JvmOverloads constructor(
         right: Float,
         bottom: Float,
         cornerRadius: Float,
-        liveScene: Boolean,
     )
 
     private external fun nativeUpdateBox(

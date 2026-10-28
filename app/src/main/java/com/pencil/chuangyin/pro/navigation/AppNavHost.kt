@@ -715,8 +715,6 @@ private fun FloatingBottomBar(
                     shape = barShape,
                     enabled = navbarGlassActive,
                     fallbackColor = MaterialTheme.colorScheme.surfaceContainer,
-                    // 导航栏是唯一豁免「只透背景」的玻璃：保留采样实时页面内容。
-                    liveScene = true,
                 )
                 // 玻璃生效时描边交给原生边缘高光，Compose 描边不进快照（避免假边框/重影）。
                 .glassAwareOutline(barShape, navbarGlassActive)

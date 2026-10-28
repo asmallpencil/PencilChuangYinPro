@@ -138,6 +138,7 @@ fun PixivDetailRoute(
                             onClick = onBack,
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(ResR.string.label_back),
+                            glass = false,
                         )
                     },
                     actions = {
@@ -149,11 +150,13 @@ fun PixivDetailRoute(
                                 },
                                 imageVector = Icons.Filled.ImageSearch,
                                 contentDescription = stringResource(ResR.string.pixiv_source_search),
+                                glass = false,
                             )
                             AppIconButton(
                                 onClick = viewModel::downloadAll,
                                 imageVector = Icons.Filled.Download,
                                 contentDescription = stringResource(ResR.string.pixiv_download_all),
+                                glass = false,
                             )
                         }
                     },

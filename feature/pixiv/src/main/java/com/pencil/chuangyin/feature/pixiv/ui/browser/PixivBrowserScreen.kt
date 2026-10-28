@@ -646,8 +646,7 @@ private fun BrowserTopBar(
         Surface(
             modifier = Modifier
                 .weight(1f)
-                // 地址栏属于输入框，按统一政策启用真液态玻璃；引擎只采样静态背景，
-                // 滚动时不会再出现「滞后一帧」的抖动。
+                // 地址栏属于输入框，按统一政策启用真液态玻璃。
                 .nativeGlassSurface(
                     shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_pixiv_browser_url_radius)),
                     enabled = rememberLiquidGlassActive(),
