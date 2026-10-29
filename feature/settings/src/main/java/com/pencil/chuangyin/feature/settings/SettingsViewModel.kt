@@ -2,6 +2,8 @@ package com.pencil.chuangyin.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pencil.chuangyin.core.proxy.data.ProxySettingsRepository
+import com.pencil.chuangyin.core.proxy.model.ProxyScope
 import com.pencil.chuangyin.core.theme.CornerStyle
 import com.pencil.chuangyin.core.theme.LiquidGlassRenderer
 import com.pencil.chuangyin.core.theme.LoadingAnimationStyle
@@ -28,6 +30,10 @@ data class SettingsUiState(
     val outputDirName: String = OUTPUT_DIR_DEFAULT,
     /** 用户通过系统目录选择器授权的输出目录展示名；为空表示未授权，使用默认目录。 */
     val outputTreeName: String = "",
+    /** 主菜单代理入口的状态摘要。 */
+    val proxyEnabled: Boolean = false,
+    val proxyScope: ProxyScope = ProxyScope.PixivOnly,
+    val proxyConfigCount: Int = 0,
 )
 
 @HiltViewModel
@@ -35,6 +41,7 @@ class SettingsViewModel @Inject constructor(
     private val themeRepository: ThemeRepository,
     private val printerSettings: PrinterSettings,
     private val outputPathRepository: OutputPathRepository,
+    proxySettingsRepository: ProxySettingsRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsUiState())
@@ -66,6 +73,18 @@ class SettingsViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         outputTreeName = if (uri.isNullOrBlank()) "" else outputPathRepository.outputTreeDisplayName(),
+                    )
+                }
+            }
+        }
+        // 主菜单只显示代理状态摘要，真实开关/配置仍在独立代理页维护。
+        viewModelScope.launch {
+            proxySettingsRepository.state.collect { proxy ->
+                _state.update {
+                    it.copy(
+                        proxyEnabled = proxy.preferences.enabled,
+                        proxyScope = proxy.preferences.scope,
+                        proxyConfigCount = proxy.configs.size,
                     )
                 }
             }

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderZip
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -97,6 +98,7 @@ import com.pencil.chuangyin.feature.text.R
 fun TextEditorRoute(
     onBack: () -> Unit,
     onGoConnect: () -> Unit,
+    onOpenPixivGallery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: TextEditorViewModel = hiltViewModel()
@@ -107,6 +109,7 @@ fun TextEditorRoute(
         state = state,
         onBack = onBack,
         onGoConnect = onGoConnect,
+        onOpenPixivGallery = onOpenPixivGallery,
         onTitleChange = viewModel::updateTitle,
         onContentChange = viewModel::updateContent,
         onFontSizeChange = viewModel::updateFontSize,
@@ -139,6 +142,7 @@ fun TextEditorScreen(
     state: TextEditorUiState,
     onBack: () -> Unit,
     onGoConnect: () -> Unit,
+    onOpenPixivGallery: () -> Unit,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onFontSizeChange: (Float) -> Unit,
@@ -264,6 +268,14 @@ fun TextEditorScreen(
                         onClick = onBack,
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(ResR.string.label_back),
+                    )
+                },
+                actions = {
+                    // 与图片打印页一致：直接从打印页进入 P 站仓库（已保存内容）挑素材。
+                    AppIconButton(
+                        onClick = onOpenPixivGallery,
+                        imageVector = Icons.Filled.Inventory2,
+                        contentDescription = stringResource(ResR.string.pixiv_open_repository),
                     )
                 },
                 modifier = Modifier.nativeGlassSurface(
@@ -1068,6 +1080,7 @@ private fun TextEditorScreenPreview() {
         ),
         onBack = {},
         onGoConnect = {},
+        onOpenPixivGallery = {},
         onTitleChange = {},
         onContentChange = {},
         onFontSizeChange = {},

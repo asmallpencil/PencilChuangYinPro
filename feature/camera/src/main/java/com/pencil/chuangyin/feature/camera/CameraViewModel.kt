@@ -18,15 +18,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.pencil.chuangyin.core.agent.aiimage.AiImageScene
+import com.pencil.chuangyin.core.agent.aiimage.AiImageSettingsRepository
 import com.pencil.chuangyin.core.scanner.DocumentScanner
 import com.pencil.chuangyin.core.scanner.ScanMode
+import com.pencil.chuangyin.feature.camera.ai.AiImageProcessor
 import com.pencil.chuangyin.feature.camera.camera.DocumentAnalyzer
 import com.pencil.chuangyin.printer.ShotTransferBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -43,17 +52,19 @@ sealed interface CameraPhase {
 }
 
 /** 处理动画阶段（仅驱动文案，实际算法一次完成，阶段顺序展示）。 */
-enum class ProcessStage { Edge, Warp, Light, Text, Normal }
+enum class ProcessStage { Edge, Warp, Light, Text, Normal, Ai }
 
 /**
- * 裁切方式（用户可选三档）：
+ * 裁切方式（用户可选四档）：
  * - [Auto] 自动模式：实时橙框提示纸张位置，拍摄后自动找边+拉直+文档化；
  * - [Manual] 手动模式：无实时框，拍摄后进入角点调整页由用户拖动四角（无算法选点）；
+ * - [Ai] AI 处理：由 AI 模型看图给出方案（纸张四角 / 美白 / 混合增强），本地工具链执行；
  * - [None] 不处理：原图直出结果页。
  */
 enum class CameraMode(val scanMode: ScanMode, val showLiveQuad: Boolean) {
     Auto(ScanMode.Document, true),
     Manual(ScanMode.Normal, false),
+    Ai(ScanMode.Normal, false),
     None(ScanMode.Normal, false),
 }
 
@@ -71,9 +82,15 @@ class CameraViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val scanner: DocumentScanner,
     private val shotBus: ShotTransferBus,
+    private val aiImageProcessor: AiImageProcessor,
+    aiImageSettings: AiImageSettingsRepository,
 ) : ViewModel() {
 
     var mode by mutableStateOf(CameraMode.Auto)
+        private set
+
+    /** AI 模式的被摄类型（实景 / 文稿）；默认取用户在「AI 图片处理设置」里配置的偏好。 */
+    var aiScene by mutableStateOf(aiImageSettings.settings.value.defaultScene)
         private set
     var phase by mutableStateOf<CameraPhase>(CameraPhase.Preview)
         private set
@@ -104,6 +121,15 @@ class CameraViewModel @Inject constructor(
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 2)
     val messages = _messages.asSharedFlow()
 
+    /**
+     * AI 处理的实时日志（逐条追加）。
+     *
+     * 用 StateFlow 而不是 Compose 状态：处理线程会从任意线程回调日志，
+     * [MutableStateFlow.update] 是线程安全的原子操作，界面以 collectAsState 订阅。
+     */
+    private val _aiLogLines = MutableStateFlow<List<String>>(emptyList())
+    val aiLogLines: StateFlow<List<String>> = _aiLogLines.asStateFlow()
+
     /** 用户确认（已写入传递总线），UI 收此事件后导航到图片打印页。 */
     private val _completed = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val completed = _completed.asSharedFlow()
@@ -115,6 +141,7 @@ class CameraViewModel @Inject constructor(
     private var rawFile: File? = null
     private var processingStartMs = 0L
     private var submitting = false
+    private var processingJob: Job? = null
 
     /** 撤销重放基准（不可变底图，仅 1 张）+ 已提交笔画（仅点列，KB 级）。 */
     private var pristineBitmap: Bitmap? = null
@@ -130,6 +157,28 @@ class CameraViewModel @Inject constructor(
         if (mode == newMode) return
         mode = newMode
         liveQuad = null
+    }
+
+    /** 切换 AI 模式的被摄类型（实景 / 文稿），不影响当前处理中的任务。 */
+    fun selectAiScene(scene: AiImageScene) {
+        if (aiScene == scene) return
+        aiScene = scene
+    }
+
+    /**
+     * 取消正在进行的处理（处理遮罩左上角按钮）。
+     *
+     * 协程取消后 [processCapturedFile] 的收尾块会删除临时文件；这里先把界面还原到取景器，
+     * 避免取消瞬间仍停留在处理遮罩上。
+     */
+    fun cancelProcessing() {
+        if (phase !is CameraPhase.Processing) return
+        processingJob?.cancel()
+        processingJob = null
+        _aiLogLines.value = emptyList()
+        clearEdits()
+        phase = CameraPhase.Preview
+        _messages.tryEmit(appContext.getString(R.string.camera_process_cancelled))
     }
 
     fun toggleFlash(imageCapture: ImageCapture?) {
@@ -156,7 +205,7 @@ class CameraViewModel @Inject constructor(
             ContextCompat.getMainExecutor(appContext),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    viewModelScope.launch { processCapturedFile(file) }
+                    processingJob = viewModelScope.launch { processCapturedFile(file) }
                 }
 
                 override fun onError(exception: ImageCaptureException) {
@@ -170,7 +219,7 @@ class CameraViewModel @Inject constructor(
     fun importFromUri(uri: Uri) {
         if (phase !is CameraPhase.Preview) return
         beginProcessing()
-        viewModelScope.launch {
+        processingJob = viewModelScope.launch {
             val copied = withContext(Dispatchers.IO) {
                 val dir = File(appContext.cacheDir, SHOT_DIR).apply { runCatching { mkdirs() } }
                 val file = File(dir, "pick_${System.nanoTime()}.jpg")
@@ -191,15 +240,21 @@ class CameraViewModel @Inject constructor(
         processingStartMs = System.currentTimeMillis()
         val stage = when (mode) {
             CameraMode.Auto -> ProcessStage.Edge
+            CameraMode.Ai -> ProcessStage.Ai
             // 手动模式无算法选点，动画仅为拍照存盘间隙。
             CameraMode.Manual, CameraMode.None -> ProcessStage.Normal
         }
+        if (mode == CameraMode.Ai) _aiLogLines.value = emptyList()
         phase = CameraPhase.Processing(stage)
         liveQuad = null
     }
 
     private suspend fun processCapturedFile(file: File) {
-        val minDurationMs = if (mode == CameraMode.Auto) DOC_MIN_MS else NORMAL_MIN_MS
+        val minDurationMs = when (mode) {
+            CameraMode.Auto -> DOC_MIN_MS
+            CameraMode.Ai -> AI_MIN_MS
+            CameraMode.Manual, CameraMode.None -> NORMAL_MIN_MS
+        }
         try {
             when (mode) {
                 CameraMode.Auto -> {
@@ -232,6 +287,36 @@ class CameraViewModel @Inject constructor(
                     adjustBitmap = source
                     phase = CameraPhase.Adjust
                 }
+                CameraMode.Ai -> {
+                    // AI 模式：模型决策 + 本地工具链（内部自带失败回退）。
+                    val (pristine, mutable, decidedByModel) = withContext(Dispatchers.IO) {
+                        val source = decodeSampled(file)
+                        val aiResult = try {
+                            aiImageProcessor.process(source, aiScene) { line ->
+                                _aiLogLines.update { previous -> previous + line }
+                            }
+                        } finally {
+                            // 处理器一进入就先复制工作位图，返回后原图不再被引用；
+                            // 抛错路径同样可以安全回收。
+                            runCatching { source.recycle() }
+                        }
+                        val base = aiResult.bitmap
+                        val pristineCopy = base.copy(Bitmap.Config.ARGB_8888, false)
+                        val mutableCopy = base.copy(Bitmap.Config.ARGB_8888, true)
+                        runCatching { base.recycle() }
+                        Triple(pristineCopy, mutableCopy, aiResult.decidedByModel)
+                    }
+                    val elapsed = System.currentTimeMillis() - processingStartMs
+                    if (elapsed < minDurationMs) kotlinx.coroutines.delay(minDurationMs - elapsed)
+                    clearEdits()
+                    pristineBitmap = pristine
+                    resultBitmap = mutable
+                    editGeneration++
+                    phase = CameraPhase.Result
+                    if (!decidedByModel) {
+                        _messages.tryEmit(appContext.getString(R.string.camera_ai_fallback))
+                    }
+                }
                 CameraMode.None -> {
                     // 不处理：原图直出（仅规范化位图，便于涂白/裁剪编辑）。
                     val (pristine, mutable) = withContext(Dispatchers.IO) {
@@ -250,11 +335,15 @@ class CameraViewModel @Inject constructor(
                     phase = CameraPhase.Result
                 }
             }
+        } catch (cancelled: CancellationException) {
+            // 用户主动取消：界面已回到取景器，不能再触发失败提示。
+            throw cancelled
         } catch (_: Throwable) {
             failAndReset()
         } finally {
             runCatching { if (file.exists()) file.delete() }
             rawFile = null
+            processingJob = null
         }
     }
 
@@ -359,8 +448,11 @@ class CameraViewModel @Inject constructor(
                     val warped = scanner.cropWarp(current, pts)
                     // 裁剪模式下手动裁剪即收尾：框内已基本只有纸面，直接文档化成黑白件
                     // （对此前检测失败而降级为灰度的图，这一步补上二值化）。
-                    // 「不处理」模式裁剪保持原图色彩，不做文档化。
-                    val doc = if (mode != CameraMode.None) {
+                    // 「不处理」与「AI 处理」模式裁剪保持现有色彩：AI 结果可能本就是实景混合增强图，
+                    // 再二值化会把照片层次抹掉。
+                    val documentizeAfterCrop =
+                        mode == CameraMode.Auto || mode == CameraMode.Manual
+                    val doc = if (documentizeAfterCrop) {
                         runCatching { scanner.documentize(warped) }.getOrNull()
                     } else {
                         null
@@ -511,6 +603,7 @@ class CameraViewModel @Inject constructor(
         const val MAX_SOURCE_EDGE = 2000
         const val DOC_MIN_MS = 1200L
         const val NORMAL_MIN_MS = 400L
+        const val AI_MIN_MS = 600L
 
         /** 默认角点：四边内缩 8%（无可用自动检测时的起点）。 */
         val DEFAULT_ADJUST_QUAD = listOf(

@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -34,6 +32,8 @@ import androidx.lifecycle.viewModelScope
 import com.pencil.chuangyin.core.ui.components.AppFilterChip
 import com.pencil.chuangyin.core.ui.components.AppIconButton
 import com.pencil.chuangyin.core.ui.components.AppText
+import com.pencil.chuangyin.core.ui.components.reader.AppReader
+import com.pencil.chuangyin.core.ui.components.reader.ReaderMode
 import com.pencil.chuangyin.feature.pixiv.data.PixivRepository
 import com.pencil.chuangyin.feature.pixiv.domain.PixivNovel
 import com.pencil.chuangyin.feature.pixiv.ui.common.FullScreenError
@@ -185,55 +185,64 @@ fun PixivNovelReaderRoute(
         }
     }
     Box(modifier = Modifier.fillMaxSize()) {
-        PixivSubScaffold(
-            title = (state as? NovelReaderState.Content)?.novel?.title
-                ?: stringResource(ResR.string.pixiv_novel_title),
-            onBack = onBack,
-            actions = {
-                // 详情与正文加载成功后才可用：收藏 / 下载 / 打印。
-                val content = state as? NovelReaderState.Content
-                if (content != null) {
+        when (val current = state) {
+            NovelReaderState.Loading -> PixivSubScaffold(
+                title = stringResource(ResR.string.pixiv_novel_title),
+                onBack = onBack,
+            ) {
+                FullScreenLoading()
+            }
+
+            NovelReaderState.Error -> PixivSubScaffold(
+                title = stringResource(ResR.string.pixiv_novel_title),
+                onBack = onBack,
+            ) {
+                FullScreenError(
+                    message = stringResource(ResR.string.pixiv_novel_text_failed),
+                    onRetry = viewModel::retry,
+                )
+            }
+
+            // 在线阅读一律走小说阅读器（可在右上角切换到文本查看器）。
+            // 在线内容没有本地文件，编辑入口置灰禁用。
+            is NovelReaderState.Content -> AppReader(
+                title = current.novel.title,
+                content = current.text,
+                onBack = onBack,
+                defaultMode = ReaderMode.NOVEL,
+                editable = false,
+                header = {
+                    NovelReaderHeader(
+                        novel = current.novel,
+                        onSearchTag = onSearchTag,
+                    )
+                },
+                actions = {
                     AppIconButton(
                         onClick = viewModel::toggleBookmark,
-                        imageVector = if (content.novel.isBookmarked) {
+                        imageVector = if (current.novel.isBookmarked) {
                             Icons.Filled.Bookmark
                         } else {
                             Icons.Filled.BookmarkBorder
                         },
                         contentDescription = stringResource(
-                            if (content.novel.isBookmarked) ResR.string.pixiv_bookmarked
+                            if (current.novel.isBookmarked) ResR.string.pixiv_bookmarked
                             else ResR.string.pixiv_bookmark,
                         ),
                         enabled = !bookmarkBusy,
-                        glass = false,
                     )
                     AppIconButton(
                         onClick = viewModel::download,
                         imageVector = Icons.Filled.Download,
                         contentDescription = stringResource(ResR.string.pixiv_novel_download),
-                        glass = false,
                     )
                     AppIconButton(
                         onClick = viewModel::print,
                         imageVector = Icons.Filled.Print,
                         contentDescription = stringResource(ResR.string.pixiv_print),
-                        glass = false,
                     )
-                }
-            },
-        ) {
-            when (val current = state) {
-                NovelReaderState.Loading -> FullScreenLoading()
-                NovelReaderState.Error -> FullScreenError(
-                    message = stringResource(ResR.string.pixiv_novel_text_failed),
-                    onRetry = viewModel::retry,
-                )
-                is NovelReaderState.Content -> NovelContent(
-                    novel = current.novel,
-                    text = current.text,
-                    onSearchTag = onSearchTag,
-                )
-            }
+                },
+            )
         }
         SnackbarHost(
             hostState = snackbarHostState,
@@ -242,30 +251,28 @@ fun PixivNovelReaderRoute(
     }
 }
 
+/** 在线小说页眉：作者与标签（点标签继续搜索），占真实高度，分页自动扣除。 */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun NovelContent(novel: PixivNovel, text: String, onSearchTag: (String) -> Unit) {
+private fun NovelReaderHeader(novel: PixivNovel, onSearchTag: (String) -> Unit) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(dimensionResource(ResR.dimen.dimen_global_padding_l)),
+            .fillMaxWidth()
+            .padding(
+                horizontal = dimensionResource(ResR.dimen.dimen_global_padding_l),
+                vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
+            ),
     ) {
-        AppText(
-            text = novel.title,
-            style = MaterialTheme.typography.titleLarge,
-        )
         AppText(
             text = novel.user?.name.orEmpty(),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = dimensionResource(ResR.dimen.dimen_global_padding_s)),
         )
         if (novel.tags.isNotEmpty()) {
             FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = dimensionResource(ResR.dimen.dimen_global_padding_m)),
+                    .padding(top = dimensionResource(ResR.dimen.dimen_global_padding_s)),
                 horizontalArrangement = Arrangement.spacedBy(
                     dimensionResource(ResR.dimen.dimen_pixiv_chip_spacing),
                 ),
@@ -282,12 +289,5 @@ private fun NovelContent(novel: PixivNovel, text: String, onSearchTag: (String) 
                 }
             }
         }
-        AppText(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = dimensionResource(ResR.dimen.dimen_global_padding_l)),
-        )
     }
 }

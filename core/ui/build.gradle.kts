@@ -50,6 +50,10 @@ dependencies {
     implementation(libs.androidx.compose.icons.extended)
     // RoundedPolygon + Morph：M3 Expressive 风格的形状形变加载指示器
     implementation(libs.androidx.graphics.shapes)
+    // 全屏图片查看器（缩放 + 双击 + 超大图子采样）与位图解码：
+    // 收敛到 core:ui，使 P 站、AI 预览等所有模块共用同一套查看器与编辑能力。
+    implementation(libs.coil.compose)
+    implementation(libs.zoomimage.compose.coil2)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

@@ -95,6 +95,8 @@
     <!-- 图片管理多图封面右下角「多图」角标尺寸 -->
     <dimen name="dimen_pixiv_gallery_badge_size">22dp</dimen>
     <dimen name="dimen_pixiv_gallery_badge_corner">8dp</dimen>
+    <!-- 多选态卡片左上角序号徽标的描边宽度 -->
+    <dimen name="dimen_pixiv_selection_ring">1.5dp</dimen>
 
     <!-- P站二期：侧边栏 -->
     <dimen name="dimen_pixiv_drawer_avatar_size">72dp</dimen>

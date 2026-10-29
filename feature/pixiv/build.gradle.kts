@@ -35,6 +35,8 @@ kotlin {
 }
 
 dependencies {
+    // 应用内代理：P 站全部 HTTP 请求（API / OAuth / 图片）统一走代理路由
+    implementation(project(":core:proxy"))
     implementation(project(":core:resources"))
     implementation(project(":core:theme"))
     implementation(project(":core:ui"))

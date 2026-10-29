@@ -57,6 +57,8 @@ import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextButton
+import com.pencil.chuangyin.core.ui.components.reader.AppReader
+import com.pencil.chuangyin.core.ui.components.reader.ReaderMode
 import com.pencil.chuangyin.feature.ai.R
 import com.pencil.chuangyin.resources.R as ResR
 import java.io.File
@@ -65,12 +67,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** 聊天产物可用的打开方式。 */
-internal enum class AiMediaKind { Image, Video, Audio, File }
+internal enum class AiMediaKind { Image, Video, Audio, Text, File }
 
 /**
  * 按扩展名判定产物类型。
  *
- * 工具上报的 `kind` 只有 image / file 两种，视频、音频要靠后缀补齐，
+ * 工具上报的 `kind` 只有 image / file 两种，视频、音频、文本要靠后缀补齐，
  * 否则视频会被当成普通文件直接甩给外部应用。
  */
 internal fun AiUiArtifact.mediaKind(): AiMediaKind {
@@ -78,6 +80,8 @@ internal fun AiUiArtifact.mediaKind(): AiMediaKind {
     return when (path.substringAfterLast('.', "").lowercase()) {
         "mp4", "m4v", "mkv", "webm", "mov", "avi", "3gp", "ts", "flv", "wmv" -> AiMediaKind.Video
         "mp3", "m4a", "aac", "wav", "ogg", "oga", "opus", "flac", "amr", "mid" -> AiMediaKind.Audio
+        // 文本类在应用内直接进「文本查看器」，与 AI 打印查看文本文件的场景保持一致。
+        "txt", "md", "markdown", "text", "log" -> AiMediaKind.Text
         else -> AiMediaKind.File
     }
 }
@@ -126,6 +130,19 @@ internal fun AiMediaViewer(
         if (openExternally(context, File(path))) {
             onDismiss()
         }
+    }
+
+    // 文本产物：进统一阅读器（默认文本查看器，可在右上角切换小说模式）。
+    if (kind == AiMediaKind.Text) {
+        AiTextArtifactViewer(
+            displayName = displayName,
+            source = source,
+            onDismiss = onDismiss,
+            onOpenExternal = { path ->
+                if (!openExternally(context, File(path))) fallbackToFileManager(context)
+            },
+        )
+        return
     }
 
     Dialog(
@@ -216,7 +233,7 @@ internal fun AiMediaViewer(
                             modifier = Modifier.fillMaxSize(),
                         )
 
-                        AiMediaKind.Audio, AiMediaKind.File -> AiMediaFallback(
+                        AiMediaKind.Audio, AiMediaKind.File, AiMediaKind.Text -> AiMediaFallback(
                             icon = fallbackIcon(kind),
                             title = displayName,
                             subtitle = sizeLabel(current.path),
@@ -231,6 +248,91 @@ internal fun AiMediaViewer(
                             onOpenManager = { fallbackToFileManager(context) },
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 文本产物查看：复用 `core:ui` 的统一阅读器，默认进入「文本查看器」，
+ * 用户可在右上角切换到小说分页模式。
+ *
+ * 产物可能位于工作区外，先由 [MediaSource] 解析出可读路径再整体读入；
+ * 文件不可读时保留兜底页，避免白屏。
+ */
+@Composable
+private fun AiTextArtifactViewer(
+    displayName: String,
+    source: MediaSource,
+    onDismiss: () -> Unit,
+    onOpenExternal: (String) -> Unit,
+) {
+    val path = (source as? MediaSource.Ready)?.path
+    var text by remember(path) { mutableStateOf<String?>(null) }
+    var failed by remember(path) { mutableStateOf(false) }
+    LaunchedEffect(path) {
+        val target = path ?: return@LaunchedEffect
+        val loaded = withContext(Dispatchers.IO) {
+            runCatching { File(target).readText() }.getOrNull()
+        }
+        if (loaded == null) failed = true else text = loaded
+    }
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        val body = text
+        when {
+            body != null -> AppReader(
+                title = displayName,
+                content = body,
+                onBack = onDismiss,
+                defaultMode = ReaderMode.TEXT,
+                editable = false,
+                actions = {
+                    if (path != null) {
+                        AppIconButton(
+                            onClick = { onOpenExternal(path) },
+                            imageVector = Icons.Filled.OpenInNew,
+                            contentDescription = stringResource(R.string.ai_media_open_external),
+                        )
+                    }
+                },
+            )
+
+            source is MediaSource.Unavailable || failed -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(VIEWER_BACKGROUND),
+            ) {
+                AiMediaFallback(
+                    icon = Icons.Filled.InsertDriveFile,
+                    title = displayName,
+                    subtitle = stringResource(R.string.ai_media_unavailable),
+                    message = null,
+                    onOpenExternal = null,
+                    onOpenManager = {},
+                )
+            }
+
+            else -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(VIEWER_BACKGROUND),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    AppLoadingIndicator(color = Color.White)
+                    Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+                    AppText(
+                        text = stringResource(R.string.ai_media_loading),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.7f),
+                    )
                 }
             }
         }
@@ -393,6 +495,7 @@ private fun kindLabelRes(kind: AiMediaKind): Int = when (kind) {
     AiMediaKind.Image -> R.string.ai_media_kind_image
     AiMediaKind.Video -> R.string.ai_media_kind_video
     AiMediaKind.Audio -> R.string.ai_media_kind_audio
+    AiMediaKind.Text -> R.string.ai_media_kind_text
     AiMediaKind.File -> R.string.ai_media_kind_file
 }
 

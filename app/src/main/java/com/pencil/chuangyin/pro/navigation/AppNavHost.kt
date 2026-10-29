@@ -87,10 +87,12 @@ import com.pencil.chuangyin.feature.dashboard.HomeRoute
 import com.pencil.chuangyin.feature.camera.CameraRoute
 import com.pencil.chuangyin.feature.image.ImageEditorRoute
 import com.pencil.chuangyin.feature.onboarding.OnboardingRoute
+import com.pencil.chuangyin.feature.settings.AiImageSettingsRoute
 import com.pencil.chuangyin.feature.settings.LicensesRoute
 import com.pencil.chuangyin.feature.settings.LiquidGlassSettingsRoute
+import com.pencil.chuangyin.feature.settings.FunctionSettingsRoute
+import com.pencil.chuangyin.feature.settings.ProxySettingsRoute
 import com.pencil.chuangyin.feature.settings.SettingsRoute
-import com.pencil.chuangyin.feature.settings.SizeSettingsRoute
 import com.pencil.chuangyin.feature.settings.VisualSettingsRoute
 import com.pencil.chuangyin.feature.text.TextEditorRoute
 import com.pencil.chuangyin.pro.OnboardingFlagRepository
@@ -133,9 +135,11 @@ object AppRoutes {
     const val SETTINGS = "settings"
     const val SETTINGS_VISUAL = "settings_visual"
     const val SETTINGS_LIQUID_GLASS = "settings_liquid_glass"
-    const val SETTINGS_SIZE = "settings_size"
+    const val SETTINGS_SIZE = "settings_function"
     const val SETTINGS_LICENSES = "settings_licenses"
     const val SETTINGS_AI_CONFIG = "settings_ai_config"
+    const val SETTINGS_AI_IMAGE = "settings_ai_image"
+    const val SETTINGS_PROXY = "settings_proxy"
 
     // AI 打印（Agent 客户端）
     const val AI = "ai"
@@ -280,6 +284,8 @@ fun AppNavHost(
             AppDestination("camera", "相机拍照页") { AppRoutes.CAMERA },
             AppDestination("settings", "应用设置页") { AppRoutes.SETTINGS },
             AppDestination("ai_config", "AI 模型配置页") { AppRoutes.SETTINGS_AI_CONFIG },
+            AppDestination("ai_image_settings", "AI 图片处理设置页") { AppRoutes.SETTINGS_AI_IMAGE },
+            AppDestination("proxy_settings", "应用内代理设置页") { AppRoutes.SETTINGS_PROXY },
             AppDestination("ai_chat", "AI 助手对话页") { AppRoutes.AI },
         )
         destinations.forEach { navigation.registerDestination(it) }
@@ -403,6 +409,7 @@ fun AppNavHost(
                 TextEditorRoute(
                     onBack = { safeBack() },
                     onGoConnect = { navController.navigate(AppRoutes.CONNECT) },
+                    onOpenPixivGallery = { navController.navigate(AppRoutes.PIXIV_GALLERY) },
                 )
             }
             composable(AppRoutes.IMAGE) {
@@ -410,6 +417,7 @@ fun AppNavHost(
                     onBack = { safeBack() },
                     onGoConnect = { navController.navigate(AppRoutes.CONNECT) },
                     onOpenCamera = { navController.navigate(AppRoutes.CAMERA) },
+                    onOpenPixivGallery = { navController.navigate(AppRoutes.PIXIV_GALLERY) },
                 )
             }
             composable(AppRoutes.CAMERA) {
@@ -433,10 +441,21 @@ fun AppNavHost(
                     onOpenSize = { navController.navigate(AppRoutes.SETTINGS_SIZE) },
                     onOpenLicenses = { navController.navigate(AppRoutes.SETTINGS_LICENSES) },
                     onOpenAiConfig = { navController.navigate(AppRoutes.SETTINGS_AI_CONFIG) },
+                    onOpenAiImage = { navController.navigate(AppRoutes.SETTINGS_AI_IMAGE) },
+                    onOpenProxy = { navController.navigate(AppRoutes.SETTINGS_PROXY) },
                 )
+            }
+            composable(AppRoutes.SETTINGS_PROXY) {
+                ProxySettingsRoute(onBack = { safeBack() })
             }
             composable(AppRoutes.SETTINGS_AI_CONFIG) {
                 AiConfigRoute(onBack = { safeBack() })
+            }
+            composable(AppRoutes.SETTINGS_AI_IMAGE) {
+                AiImageSettingsRoute(
+                    onBack = { safeBack() },
+                    onOpenAiConfig = { navController.navigate(AppRoutes.SETTINGS_AI_CONFIG) },
+                )
             }
             composable(AppRoutes.AI) {
                 AiChatRoute(
@@ -451,7 +470,7 @@ fun AppNavHost(
                 LiquidGlassSettingsRoute(onBack = { safeBack() })
             }
             composable(AppRoutes.SETTINGS_SIZE) {
-                SizeSettingsRoute(onBack = { safeBack() })
+                FunctionSettingsRoute(onBack = { safeBack() })
             }
             composable(AppRoutes.SETTINGS_LICENSES) {
                 LicensesRoute(onBack = { safeBack() })
@@ -587,7 +606,16 @@ fun AppNavHost(
                 PixivDownloadsRoute(onBack = { safeBack() })
             }
             composable(AppRoutes.PIXIV_GALLERY) {
-                PixivGalleryRoute(onBack = { safeBack() })
+                PixivGalleryRoute(
+                    onBack = { safeBack() },
+                    // 已保存内容多选打印：直接落到既有打印页，复用同一套打印设置与流程。
+                    onOpenPrintImages = {
+                        navController.navigate(AppRoutes.IMAGE) { launchSingleTop = true }
+                    },
+                    onOpenPrintText = {
+                        navController.navigate(AppRoutes.TEXT) { launchSingleTop = true }
+                    },
+                )
             }
             composable(AppRoutes.PIXIV_BLOCKED_TAGS) {
                 PixivBlockedTagsRoute(onBack = { safeBack() })

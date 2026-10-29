@@ -42,8 +42,10 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Policy
+import androidx.compose.material.icons.filled.Router
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -69,6 +71,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pencil.chuangyin.core.proxy.model.ProxyScope
 import com.pencil.chuangyin.core.theme.BACKGROUND_ALPHA_MIN
 import com.pencil.chuangyin.core.theme.BACKGROUND_BLUR_MAX_DP
 import com.pencil.chuangyin.core.theme.CornerStyle
@@ -134,6 +137,8 @@ fun SettingsRoute(
     onOpenSize: () -> Unit,
     onOpenLicenses: () -> Unit,
     onOpenAiConfig: () -> Unit,
+    onOpenAiImage: () -> Unit,
+    onOpenProxy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: SettingsViewModel = hiltViewModel()
@@ -145,8 +150,11 @@ fun SettingsRoute(
         onOpenSize = onOpenSize,
         onOpenLicenses = onOpenLicenses,
         onOpenAiConfig = onOpenAiConfig,
-        autoConnectEnabled = state.autoConnectEnabled,
-        onAutoConnectChange = viewModel::setAutoConnectEnabled,
+        onOpenAiImage = onOpenAiImage,
+        onOpenProxy = onOpenProxy,
+        proxyEnabled = state.proxyEnabled,
+        proxyScope = state.proxyScope,
+        proxyConfigCount = state.proxyConfigCount,
         outputDirName = state.outputDirName,
         outputTreeName = state.outputTreeName,
         onSetOutputDirName = viewModel::setOutputDirName,
@@ -165,8 +173,11 @@ fun SettingsScreen(
     onOpenSize: () -> Unit,
     onOpenLicenses: () -> Unit,
     onOpenAiConfig: () -> Unit = {},
-    autoConnectEnabled: Boolean = true,
-    onAutoConnectChange: (Boolean) -> Unit = {},
+    onOpenAiImage: () -> Unit = {},
+    onOpenProxy: () -> Unit = {},
+    proxyEnabled: Boolean = false,
+    proxyScope: ProxyScope = ProxyScope.PixivOnly,
+    proxyConfigCount: Int = 0,
     outputDirName: String = com.pencil.chuangyin.core.ui.data.OUTPUT_DIR_DEFAULT,
     outputTreeName: String = "",
     onSetOutputDirName: (String) -> Unit = {},
@@ -206,6 +217,19 @@ fun SettingsScreen(
         } else {
             stringResource(R.string.settings_menu_output_default, outputDirName)
         }
+        val proxyScopeText = stringResource(
+            if (proxyScope == ProxyScope.Global) {
+                R.string.settings_proxy_scope_global
+            } else {
+                R.string.settings_proxy_scope_pixiv
+            },
+        )
+        // 三态摘要：无配置 / 已开启（含范围）/ 已关闭（含范围），进页面前就能判断当前状态。
+        val proxyDesc = when {
+            proxyConfigCount == 0 -> stringResource(R.string.settings_menu_proxy_desc_empty)
+            proxyEnabled -> stringResource(R.string.settings_menu_proxy_desc_on, proxyScopeText)
+            else -> stringResource(R.string.settings_menu_proxy_desc_off, proxyScopeText)
+        }
         Column(
             modifier = Modifier
                 .padding(innerPadding)
@@ -224,6 +248,13 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_menu_ai),
                     desc = stringResource(R.string.settings_menu_ai_desc),
                     onClick = onOpenAiConfig,
+                )
+                SettingsEntryDivider()
+                SettingsEntry(
+                    icon = Icons.Filled.Image,
+                    title = stringResource(R.string.settings_menu_ai_image),
+                    desc = stringResource(R.string.settings_menu_ai_image_desc),
+                    onClick = onOpenAiImage,
                 )
             }
             SettingsGroup(
@@ -245,7 +276,8 @@ fun SettingsScreen(
                     onClick = onOpenLiquidGlass,
                 )
             }
-            // 纸张/设备相关设置从「外观与动效」中独立出来，归入「功能设定」。
+            // 「功能设定」是独立页面：主菜单只保留一个入口，热敏纸与自动连接都在该页内，
+            // 避免主设置页被功能项撑成流水账。
             SettingsGroup(
                 label = stringResource(R.string.settings_group_function),
                 visible = appeared,
@@ -253,30 +285,27 @@ fun SettingsScreen(
             ) {
                 SettingsEntry(
                     icon = Icons.Filled.FormatSize,
-                    title = stringResource(R.string.settings_menu_size),
-                    desc = stringResource(R.string.settings_menu_size_desc),
+                    title = stringResource(R.string.settings_menu_function),
+                    desc = stringResource(R.string.settings_menu_function_desc),
                     onClick = onOpenSize,
                 )
-                SettingsEntryDivider()
-                AutoConnectEntry(
-                    checked = autoConnectEnabled,
-                    onCheckedChange = onAutoConnectChange,
-                )
-                AppText(
-                    text = stringResource(R.string.settings_auto_connect_logic),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(
-                        start = dimensionResource(ResR.dimen.dimen_global_padding_m),
-                        end = dimensionResource(ResR.dimen.dimen_global_padding_m),
-                        bottom = dimensionResource(ResR.dimen.dimen_global_padding_m),
-                    ),
+            }
+            SettingsGroup(
+                label = stringResource(R.string.settings_group_network),
+                visible = appeared,
+                delayMillis = 175,
+            ) {
+                SettingsEntry(
+                    icon = Icons.Filled.Router,
+                    title = stringResource(R.string.settings_menu_proxy),
+                    desc = proxyDesc,
+                    onClick = onOpenProxy,
                 )
             }
             SettingsGroup(
                 label = stringResource(R.string.settings_group_output),
                 visible = appeared,
-                delayMillis = 210,
+                delayMillis = 245,
             ) {
                 SettingsEntry(
                     icon = Icons.Filled.FolderOpen,
@@ -373,9 +402,9 @@ private fun OutputPathDialog(
     }
 }
 
-/** 设置分组：小标题 + 圆角卡片容器，整组带错峰入场。 */
+/** 设置分组：小标题 + 圆角卡片容器，整组带错峰入场。子页面复用同一容器保证观感一致。 */
 @Composable
-private fun SettingsGroup(
+internal fun SettingsGroup(
     label: String,
     visible: Boolean,
     delayMillis: Int,
@@ -412,7 +441,7 @@ private fun SettingsGroup(
 
 /** 卡片内的一行设置项：图标胶囊 + 标题/说明 + 右侧箭头，按压有物理回弹。 */
 @Composable
-private fun SettingsEntry(
+internal fun SettingsEntry(
     icon: ImageVector,
     title: String,
     desc: String,
@@ -465,11 +494,15 @@ private fun SettingsEntry(
     }
 }
 
-/** 自动连接开关行：图标 + 标题/说明 + 开关，仅切换状态，不进入子页。 */
+/** 卡片内的开关行：图标胶囊 + 标题/说明 + 开关，仅切换状态，不进入子页。 */
 @Composable
-private fun AutoConnectEntry(
+internal fun SettingSwitchRow(
+    icon: ImageVector,
+    title: String,
+    desc: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier
@@ -485,34 +518,53 @@ private fun AutoConnectEntry(
             modifier = Modifier
                 .size(dimensionResource(ResR.dimen.dimen_global_touch_target) - 8.dp)
                 .clip(RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_m)))
-                .background(MaterialTheme.colorScheme.secondaryContainer),
+                .background(
+                    if (enabled) MaterialTheme.colorScheme.secondaryContainer
+                    else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f),
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = Icons.Filled.Bluetooth,
+                imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = if (enabled) 1f else 0.38f),
                 modifier = Modifier.size(20.dp),
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             AppText(
-                text = stringResource(R.string.settings_menu_auto_connect),
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.38f),
             )
             AppText(
-                text = stringResource(R.string.settings_menu_auto_connect_desc),
+                text = desc,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.38f),
             )
         }
-        AppSwitch(checked = checked, onCheckedChange = onCheckedChange)
+        AppSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
+}
+
+/** 组内说明文字：放在卡片下方，用于解释某项功能的完整行为（例如自动连接逻辑）。 */
+@Composable
+internal fun SettingsGroupNote(text: String) {
+    AppText(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(
+            start = dimensionResource(ResR.dimen.dimen_global_padding_m),
+            end = dimensionResource(ResR.dimen.dimen_global_padding_m),
+            top = dimensionResource(ResR.dimen.dimen_global_padding_s),
+        ),
+    )
 }
 
 /** 组内分隔线：左侧让出图标宽度，视觉上从文字起始处断开。 */
 @Composable
-private fun SettingsEntryDivider() {
+internal fun SettingsEntryDivider() {
     Box(
         modifier = Modifier.padding(
             start = dimensionResource(ResR.dimen.dimen_global_padding_m) +
@@ -1187,6 +1239,8 @@ private fun SettingsMenuPreview() {
         onOpenSize = {},
         onOpenLicenses = {},
         onOpenAiConfig = {},
+        onOpenAiImage = {},
+        onOpenProxy = {},
     )
 }
 

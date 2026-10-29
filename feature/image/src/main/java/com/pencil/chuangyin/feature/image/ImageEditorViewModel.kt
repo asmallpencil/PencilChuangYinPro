@@ -29,6 +29,7 @@ import com.pencil.chuangyin.printer.PrinterController
 import com.pencil.chuangyin.printer.PrinterDevice
 import com.pencil.chuangyin.printer.PrinterStatus
 import com.pencil.chuangyin.printer.ShotTransferBus
+import com.pencil.chuangyin.printer.ShotTransferMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -375,11 +376,15 @@ class ImageEditorViewModel @Inject constructor(
      */
     fun consumeTransferredShots() {
         viewModelScope.launch(Dispatchers.IO) {
-            val files = shotTransferBus.drain()
+            val batch = shotTransferBus.drainBatch() ?: return@launch
+            val files = batch.files.filter { it.isFile && it.length() > 0L }
             if (files.isEmpty()) return@launch
-            if (files.size == 1) {
-                val file = files.first()
-                appendSources(names = listOf(file.name), added = listOf(FileImageSource(appContext, file, file.name)))
+            // APPEND_ALL：来源页（P 站图库多选）已确定顺序，直接整批按序加入打印页。
+            if (files.size == 1 || batch.mode == ShotTransferMode.APPEND_ALL) {
+                appendSources(
+                    names = files.map { it.name },
+                    added = files.map { FileImageSource(appContext, it, it.name) },
+                )
                 return@launch
             }
             val items = files.indices.map(PickItem::Transferred)

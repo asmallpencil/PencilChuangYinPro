@@ -267,8 +267,10 @@ bool TabStrip::draw(const Box& box) {
     const bool light = detail::lightFlag();
     const unsigned int container = light && containerColor == config::Layout::TAB_CONTAINER
         ? config::Layout::TAB_CONTAINER_LIGHT : containerColor;
-    const unsigned int accent = light && accentColor == config::Layout::TAB_ACCENT
-        ? config::Layout::TAB_ACCENT_LIGHT : accentColor;
+    // 注意：分段条滑块在本实现里是「亮色模式深色玻璃 / 暗色模式浅色玻璃」（luma 见下方
+    // press 面板），所以选中项文字必须取其对比极值，而不是主题 accent。
+    // 旧实现用 accent（= colorScheme.primary），当主题种子为黑色时 primary 与滑块同为
+    // 近黑 → 选中文字被滑块完全吞掉（用户反馈的橙色框控件问题）。
 
     const float panelScale = lerp(1.0f, 1.0f + px(config::Layout::TAB_PANEL_GROW_DP)
                                              / (width > 1.0f ? width : 1.0f), press);
@@ -328,7 +330,8 @@ bool TabStrip::draw(const Box& box) {
     const float labelPx = px(labelSizeDp) * cellScale;
     const float gapPx = px(config::Layout::TAB_ICON_GAP_DP) * cellScale;
     const unsigned int idleColor = light ? rgba(1.0f, 0x000000u) : rgba(1.0f, 0xFFFFFFu);
-    const unsigned int activeColor = accent;
+    // 滑块为亮色模式近黑 / 暗色模式近白，因此选中文字用相反极值，保证任何种子色下都可读。
+    const unsigned int activeColor = light ? rgba(1.0f, 0xFFFFFFu) : rgba(1.0f, 0x000000u);
     const unsigned int forcedColor = iconColor != 0u ? iconColor : 0u;
 
     paintCells(*this, count, iconPx, labelPx, gapPx, contentMinX, contentMinY, visualInset,

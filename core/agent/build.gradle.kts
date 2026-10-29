@@ -35,6 +35,8 @@ kotlin {
 }
 
 dependencies {
+    // 应用内代理：AI 请求同样需要遵循用户的代理偏好
+    implementation(project(":core:proxy"))
     // Google ADK for Kotlin 核心（@Tool/@Param 注解、FunctionTool、ToolContext）
     // 以 api 暴露：工具集类（feature:ai）使用官方注解并由官方 KSP processor 生成 FunctionTool，
     // 适配器层在 core:agent 内消费这些类型。

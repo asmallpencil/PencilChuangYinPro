@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Filter1
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Thermostat
@@ -104,6 +105,7 @@ fun ImageEditorRoute(
     onBack: () -> Unit,
     onGoConnect: () -> Unit,
     onOpenCamera: () -> Unit,
+    onOpenPixivGallery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: ImageEditorViewModel = hiltViewModel()
@@ -140,6 +142,7 @@ fun ImageEditorRoute(
             state = state,
             onBack = onBack,
             onGoConnect = onGoConnect,
+            onOpenPixivGallery = onOpenPixivGallery,
             onImportGallery = viewModel::importGallery,
             onCamera = onOpenCamera,
             onImportPdf = viewModel::importPdf,
@@ -175,6 +178,7 @@ fun ImageEditorScreen(
     state: ImageEditorUiState,
     onBack: () -> Unit,
     onGoConnect: () -> Unit,
+    onOpenPixivGallery: () -> Unit,
     onImportGallery: (List<android.net.Uri>, android.content.ContentResolver) -> Unit,
     onCamera: () -> Unit,
     onImportPdf: (android.net.Uri) -> Unit,
@@ -302,6 +306,14 @@ fun ImageEditorScreen(
                         onClick = onBack,
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(ResR.string.label_back),
+                    )
+                },
+                actions = {
+                    // 「P 站仓库」入口：与 P 站侧边栏指向同一页面，可在打印流程中直接取用已保存内容。
+                    AppIconButton(
+                        onClick = onOpenPixivGallery,
+                        imageVector = Icons.Filled.Inventory2,
+                        contentDescription = stringResource(ResR.string.pixiv_open_repository),
                     )
                 },
                 modifier = Modifier.nativeGlassSurface(
@@ -964,6 +976,7 @@ private fun ImageEditorScreenPreview() {
         state = ImageEditorUiState(),
         onBack = {},
         onGoConnect = {},
+        onOpenPixivGallery = {},
         onImportGallery = { _, _ -> },
         onCamera = {},
         onImportPdf = {},

@@ -24,6 +24,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -204,6 +205,8 @@ private fun CameraContent(
     }
 
     val phase = viewModel.phase
+    // AI 处理日志（StateFlow）：只在 Processing 遮罩内展示，展开状态由遮罩自行管理。
+    val aiLogLines by viewModel.aiLogLines.collectAsState()
     Box(Modifier.fillMaxSize().background(CameraTokens.scrim)) {
         when (phase) {
             is CameraPhase.Adjust -> {
@@ -233,8 +236,10 @@ private fun CameraContent(
 
                 CameraBottomBar(
                     mode = viewModel.mode,
+                    aiScene = viewModel.aiScene,
                     flashAuto = viewModel.flashAuto,
                     onSelectMode = viewModel::selectMode,
+                    onSelectAiScene = viewModel::selectAiScene,
                     onShutter = { imageCapture?.let(viewModel::capture) },
                     onPickGallery = {
                         galleryLauncher.launch(
@@ -246,7 +251,16 @@ private fun CameraContent(
                 )
 
                 if (phase is CameraPhase.Processing) {
-                    ProcessingOverlay(stage = phase.stage)
+                    ProcessingOverlay(
+                        stage = phase.stage,
+                        logLines = aiLogLines,
+                        // 取消只对 AI 处理开放：内置算法是毫秒级本地运算，给取消按钮反而制造错觉。
+                        onCancel = if (viewModel.mode == CameraMode.Ai) {
+                            viewModel::cancelProcessing
+                        } else {
+                            null
+                        },
+                    )
                 }
 
                 if (cameraUnavailable) {

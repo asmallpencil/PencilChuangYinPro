@@ -8,9 +8,11 @@ import android.opengl.GLSurfaceView
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.PixelCopy
+import android.view.ViewTreeObserver
 import com.pencil.chuangyin.core.theme.LiquidGlassStyle
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -27,8 +29,10 @@ import javax.microedition.khronos.opengles.GL10
  * [nativePollWidgetEvent] 回传主线程再分发给 Compose 回调。
  *
  * 触摸：原生层对导航栏与所有已注册控件区域做命中测试，命中才消费并转发原生，否则透传给下层 Compose。
- * backdrop：用 PixelCopy 抓取窗口内容（不含本 SurfaceView 自身图层）作为折射/透镜背景，
- * 按 [BACKDROP_INTERVAL_MS] 节流；API < 24 或失败时保持无 backdrop（纯表面叠加）。
+ * backdrop：用 PixelCopy 抓取窗口内容（不含本 SurfaceView 自身图层）作为折射/透镜背景。
+ * 静态界面按 [BACKDROP_INTERVAL_MS] 节流；窗口每完成一次绘制（滚动/拖动/动画）则以
+ * [MOTION_INTERVAL_MS] 高频补采，保证玻璃内文字与页面同步移动、不出现「惯性错位」。
+ * API < 24 或失败时保持无 backdrop（纯表面叠加）。
  */
 class LiquidGlassView @JvmOverloads constructor(
     context: Context,
@@ -71,6 +75,41 @@ class LiquidGlassView @JvmOverloads constructor(
         forceBackdrop = true
         scheduleBackdropCapture()
         requestRender()
+    }
+
+    /**
+     * 窗口完成绘制时的监听。滚动/拖动/动画期间窗口每帧都会绘制，因此它可以当作
+     * 「内容正在移动」的精确信号。
+     *
+     * 为什么需要它：backdrop 是整窗快照，玻璃面内部看到的文字就是快照里的那份文字。
+     * 若始终按 [BACKDROP_INTERVAL_MS] 节流，拖动页面时快照最多落后 100ms，
+     * 文字就会在玻璃控件里临时错位、像受到惯性一样（用户反馈的陈年 bug）。
+     * 移动期间把采样间隔压到 [MOTION_INTERVAL_MS]，静态界面则完全不额外采集。
+     */
+    private var windowDrawListener: ViewTreeObserver.OnDrawListener? = null
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (windowDrawListener != null) return
+        val decor = (context as? Activity)?.window?.decorView ?: return
+        if (!decor.viewTreeObserver.isAlive) return
+        val listener = ViewTreeObserver.OnDrawListener {
+            // 此刻窗口刚完成绘制：立即采集拿到的就是最新一帧。
+            // [capturing] 会把采集串行化，高频回调自然退化为「上一张采完马上采下一张」，
+            // 不会排队堆积，也不会拖慢主线程。
+            scheduleBackdropCapture(motion = true)
+        }
+        windowDrawListener = listener
+        decor.viewTreeObserver.addOnDrawListener(listener)
+    }
+
+    override fun onDetachedFromWindow() {
+        windowDrawListener?.let { listener ->
+            val observer = (context as? Activity)?.window?.decorView?.viewTreeObserver
+            if (observer != null && observer.isAlive) observer.removeOnDrawListener(listener)
+        }
+        windowDrawListener = null
+        super.onDetachedFromWindow()
     }
 
     /** 控件状态缓存（主线程读写）：Slider 值变化时需要 min/max 还原真实值。 */
@@ -490,12 +529,20 @@ class LiquidGlassView @JvmOverloads constructor(
         return false
     }
 
-    private fun scheduleBackdropCapture() {
+    /**
+     * 安排一次 backdrop 采样。
+     *
+     * @param motion true 表示窗口刚刚完成一次绘制（滚动/拖动/动画），此时允许以
+     *               [MOTION_INTERVAL_MS] 的高频采样，使玻璃内的文字与页面同步移动；
+     *               false 为常规节流 [BACKDROP_INTERVAL_MS]，静态界面避免无谓开销。
+     */
+    private fun scheduleBackdropCapture(motion: Boolean = false) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
         if (capturing) return
-        val now = System.currentTimeMillis()
-        // 强制刷新（主题/背景变化）或距上次采集超过节流阈值时才触发。
-        if (!forceBackdrop && now - lastBackdropAt < BACKDROP_INTERVAL_MS) return
+        val now = SystemClock.uptimeMillis()
+        val interval = if (motion) MOTION_INTERVAL_MS else BACKDROP_INTERVAL_MS
+        // 强制刷新（主题/背景变化）或距上次采集超过对应阈值时才触发。
+        if (!forceBackdrop && now - lastBackdropAt < interval) return
         lastBackdropAt = now
         forceBackdrop = false
         mainHandler.post { captureBackdrop() }
@@ -732,6 +779,15 @@ class LiquidGlassView @JvmOverloads constructor(
 
     companion object {
         private const val BACKDROP_INTERVAL_MS = 100L
+
+        /**
+         * 页面移动期间的 backdrop 采样间隔。
+         *
+         * 玻璃面采样的是「整窗快照」，快照越旧，玻璃内文字与真实布局的错位越大。
+         * 静止帧不采样（无绘制即无回调），移动帧按一帧的间隔尽快采样，
+         * 实际速率由 [capturing] 串行化后的 PixelCopy 耗时自然限制。
+         */
+        private const val MOTION_INTERVAL_MS = 16L
 
         /**
          * [refreshBackdropNow] 的补采时刻（毫秒）。避开 100ms 节流阈值，并跨过 Compose 提交

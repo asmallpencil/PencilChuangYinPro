@@ -1,6 +1,11 @@
 package com.pencil.chuangyin.feature.camera.camera
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +43,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import com.pencil.chuangyin.core.agent.aiimage.AiImageScene
 import com.pencil.chuangyin.core.ui.components.AppSegmentedRow
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.feature.camera.CameraMode
@@ -72,14 +78,17 @@ internal fun CameraTopBar(
 }
 
 /**
- * 底部控制区：「裁切方式」小标题 + 三档模式导航（自动 / 手动 / 不处理）
+ * 底部控制区：「裁切方式」小标题 + 四档模式导航（自动 / 手动 / AI 处理 / 不处理）
+ * + AI 模式下额外出现的「被摄类型」子导航（实景 / 文稿）
  * + 相册 / 快门 / 闪光灯。背后为从透明到深色的渐变 scrim，保证白色控件在任意画面上可见。
  */
 @Composable
 internal fun CameraBottomBar(
     mode: CameraMode,
+    aiScene: AiImageScene,
     flashAuto: Boolean,
     onSelectMode: (CameraMode) -> Unit,
+    onSelectAiScene: (AiImageScene) -> Unit,
     onShutter: () -> Unit,
     onPickGallery: () -> Unit,
     onToggleFlash: () -> Unit,
@@ -115,24 +124,57 @@ internal fun CameraBottomBar(
             options = listOf(
                 stringResource(R.string.camera_mode_auto),
                 stringResource(R.string.camera_mode_manual),
+                stringResource(R.string.camera_mode_ai),
                 stringResource(R.string.camera_mode_none),
             ),
             selectedIndex = when (mode) {
                 CameraMode.Auto -> 0
                 CameraMode.Manual -> 1
-                CameraMode.None -> 2
+                CameraMode.Ai -> 2
+                CameraMode.None -> 3
             },
             onSelect = { index ->
                 onSelectMode(
                     when (index) {
                         0 -> CameraMode.Auto
                         1 -> CameraMode.Manual
+                        2 -> CameraMode.Ai
                         else -> CameraMode.None
                     },
                 )
             },
-            modifier = Modifier.width(dimensionResource(ResR.dimen.dimen_camera_mode_bar_width)),
+            modifier = Modifier.fillMaxWidth(),
         )
+
+        // AI 处理的子导航：只在选中 AI 时出现，选择"拍的是实景还是文稿"。
+        AnimatedVisibility(
+            visible = mode == CameraMode.Ai,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
+                AppText(
+                    text = stringResource(R.string.camera_ai_scene_title),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = CameraTokens.contentSecondary,
+                )
+                Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+                AppSegmentedRow(
+                    options = listOf(
+                        stringResource(R.string.camera_ai_scene_real),
+                        stringResource(R.string.camera_ai_scene_document),
+                    ),
+                    selectedIndex = if (aiScene == AiImageScene.Document) 1 else 0,
+                    onSelect = { index ->
+                        onSelectAiScene(
+                            if (index == 1) AiImageScene.Document else AiImageScene.RealScene,
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
 
         Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_l)))
 

@@ -4,6 +4,8 @@ import android.content.Context
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import com.pencil.chuangyin.core.proxy.engine.ProxyEngine
+import com.pencil.chuangyin.core.proxy.engine.proxyEngine
 import com.pencil.chuangyin.feature.pixiv.core.auth.SessionManager
 import com.pencil.chuangyin.feature.pixiv.core.network.ImageRefererInterceptor
 import com.pencil.chuangyin.feature.pixiv.core.network.PixivApi
@@ -41,7 +43,8 @@ object PixivNetworkModule {
     @Provides
     @Singleton
     @PixivOAuthClient
-    fun provideOAuthClient(): OkHttpClient = OkHttpClient.Builder()
+    fun provideOAuthClient(proxyEngine: ProxyEngine): OkHttpClient = OkHttpClient.Builder()
+        .proxyEngine(proxyEngine)
         .addInterceptor(PixivHeaderInterceptor(host = HOST_OAUTH, session = null))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -62,7 +65,8 @@ object PixivNetworkModule {
     @Provides
     @Singleton
     @PixivApiClient
-    fun provideApiClient(session: SessionManager): OkHttpClient = OkHttpClient.Builder()
+    fun provideApiClient(session: SessionManager, proxyEngine: ProxyEngine): OkHttpClient = OkHttpClient.Builder()
+        .proxyEngine(proxyEngine)
         .addInterceptor(PixivHeaderInterceptor(host = HOST_APP_API, session = session))
         .addInterceptor(TokenRefreshInterceptor(session))
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -84,7 +88,8 @@ object PixivNetworkModule {
     @Provides
     @Singleton
     @PixivImageClient
-    fun provideImageClient(): OkHttpClient = OkHttpClient.Builder()
+    fun provideImageClient(proxyEngine: ProxyEngine): OkHttpClient = OkHttpClient.Builder()
+        .proxyEngine(proxyEngine)
         .addInterceptor(ImageRefererInterceptor())
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)

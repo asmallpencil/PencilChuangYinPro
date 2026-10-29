@@ -14,4 +14,9 @@ abstract class ScannerModule {
     @Binds
     @Singleton
     abstract fun bindDocumentScanner(impl: OpenCvDocumentScanner): DocumentScanner
+
+    /** 二维码解码（代理配置导入用）。 */
+    @Binds
+    @Singleton
+    abstract fun bindQrCodeDecoder(impl: OpenCvQrCodeDecoder): QrCodeDecoder
 }

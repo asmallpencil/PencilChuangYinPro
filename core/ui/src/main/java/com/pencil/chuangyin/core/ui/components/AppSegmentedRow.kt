@@ -151,10 +151,12 @@ fun AppSegmentedRow(
                     val selected = index == selectedIndex
                     val itemInteraction = remember(index) { MutableInteractionSource() }
                     // 文字色是"效果型"变化（零过冲），与滑块的"空间型"位移分开，符合 M3 二分原则。
+                    // 选中项文字必须与其背景（滑块 = primaryContainer）成对取色：
+                    // 若沿用 primary，深色主题/黑色种子下 primary 与滑块同色，文字会被滑块吞掉。
                     val textColor by animateColorAsState(
                         targetValue = when {
                             !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                            selected -> MaterialTheme.colorScheme.primary
+                            selected -> MaterialTheme.colorScheme.onPrimaryContainer
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         animationSpec = motion.effectSpec(),
@@ -180,7 +182,7 @@ fun AppSegmentedRow(
                                 Icon(
                                     imageVector = Icons.Filled.Check,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.size(
                                         dimensionResource(ResR.dimen.dimen_global_touch_target) * 0.45f,
                                     ),

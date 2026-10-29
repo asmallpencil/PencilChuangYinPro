@@ -285,10 +285,25 @@
     <string name="pixiv_gallery_loading">正在加载…</string>
     <string name="pixiv_gallery_open_failed">打开失败，请稍后重试</string>
     <string name="pixiv_gallery_novel_title">小说 %1$d · %2$s</string>
+    <string name="pixiv_gallery_novel_title_plain">小说 %1$d</string>
     <string name="pixiv_gallery_archive_loading">正在解压压缩包…</string>
     <string name="pixiv_gallery_archive_open_failed">压缩包解压失败，请稍后重试</string>
     <string name="pixiv_gallery_novel_loading">正在加载小说内容…</string>
+    <string name="pixiv_gallery_novel_open_failed">小说文件读取失败，可能已被删除</string>
     <string name="pixiv_gallery_close_preview">关闭预览</string>
+    <!-- 多选模式：长按任意卡片进入，右上角出现删除/打印，左上角一键全选 -->
+    <string name="pixiv_gallery_select_all">全选</string>
+    <string name="pixiv_gallery_select_none">取消全选</string>
+    <string name="pixiv_gallery_exit_selection">退出多选</string>
+    <string name="pixiv_gallery_selected_count">已选择 %1$d 项</string>
+    <string name="pixiv_gallery_delete_selected">删除所选</string>
+    <string name="pixiv_gallery_delete_selected_confirm">确定删除所选的 %1$d 项内容吗？此操作不可撤销。</string>
+    <string name="pixiv_gallery_print_selected">打印所选</string>
+    <string name="pixiv_gallery_print_mixed_disabled">小说与图片不能混合打印，请分开选择</string>
+    <string name="pixiv_gallery_print_action">打印</string>
+    <string name="pixiv_gallery_print_novel_merged_title">P 站小说 × %1$d</string>
+    <string name="pixiv_gallery_print_preparing">正在准备打印内容…</string>
+    <string name="pixiv_open_repository">P 站仓库</string>
 
     <!-- 屏蔽标签 -->
     <string name="pixiv_blocked_title">屏蔽标签</string>
@@ -389,4 +404,53 @@
     <string name="onboarding_label_dark_theme">深色模式</string>
     <string name="onboarding_label_outline">控件描边</string>
     <string name="onboarding_label_snowfall">粒子飘落</string>
+
+    <!-- 阅读器（小说阅读器 / 文本查看器） -->
+    <string name="reader_switch_to_text">切换为文本查看器</string>
+    <string name="reader_switch_to_novel">切换为小说阅读器</string>
+    <string name="reader_settings_title">阅读设置</string>
+    <string name="reader_font_size_label">字号</string>
+    <string name="reader_font_size_value">%1$d sp</string>
+    <string name="reader_brightness_label">亮度</string>
+    <string name="reader_brightness_value">%1$d%%</string>
+    <string name="reader_background_label">背景</string>
+    <string name="reader_text_color_label">文字颜色</string>
+    <string name="reader_background_paper">纸白</string>
+    <string name="reader_background_parchment">羊皮纸</string>
+    <string name="reader_background_green">护眼绿</string>
+    <string name="reader_background_dark">暗夜</string>
+    <string name="reader_text_black">墨黑</string>
+    <string name="reader_text_gray">深灰</string>
+    <string name="reader_text_brown">深棕</string>
+    <string name="reader_text_white">纸白</string>
+    <string name="reader_page_indicator">%1$d / %2$d</string>
+    <string name="reader_prev_page">上一页</string>
+    <string name="reader_next_page">下一页</string>
+    <string name="reader_edit">修改正文</string>
+    <string name="reader_edit_online_disabled">在线阅读暂不支持修改</string>
+    <string name="reader_edit_save">保存修改</string>
+    <string name="reader_edit_cancel">放弃修改</string>
+    <string name="reader_edit_hint">在此修改正文内容</string>
+    <string name="reader_edit_save_failed">修改保存失败，已恢复原内容</string>
+
+    <!-- 图片查看器（查看 / 编辑） -->
+    <string name="viewer_edit_tools">编辑工具</string>
+    <string name="viewer_edit_crop">裁切</string>
+    <string name="viewer_edit_doodle">涂鸦</string>
+    <string name="viewer_edit_text">文字</string>
+    <string name="viewer_edit_apply">应用</string>
+    <string name="viewer_edit_cancel">取消</string>
+    <string name="viewer_edit_reset">还原原图</string>
+    <string name="viewer_edit_save">保存副本</string>
+    <string name="viewer_edit_done">完成</string>
+    <string name="viewer_edit_loading">正在载入可编辑原图…</string>
+    <string name="viewer_edit_failed">图片载入失败，无法编辑</string>
+    <string name="viewer_edit_saved">已保存到相册</string>
+    <string name="viewer_edit_save_failed">保存失败</string>
+    <string name="viewer_edit_text_hint">输入要添加的文字</string>
+    <string name="viewer_prev_page">上一张</string>
+    <string name="viewer_next_page">下一张</string>
+    <string name="viewer_page_indicator">%1$d / %2$d</string>
+    <string name="viewer_doodle_color">涂鸦颜色</string>
+    <string name="viewer_text_color">文字颜色</string>
 </resources>

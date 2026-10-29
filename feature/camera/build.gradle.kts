@@ -33,12 +33,21 @@ kotlin {
     }
 }
 
+configurations.configureEach {
+    // google-adk 会把 com.google.guava:listenablefuture 约束到 9999.0 的空壳包，
+    // 而 CameraX 的 ProcessCameraProvider 依赖真实的 ListenableFuture 接口。
+    // 强制回真正的 1.0 接口包，否则 CameraPreview 无法解析该类型。
+    resolutionStrategy.force("com.google.guava:listenablefuture:1.0")
+}
+
 dependencies {
     implementation(project(":core:resources"))
     implementation(project(":core:theme"))
     implementation(project(":core:ui"))
     implementation(project(":core:scanner"))
     implementation(project(":core:printer"))
+    // AI 图片处理：复用 AI 打印的模型配置与实时对话客户端（不做聊天，只做一轮决策）
+    implementation(project(":core:agent"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

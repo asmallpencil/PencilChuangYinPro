@@ -24,6 +24,7 @@ fun PixivSubScaffold(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     actions: @Composable () -> Unit = {},
+    navigationIcon: (@Composable () -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(
@@ -33,12 +34,16 @@ fun PixivSubScaffold(
             GlassTopAppBar(
                 title = { AppText(title) },
                 navigationIcon = {
-                    AppIconButton(
-                        onClick = onBack,
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(ResR.string.label_back),
-                        glass = false,
-                    )
+                    if (navigationIcon != null) {
+                        navigationIcon()
+                    } else {
+                        AppIconButton(
+                            onClick = onBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(ResR.string.label_back),
+                            glass = false,
+                        )
+                    }
                 },
                 actions = { actions() },
             )

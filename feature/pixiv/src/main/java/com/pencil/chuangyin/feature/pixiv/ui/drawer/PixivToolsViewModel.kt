@@ -1,13 +1,21 @@
 package com.pencil.chuangyin.feature.pixiv.ui.drawer
 
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pencil.chuangyin.core.ui.data.GallerySaver
 import com.pencil.chuangyin.feature.pixiv.core.auth.PixivAccount
 import com.pencil.chuangyin.feature.pixiv.core.auth.PixivAuthRepository
 import com.pencil.chuangyin.feature.pixiv.data.PixivCacheManager
 import com.pencil.chuangyin.feature.pixiv.data.PixivCacheSizes
 import com.pencil.chuangyin.feature.pixiv.data.PixivDownloadManager
+import com.pencil.chuangyin.feature.pixiv.data.PixivPrintPlan
+import com.pencil.chuangyin.feature.pixiv.data.PixivPrintPlanner
 import com.pencil.chuangyin.feature.pixiv.data.PixivSavedImage
+import com.pencil.chuangyin.printer.ShotTransferBus
+import com.pencil.chuangyin.printer.ShotTransferMode
+import com.pencil.chuangyin.printer.TextTransferBus
+import com.pencil.chuangyin.printer.TextTransferPayload
 import com.pencil.chuangyin.feature.pixiv.data.local.BookmarkEntry
 import com.pencil.chuangyin.feature.pixiv.data.local.HistoryEntry
 import com.pencil.chuangyin.feature.pixiv.data.local.NovelBookmarkEntry
@@ -16,13 +24,18 @@ import com.pencil.chuangyin.feature.pixiv.data.local.PixivBookmarkStore
 import com.pencil.chuangyin.feature.pixiv.data.local.PixivHistoryStore
 import com.pencil.chuangyin.feature.pixiv.data.local.PixivNovelBookmarkStore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
+/** 已保存内容的打印去向：图片打印页 / 文本打印页 / 不可打印。 */
+enum class PixivPrintTarget { IMAGE, TEXT, NONE }
 
 /**
  * 侧边栏各工具页（账号/历史/下载进度/图片管理/屏蔽标签/运行缓存）共享的 ViewModel。
@@ -37,6 +50,10 @@ class PixivToolsViewModel @Inject constructor(
     private val blockedTagsStore: PixivBlockedTagsStore,
     private val downloadManager: PixivDownloadManager,
     private val cacheManager: PixivCacheManager,
+    private val printPlanner: PixivPrintPlanner,
+    private val shotTransferBus: ShotTransferBus,
+    private val textTransferBus: TextTransferBus,
+    private val gallerySaver: GallerySaver,
 ) : ViewModel() {
 
     val account: StateFlow<PixivAccount?> = authRepository.account
@@ -110,7 +127,39 @@ class PixivToolsViewModel @Inject constructor(
 
     fun deleteImage(image: PixivSavedImage) = downloadManager.deleteImage(image)
 
+    /** 多选删除：逐项删除后统一刷新一次列表，避免每删一项触发一次磁盘扫描。 */
+    fun deleteImages(images: List<PixivSavedImage>) {
+        images.forEach { runCatching { downloadManager.deleteImage(it) } }
+        downloadManager.refreshSavedImages()
+    }
+
     fun deleteAllImages() = downloadManager.deleteAllImages()
+
+    /** 已保存内容是否可打印（非空且未混选小说与图片）。 */
+    fun canPrintSelection(images: List<PixivSavedImage>): Boolean = printPlanner.canPrint(images)
+
+    /** 多选是否全部为小说（决定跳文本打印页还是图片打印页）。 */
+    fun isNovelSelection(images: List<PixivSavedImage>): Boolean = printPlanner.isNovelSelection(images)
+
+    /**
+     * 把选择展开为打印批次并投递到对应总线。
+     * 返回值即跳转目标：[PixivPrintTarget.IMAGE] / [PixivPrintTarget.TEXT] / [PixivPrintTarget.NONE]。
+     * 混选 / 空选择 / 展开失败一律返回 NONE，调用方据此拒跳并提示。
+     */
+    suspend fun preparePrint(images: List<PixivSavedImage>): PixivPrintTarget {
+        if (!printPlanner.canPrint(images)) return PixivPrintTarget.NONE
+        return when (val plan = printPlanner.plan(images)) {
+            is PixivPrintPlan.Images -> {
+                shotTransferBus.offer(plan.files, ShotTransferMode.APPEND_ALL)
+                PixivPrintTarget.IMAGE
+            }
+            is PixivPrintPlan.Novels -> {
+                textTransferBus.offer(TextTransferPayload(plan.title, plan.content))
+                PixivPrintTarget.TEXT
+            }
+            PixivPrintPlan.Mixed, PixivPrintPlan.Empty -> PixivPrintTarget.NONE
+        }
+    }
 
     /** 图片管理页每次进入/删除后重新扫描本地文件（含打印缓存文件）。 */
     fun refreshSavedImages() = downloadManager.refreshSavedImages()
@@ -126,6 +175,20 @@ class PixivToolsViewModel @Inject constructor(
     /** 取压缩包首张页图作为图片管理封面（只解压首页，进入时才完整解压）。 */
     suspend fun archiveCover(image: PixivSavedImage): java.io.File? =
         downloadManager.archiveFirstPageFile(image)
+
+    /**
+     * 查看器内编辑（裁切 / 涂鸦 / 文字）后的图片导出：写入软件统一输出目录的相册。
+     * 返回是否保存成功，供查看器提示「已保存 / 保存失败」。
+     */
+    suspend fun exportEditedImage(bitmap: Bitmap, baseName: String): Boolean =
+        withContext(Dispatchers.IO) { gallerySaver.save(listOf(bitmap), baseName) > 0 }
+
+    /**
+     * 小说阅读器快捷修改：正文写回本地 txt。
+     * 仅在本地内容可用；在线小说没有对应文件，调用方会禁用编辑入口。
+     */
+    suspend fun saveNovelContent(file: java.io.File, content: String): Boolean =
+        withContext(Dispatchers.IO) { runCatching { file.writeText(content) }.isSuccess }
 
     fun closeArchive(illustId: Int) = downloadManager.clearViewCache(illustId)
 
