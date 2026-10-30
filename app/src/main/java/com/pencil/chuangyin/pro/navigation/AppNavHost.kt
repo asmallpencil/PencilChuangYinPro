@@ -113,6 +113,7 @@ import com.pencil.chuangyin.feature.pixiv.ui.tools.PixivBlockedTagsRoute
 import com.pencil.chuangyin.feature.pixiv.ui.tools.PixivBookmarksRoute
 import com.pencil.chuangyin.feature.pixiv.ui.tools.PixivCacheRoute
 import com.pencil.chuangyin.feature.pixiv.ui.tools.PixivDownloadsRoute
+import com.pencil.chuangyin.feature.pixiv.ui.tools.PixivGalleryEntry
 import com.pencil.chuangyin.feature.pixiv.ui.tools.PixivGalleryRoute
 import com.pencil.chuangyin.feature.pixiv.ui.tools.PixivHistoryRoute
 import com.pencil.chuangyin.feature.pixiv.ui.tools.PixivSourcesRoute
@@ -172,6 +173,13 @@ object AppRoutes {
     const val PIXIV_BOOKMARKS = "pixiv_bookmarks"
     const val PIXIV_DOWNLOADS = "pixiv_downloads"
     const val PIXIV_GALLERY = "pixiv_gallery"
+    const val PIXIV_GALLERY_PATTERN = "pixiv_gallery?entry={entry}"
+
+    /**
+     * 已保存内容页：entry 决定默认分类与可打印范围
+     * （all = 侧边栏入口、novel = 文本打印入口、image = 图片打印入口）。
+     */
+    fun pixivGallery(entry: String = "all") = "$PIXIV_GALLERY?entry=$entry"
     const val PIXIV_BLOCKED_TAGS = "pixiv_blocked_tags"
     const val PIXIV_CACHE = "pixiv_cache"
 }
@@ -275,7 +283,7 @@ fun AppNavHost(
             AppDestination("pixiv_downloads", "P 站下载管理页") { AppRoutes.PIXIV_DOWNLOADS },
             AppDestination("pixiv_bookmarks", "P 站收藏页") { AppRoutes.PIXIV_BOOKMARKS },
             AppDestination("pixiv_history", "P 站浏览历史页") { AppRoutes.PIXIV_HISTORY },
-            AppDestination("pixiv_gallery", "P 站本地图库页") { AppRoutes.PIXIV_GALLERY },
+            AppDestination("pixiv_gallery", "P 站本地图库页") { AppRoutes.pixivGallery() },
             AppDestination("pixiv_login", "P 站登录页") { AppRoutes.PIXIV_LOGIN },
             AppDestination("pixiv_account", "P 站账号页") { AppRoutes.PIXIV_ACCOUNT },
             AppDestination("connect", "打印机连接页") { AppRoutes.CONNECT },
@@ -394,7 +402,7 @@ fun AppNavHost(
                             PixivDrawerDestination.DOWNLOADS -> AppRoutes.PIXIV_DOWNLOADS
                             // 主题样式/应用设置已从侧边栏移除；SETTINGS 为 P 站自己的功能设置页。
                             PixivDrawerDestination.SETTINGS -> AppRoutes.PIXIV_SETTINGS
-                            PixivDrawerDestination.GALLERY -> AppRoutes.PIXIV_GALLERY
+                            PixivDrawerDestination.GALLERY -> AppRoutes.pixivGallery()
                             PixivDrawerDestination.BLOCKED_TAGS -> AppRoutes.PIXIV_BLOCKED_TAGS
                             PixivDrawerDestination.CACHE -> AppRoutes.PIXIV_CACHE
                         }
@@ -409,7 +417,7 @@ fun AppNavHost(
                 TextEditorRoute(
                     onBack = { safeBack() },
                     onGoConnect = { navController.navigate(AppRoutes.CONNECT) },
-                    onOpenPixivGallery = { navController.navigate(AppRoutes.PIXIV_GALLERY) },
+                    onOpenPixivGallery = { navController.navigate(AppRoutes.pixivGallery("novel")) },
                 )
             }
             composable(AppRoutes.IMAGE) {
@@ -417,7 +425,7 @@ fun AppNavHost(
                     onBack = { safeBack() },
                     onGoConnect = { navController.navigate(AppRoutes.CONNECT) },
                     onOpenCamera = { navController.navigate(AppRoutes.CAMERA) },
-                    onOpenPixivGallery = { navController.navigate(AppRoutes.PIXIV_GALLERY) },
+                    onOpenPixivGallery = { navController.navigate(AppRoutes.pixivGallery("image")) },
                 )
             }
             composable(AppRoutes.CAMERA) {
@@ -605,7 +613,15 @@ fun AppNavHost(
             composable(AppRoutes.PIXIV_DOWNLOADS) {
                 PixivDownloadsRoute(onBack = { safeBack() })
             }
-            composable(AppRoutes.PIXIV_GALLERY) {
+            composable(
+                route = AppRoutes.PIXIV_GALLERY_PATTERN,
+                arguments = listOf(
+                    navArgument("entry") {
+                        type = NavType.StringType
+                        defaultValue = "all"
+                    },
+                ),
+            ) { backStackEntry ->
                 PixivGalleryRoute(
                     onBack = { safeBack() },
                     // 已保存内容多选打印：直接落到既有打印页，复用同一套打印设置与流程。
@@ -614,6 +630,11 @@ fun AppNavHost(
                     },
                     onOpenPrintText = {
                         navController.navigate(AppRoutes.TEXT) { launchSingleTop = true }
+                    },
+                    entry = when (backStackEntry.arguments?.getString("entry")) {
+                        "novel" -> PixivGalleryEntry.NOVEL
+                        "image" -> PixivGalleryEntry.IMAGE
+                        else -> PixivGalleryEntry.ALL
                     },
                 )
             }

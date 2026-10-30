@@ -72,10 +72,6 @@ class ProxySettingsViewModel @Inject constructor(
     private val _message = MutableStateFlow<ProxyUiMessage?>(null)
     val message: StateFlow<ProxyUiMessage?> = _message.asStateFlow()
 
-    /** 工具页「路由测试」的结果（只解析路由，不建立连接）。 */
-    private val _probe = MutableStateFlow<RouteDecision?>(null)
-    val probe: StateFlow<RouteDecision?> = _probe.asStateFlow()
-
     init {
         // start() 幂等；Application 里已调用，这里兜底保证预览路由能读到最新快照。
         engine.start()
@@ -93,10 +89,6 @@ class ProxySettingsViewModel @Inject constructor(
 
     fun setMode(mode: ProxyMode) = update { it.copy(mode = mode) }
 
-    fun setApplyRejectRules(enabled: Boolean) = update { it.copy(applyRejectRules = enabled) }
-
-    fun setProxyPrivateAddresses(enabled: Boolean) = update { it.copy(proxyPrivateAddresses = enabled) }
-
     fun setGlobalSelection(policy: String) {
         if (policy.isBlank()) return
         viewModelScope.launch { repository.setGlobalSelection(policy) }
@@ -105,19 +97,6 @@ class ProxySettingsViewModel @Inject constructor(
     fun selectGroupNode(groupName: String, nodeName: String) {
         if (groupName.isBlank() || nodeName.isBlank()) return
         viewModelScope.launch { repository.selectGroupNode(groupName, nodeName) }
-    }
-
-    /** 恢复默认：关闭代理、仅 P 站、规则模式、开启拒绝规则；已导入的配置保留。 */
-    fun resetPreferences() = update {
-        it.copy(
-            enabled = false,
-            scope = ProxyScope.PixivOnly,
-            mode = ProxyMode.Rule,
-            globalSelection = null,
-            groupSelections = emptyMap(),
-            applyRejectRules = true,
-            proxyPrivateAddresses = false,
-        )
     }
 
     // ---------------- 配置管理 ----------------
@@ -135,14 +114,6 @@ class ProxySettingsViewModel @Inject constructor(
     fun removeConfig(id: String) {
         if (id.isBlank()) return
         viewModelScope.launch { repository.removeConfig(id) }
-    }
-
-    fun clearAllConfigs() {
-        viewModelScope.launch {
-            repository.clearAllConfigs()
-            _probe.value = null
-            engine.clearLatency()
-        }
     }
 
     /** 手动粘贴 / 二维码 / 链接的统一入口：自动识别订阅链接。 */
@@ -269,27 +240,10 @@ class ProxySettingsViewModel @Inject constructor(
         }
     }
 
-    fun clearLatency() = engine.clearLatency()
-
     fun clearLogs() = engine.clearLogs()
-
-    // ---------------- 路由测试 ----------------
 
     /** 仪表盘预览：用固定 P 站域名试算，随后再叠加延迟表做展示。 */
     fun previewRoute(): RouteDecision = engine.previewRoute()
-
-    fun testRoute(rawHost: String) {
-        val host = normalizeHost(rawHost)
-        if (host.isBlank()) {
-            _probe.value = null
-            return
-        }
-        _probe.value = engine.routeFor(host)
-    }
-
-    fun clearProbe() {
-        _probe.value = null
-    }
 
     // ---------------- 内部 ----------------
 
@@ -346,14 +300,6 @@ class ProxySettingsViewModel @Inject constructor(
     private fun endBusy() {
         _busy.value = false
     }
-
-    /** 规范化用户输入：允许粘贴完整 URL，只取主机名参与路由测试。 */
-    private fun normalizeHost(raw: String): String = raw.trim()
-        .removePrefix("https://")
-        .removePrefix("http://")
-        .substringBefore('/')
-        .substringBefore(' ')
-        .lowercase()
 
     private fun policiesForMeasurement(config: ClashConfig?): List<String> {
         if (config == null) return listOf(ClashConfig.POLICY_DIRECT)

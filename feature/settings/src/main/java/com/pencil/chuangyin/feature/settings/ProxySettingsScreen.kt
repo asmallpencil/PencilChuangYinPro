@@ -103,8 +103,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** 工具页日志最多展示条数：引擎自身保留了更多，界面只取最近的一段。 */
-private const val MAX_VISIBLE_LOGS = 40
+/** 仪表盘日志最多展示条数：引擎自身保留了更多，界面只取最近的一段。 */
+private const val MAX_VISIBLE_LOGS = 8
 
 /** 仪表盘 / 配置页里警告文本最多展示条数（完整提示仍保存在配置对象中）。 */
 private const val MAX_VISIBLE_WARNINGS = 4
@@ -120,13 +120,10 @@ class ProxySettingsActions(
     val setEnabled: (Boolean) -> Unit,
     val setScope: (ProxyScope) -> Unit,
     val setMode: (ProxyMode) -> Unit,
-    val setApplyRejectRules: (Boolean) -> Unit,
-    val setProxyPrivateAddresses: (Boolean) -> Unit,
     val selectGroupNode: (String, String) -> Unit,
     val setGlobalSelection: (String) -> Unit,
     val measure: (String) -> Unit,
     val measureAll: () -> Unit,
-    val clearLatency: () -> Unit,
     val clearLogs: () -> Unit,
     val importManual: (String, String?) -> Unit,
     val importLink: (String, String?) -> Unit,
@@ -136,9 +133,6 @@ class ProxySettingsActions(
     val renameConfig: (String, String) -> Unit,
     val removeConfig: (String) -> Unit,
     val refreshSubscription: (ProxyConfigEntry) -> Unit,
-    val clearAllConfigs: () -> Unit,
-    val resetPreferences: () -> Unit,
-    val testRoute: (String) -> Unit,
 )
 
 @Composable
@@ -152,7 +146,6 @@ fun ProxySettingsRoute(
     val latency by viewModel.latency.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
-    val probe by viewModel.probe.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(message) {
@@ -167,13 +160,10 @@ fun ProxySettingsRoute(
             setEnabled = viewModel::setEnabled,
             setScope = viewModel::setScope,
             setMode = viewModel::setMode,
-            setApplyRejectRules = viewModel::setApplyRejectRules,
-            setProxyPrivateAddresses = viewModel::setProxyPrivateAddresses,
             selectGroupNode = viewModel::selectGroupNode,
             setGlobalSelection = viewModel::setGlobalSelection,
             measure = viewModel::measure,
             measureAll = viewModel::measureAll,
-            clearLatency = viewModel::clearLatency,
             clearLogs = viewModel::clearLogs,
             importManual = viewModel::importFromText,
             importLink = viewModel::importFromLink,
@@ -183,9 +173,6 @@ fun ProxySettingsRoute(
             renameConfig = viewModel::renameConfig,
             removeConfig = viewModel::removeConfig,
             refreshSubscription = viewModel::refreshSubscription,
-            clearAllConfigs = viewModel::clearAllConfigs,
-            resetPreferences = viewModel::resetPreferences,
-            testRoute = viewModel::testRoute,
         )
     }
 
@@ -197,7 +184,6 @@ fun ProxySettingsRoute(
         logs = logs,
         latency = latency,
         busy = busy,
-        probe = probe,
         preview = preview,
         snackbarHostState = snackbarHostState,
         actions = actions,
@@ -213,7 +199,6 @@ fun ProxySettingsScreen(
     logs: List<ProxyLogEntry>,
     latency: Map<String, Long>,
     busy: Boolean,
-    probe: RouteDecision?,
     preview: RouteDecision,
     snackbarHostState: SnackbarHostState,
     actions: ProxySettingsActions,
@@ -226,7 +211,6 @@ fun ProxySettingsScreen(
 
     var showLinkImport by rememberSaveable { mutableStateOf(false) }
     var showManualImport by rememberSaveable { mutableStateOf(false) }
-    var showClearAllConfirm by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<ProxyConfigEntry?>(null) }
     var deleteTarget by remember { mutableStateOf<ProxyConfigEntry?>(null) }
 
@@ -286,6 +270,7 @@ fun ProxySettingsScreen(
             when (currentTab) {
                 ProxyTab.Dashboard -> DashboardTab(
                     state = state,
+                    logs = logs,
                     latency = latency,
                     preview = preview,
                     actions = actions,
@@ -309,14 +294,6 @@ fun ProxySettingsScreen(
                     onShowManual = { showManualImport = true },
                     onRename = { renameTarget = it },
                     onDelete = { deleteTarget = it },
-                    onClearAll = { showClearAllConfirm = true },
-                )
-                ProxyTab.Tools -> ToolsTab(
-                    state = state,
-                    logs = logs,
-                    probe = probe,
-                    actions = actions,
-                    onClearAllConfigs = { showClearAllConfirm = true },
                 )
             }
         }
@@ -375,22 +352,9 @@ fun ProxySettingsScreen(
             onDismiss = { deleteTarget = null },
         )
     }
-
-    if (showClearAllConfirm) {
-        ProxyConfirmDialog(
-            title = stringResource(R.string.settings_proxy_clear_all),
-            message = stringResource(R.string.settings_proxy_clear_all_confirm, state.configs.size),
-            confirmLabel = stringResource(R.string.settings_proxy_remove),
-            onConfirm = {
-                actions.clearAllConfigs()
-                showClearAllConfirm = false
-            },
-            onDismiss = { showClearAllConfirm = false },
-        )
-    }
 }
 
-// ===================== 底部四标签 =====================
+// ===================== 底部三标签 =====================
 
 private enum class ProxyTab(
     val labelRes: Int,
@@ -399,7 +363,6 @@ private enum class ProxyTab(
     Dashboard(R.string.settings_proxy_tab_dashboard, Icons.Filled.Speed),
     Proxy(R.string.settings_proxy_tab_proxy, Icons.Filled.Router),
     Config(R.string.settings_proxy_tab_config, Icons.Filled.Description),
-    Tools(R.string.settings_proxy_tab_tools, Icons.Filled.Bolt),
 }
 
 @Composable
@@ -499,6 +462,7 @@ private fun ProxyTabItem(
 @Composable
 private fun DashboardTab(
     state: ProxyState,
+    logs: List<ProxyLogEntry>,
     latency: Map<String, Long>,
     preview: RouteDecision,
     actions: ProxySettingsActions,
@@ -506,6 +470,7 @@ private fun DashboardTab(
 ) {
     val prefs = state.preferences
     val active = state.activeConfig
+    val clock = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -565,25 +530,34 @@ private fun DashboardTab(
         }
 
         SettingsGroup(
-            label = stringResource(R.string.settings_proxy_advanced),
+            label = stringResource(R.string.settings_proxy_tools_logs),
             visible = true,
             delayMillis = 180,
         ) {
-            SettingSwitchRow(
-                icon = Icons.Filled.Block,
-                title = stringResource(R.string.settings_proxy_apply_reject),
-                desc = stringResource(R.string.settings_proxy_apply_reject_desc),
-                checked = prefs.applyRejectRules,
-                onCheckedChange = actions.setApplyRejectRules,
-            )
-            SettingsEntryDivider()
-            SettingSwitchRow(
-                icon = Icons.Filled.Router,
-                title = stringResource(R.string.settings_proxy_private),
-                desc = stringResource(R.string.settings_proxy_private_desc),
-                checked = prefs.proxyPrivateAddresses,
-                onCheckedChange = actions.setProxyPrivateAddresses,
-            )
+            if (logs.isEmpty()) {
+                ProxyNoteRow(
+                    icon = Icons.Filled.Description,
+                    text = stringResource(R.string.settings_proxy_tools_logs_empty),
+                )
+            } else {
+                logs.take(MAX_VISIBLE_LOGS).forEachIndexed { index, entry ->
+                    if (index > 0) SettingsEntryDivider()
+                    ProxyLogRow(entry = entry, clock = clock)
+                }
+                SettingsEntryDivider()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = dimensionResource(ResR.dimen.dimen_global_padding_s)),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    AppTextButton(
+                        text = stringResource(R.string.settings_proxy_tools_clear_logs),
+                        onClick = actions.clearLogs,
+                        enabled = logs.isNotEmpty(),
+                    )
+                }
+            }
         }
     }
 }
@@ -1000,7 +974,6 @@ private fun ConfigTab(
     onShowManual: () -> Unit,
     onRename: (ProxyConfigEntry) -> Unit,
     onDelete: (ProxyConfigEntry) -> Unit,
-    onClearAll: () -> Unit,
 ) {
     val activeId = state.activeConfig?.id
     Column(
@@ -1056,21 +1029,6 @@ private fun ConfigTab(
             onShowManual = onShowManual,
             delayMillis = 60,
         )
-
-        if (state.configs.isNotEmpty()) {
-            SettingsGroup(
-                label = stringResource(R.string.settings_proxy_maintenance),
-                visible = true,
-                delayMillis = 120,
-            ) {
-                SettingsEntry(
-                    icon = Icons.Filled.Delete,
-                    title = stringResource(R.string.settings_proxy_clear_all),
-                    desc = stringResource(R.string.settings_proxy_clear_all_desc),
-                    onClick = onClearAll,
-                )
-            }
-        }
     }
 }
 
@@ -1232,135 +1190,7 @@ private fun AddConfigSection(
     }
 }
 
-// ===================== 工具 =====================
-
-@Composable
-private fun ToolsTab(
-    state: ProxyState,
-    logs: List<ProxyLogEntry>,
-    probe: RouteDecision?,
-    actions: ProxySettingsActions,
-    onClearAllConfigs: () -> Unit,
-) {
-    var hostInput by rememberSaveable { mutableStateOf("") }
-    val clock = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m))
-            .padding(bottom = dimensionResource(ResR.dimen.dimen_global_padding_xl)),
-    ) {
-        Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-        SettingsGroup(
-            label = stringResource(R.string.settings_proxy_tools_route),
-            visible = true,
-            delayMillis = 0,
-        ) {
-            Column(
-                modifier = Modifier.padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
-            ) {
-                AppText(
-                    text = stringResource(R.string.settings_proxy_tools_route_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(
-                        dimensionResource(ResR.dimen.dimen_global_padding_s),
-                    ),
-                ) {
-                    AppTextField(
-                        value = hostInput,
-                        onValueChange = { hostInput = it },
-                        label = stringResource(R.string.settings_proxy_tools_route_label),
-                        placeholder = "www.pixiv.net",
-                        modifier = Modifier.weight(1f),
-                    )
-                    AppOutlinedButton(
-                        text = stringResource(R.string.settings_proxy_tools_route_action),
-                        onClick = { actions.testRoute(hostInput) },
-                        enabled = hostInput.isNotBlank(),
-                    )
-                }
-                if (probe != null) {
-                    Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-                    ProxyOutboundRow(decision = probe, latency = null, onMeasure = {
-                        actions.measure(probe.policy.ifBlank { ClashConfig.POLICY_DIRECT })
-                    })
-                }
-            }
-        }
-
-        SettingsGroup(
-            label = stringResource(R.string.settings_proxy_tools_logs),
-            visible = true,
-            delayMillis = 60,
-        ) {
-            if (logs.isEmpty()) {
-                ProxyNoteRow(
-                    icon = Icons.Filled.Description,
-                    text = stringResource(R.string.settings_proxy_tools_logs_empty),
-                )
-            } else {
-                logs.take(MAX_VISIBLE_LOGS).forEachIndexed { index, entry ->
-                    if (index > 0) SettingsEntryDivider()
-                    ProxyLogRow(entry = entry, clock = clock)
-                }
-            }
-            SettingsEntryDivider()
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = dimensionResource(ResR.dimen.dimen_global_padding_s)),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                AppTextButton(
-                    text = stringResource(R.string.settings_proxy_tools_clear_logs),
-                    onClick = actions.clearLogs,
-                    enabled = logs.isNotEmpty(),
-                )
-            }
-        }
-
-        SettingsGroup(
-            label = stringResource(R.string.settings_proxy_maintenance),
-            visible = true,
-            delayMillis = 120,
-        ) {
-            SettingsEntry(
-                icon = Icons.Filled.NetworkCheck,
-                title = stringResource(R.string.settings_proxy_measure_all),
-                desc = stringResource(R.string.settings_proxy_measure_all_desc),
-                onClick = actions.measureAll,
-            )
-            SettingsEntryDivider()
-            SettingsEntry(
-                icon = Icons.Filled.Bolt,
-                title = stringResource(R.string.settings_proxy_tools_clear_latency),
-                desc = stringResource(R.string.settings_proxy_tools_clear_latency_desc),
-                onClick = actions.clearLatency,
-            )
-            SettingsEntryDivider()
-            SettingsEntry(
-                icon = Icons.Filled.Delete,
-                title = stringResource(R.string.settings_proxy_clear_all),
-                desc = stringResource(R.string.settings_proxy_clear_all_desc),
-                onClick = onClearAllConfigs,
-            )
-            SettingsEntryDivider()
-            SettingsEntry(
-                icon = Icons.Filled.Refresh,
-                title = stringResource(R.string.settings_proxy_tools_reset),
-                desc = stringResource(R.string.settings_proxy_tools_reset_desc),
-                onClick = actions.resetPreferences,
-            )
-        }
-    }
-}
+// ===================== 连接日志 =====================
 
 @Composable
 private fun ProxyLogRow(

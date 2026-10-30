@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,6 +43,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -79,8 +81,38 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-/** 图片管理分类筛选（手动下载 / 打印缓存）。 */
+/** 图片管理保存类型筛选（手动下载 / 打印缓存）。 */
 private enum class GalleryFilter { ALL, DOWNLOAD, PRINT_CACHE }
+
+/** 内容分类筛选（与保存类型正交）。 */
+private enum class GalleryCategory { ALL, NOVEL, IMAGE }
+
+/** 打开「已保存内容」的入口：决定默认分类与可打印范围。 */
+enum class PixivGalleryEntry { ALL, NOVEL, IMAGE }
+
+/** 打印被拒绝的原因（混选 / 内容无法展开），用于区分提示文案。 */
+private enum class PrintBlockReason { MIXED, EMPTY }
+
+/** 入口对应的默认分类：文本打印入口落小说、图片打印入口落图片、侧边栏入口保持全部。 */
+private val PixivGalleryEntry.defaultCategory: GalleryCategory
+    get() = when (this) {
+        PixivGalleryEntry.ALL -> GalleryCategory.ALL
+        PixivGalleryEntry.NOVEL -> GalleryCategory.NOVEL
+        PixivGalleryEntry.IMAGE -> GalleryCategory.IMAGE
+    }
+
+/** 当前入口下该卡片是否可打印：文本入口仅小说，图片入口仅图片（含压缩包/多图）。 */
+private fun PixivSavedImage.printableUnder(entry: PixivGalleryEntry): Boolean = when (entry) {
+    PixivGalleryEntry.ALL -> true
+    PixivGalleryEntry.NOVEL -> kind == PixivSavedKind.NOVEL
+    PixivGalleryEntry.IMAGE -> kind != PixivSavedKind.NOVEL
+}
+
+private fun PixivSavedImage.matchesCategory(category: GalleryCategory): Boolean = when (category) {
+    GalleryCategory.ALL -> true
+    GalleryCategory.NOVEL -> kind == PixivSavedKind.NOVEL
+    GalleryCategory.IMAGE -> kind != PixivSavedKind.NOVEL
+}
 
 /**
  * 「已保存内容」页。
@@ -92,6 +124,10 @@ private enum class GalleryFilter { ALL, DOWNLOAD, PRINT_CACHE }
  * - 打印：图片（含压缩包、散图聚合）按序号展开全部页后交给图片打印页；
  *   纯小说合并正文后交给文本打印页；**图文混选时打印按钮禁用**。
  *
+ * 筛选：上排「保存类型」（全部 / 手动下载 / 打印缓存）+ 下排紧凑「分类」（全部 / 小说 / 图片）。
+ * 入口（[entry]）决定默认分类与可打印范围：从文本打印进入默认小说且图片卡片置灰，
+ * 从图片打印进入默认图片且小说卡片置灰，侧边栏进入不限。
+ *
  * 查看页（图片 / 多图 / 小说）不再提供删除，改为「分享 + 打印」，打印走同一条正常打印流程。
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -100,29 +136,38 @@ fun PixivGalleryRoute(
     onBack: () -> Unit,
     onOpenPrintImages: () -> Unit,
     onOpenPrintText: () -> Unit,
+    entry: PixivGalleryEntry = PixivGalleryEntry.ALL,
     viewModel: PixivToolsViewModel = hiltViewModel(),
 ) {
     val images by viewModel.savedImages.collectAsStateWithLifecycle()
     var filter by remember { mutableStateOf(GalleryFilter.ALL) }
+    var category by remember(entry) { mutableStateOf(entry.defaultCategory) }
     var selected by remember { mutableStateOf<PixivSavedImage?>(null) }
     var selectionMode by remember { mutableStateOf(false) }
     var selection by remember { mutableStateOf<List<String>>(emptyList()) }
     var confirmDelete by remember { mutableStateOf(false) }
     var printing by remember { mutableStateOf(false) }
-    var printBlocked by remember { mutableStateOf(false) }
+    var printBlocked by remember { mutableStateOf<PrintBlockReason?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     // 每次进入重新扫描本地文件（含打印缓存），保证列表实时。
     LaunchedEffect(Unit) { viewModel.refreshSavedImages() }
 
-    val filtered = remember(images, filter) {
+    val filtered = remember(images, filter, category) {
         val target = when (filter) {
             GalleryFilter.ALL -> null
             GalleryFilter.DOWNLOAD -> PixivSavedCategory.DOWNLOAD
             GalleryFilter.PRINT_CACHE -> PixivSavedCategory.PRINT_CACHE
         }
-        if (target == null) images else images.filter { it.category == target }
+        images.filter { item ->
+            (target == null || item.category == target) && item.matchesCategory(category)
+        }
+    }
+
+    // 当前入口允许打印的可见卡片（下拉「分类」只影响展示，入口约束决定能否选中）。
+    val printableVisible = remember(filtered, entry) {
+        filtered.filter { it.printableUnder(entry) }
     }
 
     // 选择键 = 文件绝对路径（同一作品的分页会有各自路径，天然唯一）。
@@ -131,21 +176,25 @@ fun PixivGalleryRoute(
         val byKey = images.associateBy { it.file.absolutePath }
         selection.mapNotNull { byKey[it] }
     }
-    val canPrint = selectedItems.isNotEmpty() && viewModel.canPrintSelection(selectedItems)
+    val canPrint = selectedItems.isNotEmpty() &&
+        selectedItems.all { it.printableUnder(entry) } &&
+        viewModel.canPrintSelection(selectedItems)
 
     fun exitSelection() {
         selectionMode = false
         selection = emptyList()
     }
 
-    fun toggle(key: String) {
+    fun toggle(item: PixivSavedImage) {
+        if (!item.printableUnder(entry)) return
+        val key = item.file.absolutePath
         selection = if (key in selection) selection - key else selection + key
     }
 
     fun printItems(items: List<PixivSavedImage>) {
         if (printing || items.isEmpty()) return
         if (!viewModel.canPrintSelection(items)) {
-            printBlocked = true
+            printBlocked = PrintBlockReason.MIXED
             return
         }
         printing = true
@@ -156,7 +205,7 @@ fun PixivGalleryRoute(
             when (target) {
                 PixivPrintTarget.IMAGE -> onOpenPrintImages()
                 PixivPrintTarget.TEXT -> onOpenPrintText()
-                PixivPrintTarget.NONE -> printBlocked = true
+                PixivPrintTarget.NONE -> printBlocked = PrintBlockReason.EMPTY
             }
         }
     }
@@ -180,9 +229,9 @@ fun PixivGalleryRoute(
                         )
                         AppIconButton(
                             onClick = {
-                                val visibleKeys = filtered.map { it.file.absolutePath }
+                                val visibleKeys = printableVisible.map { it.file.absolutePath }
                                 selection = if (visibleKeys.isNotEmpty() &&
-                                    selection.size >= visibleKeys.size
+                                    selection.toSet() == visibleKeys.toSet()
                                 ) {
                                     emptyList()
                                 } else {
@@ -190,11 +239,16 @@ fun PixivGalleryRoute(
                                 }
                             },
                             imageVector = Icons.Filled.SelectAll,
-                            contentDescription = if (selection.size >= filtered.size && filtered.isNotEmpty()) {
-                                stringResource(ResR.string.pixiv_gallery_select_none)
-                            } else {
-                                stringResource(ResR.string.pixiv_gallery_select_all)
-                            },
+                            contentDescription = stringResource(
+                                if (printableVisible.isNotEmpty() &&
+                                    selection.toSet() == printableVisible.map { it.file.absolutePath }.toSet()
+                                ) {
+                                    ResR.string.pixiv_gallery_select_none
+                                } else {
+                                    ResR.string.pixiv_gallery_select_all
+                                },
+                            ),
+                            enabled = printableVisible.isNotEmpty(),
                             glass = false,
                         )
                     }
@@ -226,25 +280,59 @@ fun PixivGalleryRoute(
                 FullScreenEmpty(message = stringResource(ResR.string.pixiv_gallery_empty))
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    AppSegmentedRow(
-                        options = listOf(
-                            stringResource(ResR.string.pixiv_gallery_filter_all),
-                            stringResource(ResR.string.pixiv_gallery_filter_download),
-                            stringResource(ResR.string.pixiv_gallery_filter_print_cache),
-                        ),
-                        selectedIndex = filter.ordinal,
-                        onSelect = { index ->
-                            filter = when (index) {
-                                1 -> GalleryFilter.DOWNLOAD
-                                2 -> GalleryFilter.PRINT_CACHE
-                                else -> GalleryFilter.ALL
-                            }
-                        },
+                    Column(
                         modifier = Modifier.padding(
                             horizontal = dimensionResource(ResR.dimen.dimen_global_padding_l),
                             vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
                         ),
-                    )
+                    ) {
+                        // 上排：保存类型（全部 / 手动下载 / 打印缓存）
+                        AppText(
+                            text = stringResource(ResR.string.pixiv_gallery_save_type),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+                        AppSegmentedRow(
+                            options = listOf(
+                                stringResource(ResR.string.pixiv_gallery_filter_all),
+                                stringResource(ResR.string.pixiv_gallery_filter_download),
+                                stringResource(ResR.string.pixiv_gallery_filter_print_cache),
+                            ),
+                            selectedIndex = filter.ordinal,
+                            onSelect = { index ->
+                                filter = when (index) {
+                                    1 -> GalleryFilter.DOWNLOAD
+                                    2 -> GalleryFilter.PRINT_CACHE
+                                    else -> GalleryFilter.ALL
+                                }
+                            },
+                        )
+                        Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+                        // 下排：分类（全部 / 小说 / 图片），紧凑尺寸的次级筛选
+                        AppText(
+                            text = stringResource(ResR.string.pixiv_gallery_category_label),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        )
+                        Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+                        AppSegmentedRow(
+                            options = listOf(
+                                stringResource(ResR.string.pixiv_gallery_category_all),
+                                stringResource(ResR.string.pixiv_gallery_category_novel),
+                                stringResource(ResR.string.pixiv_gallery_category_image),
+                            ),
+                            selectedIndex = category.ordinal,
+                            onSelect = { index ->
+                                category = when (index) {
+                                    1 -> GalleryCategory.NOVEL
+                                    2 -> GalleryCategory.IMAGE
+                                    else -> GalleryCategory.ALL
+                                }
+                            },
+                            compact = true,
+                        )
+                    }
                     if (filtered.isEmpty()) {
                         FullScreenEmpty(message = stringResource(ResR.string.pixiv_gallery_empty_filtered))
                     } else {
@@ -265,16 +353,18 @@ fun PixivGalleryRoute(
                             items(filtered.size, key = { filtered[it].file.absolutePath }) { index ->
                                 val item = filtered[index]
                                 val key = item.file.absolutePath
+                                val enabled = item.printableUnder(entry)
                                 GalleryTile(
                                     image = item,
                                     selectionMode = selectionMode,
                                     selectionIndex = selection.indexOf(key).takeIf { it >= 0 },
+                                    enabled = enabled,
                                     onClick = {
-                                        if (selectionMode) toggle(key) else selected = item
+                                        if (selectionMode) toggle(item) else selected = item
                                     },
                                     onLongClick = {
                                         if (selectionMode) {
-                                            toggle(key)
+                                            toggle(item)
                                         } else {
                                             selectionMode = true
                                             selection = listOf(key)
@@ -347,13 +437,19 @@ fun PixivGalleryRoute(
         )
     }
 
-    if (printBlocked) {
+    val blocked = printBlocked
+    if (blocked != null) {
         AppLiquidDialog(
-            onDismissRequest = { printBlocked = false },
+            onDismissRequest = { printBlocked = null },
             title = stringResource(ResR.string.pixiv_gallery_print_action),
-            message = stringResource(ResR.string.pixiv_gallery_print_mixed_disabled),
+            message = stringResource(
+                when (blocked) {
+                    PrintBlockReason.MIXED -> ResR.string.pixiv_gallery_print_mixed_disabled
+                    PrintBlockReason.EMPTY -> ResR.string.pixiv_gallery_print_empty
+                },
+            ),
             confirmLabel = stringResource(ResR.string.action_confirm),
-            onConfirm = { printBlocked = false },
+            onConfirm = { printBlocked = null },
         )
     }
 
@@ -384,6 +480,7 @@ private fun GalleryTile(
     image: PixivSavedImage,
     selectionMode: Boolean,
     selectionIndex: Int?,
+    enabled: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     loadCover: suspend (PixivSavedImage) -> File?,
@@ -392,8 +489,10 @@ private fun GalleryTile(
     Box(
         modifier = modifier
             .height(dimensionResource(ResR.dimen.dimen_pixiv_related_card_width))
+            .alpha(if (enabled) 1f else DISABLED_TILE_ALPHA)
             .clip(MaterialTheme.shapes.small)
             .combinedClickable(
+                enabled = enabled,
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
@@ -539,13 +638,17 @@ private fun GalleryMultiPageDialog(
     var pages by remember(image.illustId) { mutableStateOf<List<File>?>(null) }
     var failed by remember(image.illustId) { mutableStateOf(false) }
     var currentPage by remember(image.illustId) { mutableStateOf(0) }
+    // 打印会把弹窗连同解压目录一起销毁；若此时先销毁再准备打印，解压目录会被
+    // closeArchive 删掉，与打印侧重新解压并发竞争，导致输出为空。
+    // 故标记「本次关闭是为了打印」，跳过回收，目录交给下次打开/打印批次自行覆盖。
+    var printRequested by remember(image.illustId) { mutableStateOf(false) }
     val isArchive = image.kind == PixivSavedKind.ARCHIVE
     LaunchedEffect(image.illustId) {
         val result = runCatching { viewModel.openPages(image) }.getOrNull()
         if (result.isNullOrEmpty()) failed = true else pages = result
     }
     DisposableEffect(image.illustId) {
-        onDispose { viewModel.closeArchive(image.illustId) }
+        onDispose { if (!printRequested) viewModel.closeArchive(image.illustId) }
     }
     val pageList = pages
     val title = if (isArchive) {
@@ -628,7 +731,10 @@ private fun GalleryMultiPageDialog(
                 tint = Color.White,
             )
             AppIconButton(
-                onClick = onPrint,
+                onClick = {
+                    printRequested = true
+                    onPrint()
+                },
                 imageVector = Icons.Filled.Print,
                 contentDescription = stringResource(ResR.string.pixiv_gallery_print_action),
                 tint = Color.White,
@@ -822,3 +928,6 @@ private fun shareSavedFile(context: Context, file: File) {
 
 private const val FILE_PROVIDER_SUFFIX = ".fileprovider"
 private const val GALLERY_COLUMNS = 3
+
+/** 当前入口不可打印的卡片（置灰）透明度。 */
+private const val DISABLED_TILE_ALPHA = 0.4f

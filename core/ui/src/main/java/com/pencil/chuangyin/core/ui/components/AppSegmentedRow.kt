@@ -52,6 +52,7 @@ import com.pencil.chuangyin.resources.R as ResR
  * @param selectedIndex 当前选中下标。
  * @param onSelect 选中回调（下标）。
  * @param showCheck 选中项是否显示对勾图标。
+ * @param compact 紧凑模式：高度约为常规分段条的一半、文字更小，用于次级筛选（如「分类」）。
  *
  * 液态玻璃：控件开关开启且原生覆盖层可用时，改用 C++ 原生玻璃分段条
  * （透明占位盒 + 原生绘制与按住拖动选择，[showCheck] 由原生路径忽略）。
@@ -64,7 +65,10 @@ fun AppSegmentedRow(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     showCheck: Boolean = false,
+    compact: Boolean = false,
 ) {
+    val fullHeight = dimensionResource(ResR.dimen.dimen_global_segment_height)
+    val rowHeight = if (compact) fullHeight * COMPACT_HEIGHT_RATIO else fullHeight
     if (enabled && options.isNotEmpty() && rememberLiquidGlassActive()) {
         val host = LocalLiquidGlassWidgetHost.current
         if (host != null) {
@@ -73,12 +77,13 @@ fun AppSegmentedRow(
             Box(
                 modifier = modifier
                     .fillMaxWidth()
-                    .height(dimensionResource(ResR.dimen.dimen_global_segment_height))
+                    .height(rowHeight)
                     .nativeGlassWidget(
                         kind = LiquidGlassWidgetKind.Segmented,
                         key = key,
                         label = options,
                         state = state,
+                        textSizeSp = if (compact) COMPACT_TEXT_SIZE_SP else 0f,
                     ) { value -> onSelect(value.toInt().coerceIn(0, options.lastIndex)) },
             )
             return
@@ -93,11 +98,11 @@ fun AppSegmentedRow(
     val safeInset = cornerSafeInset(shapeScale = 0.75f)
     val motion = rememberAppMotion()
     val gap = dimensionResource(ResR.dimen.dimen_global_segment_gap)
-    val height = dimensionResource(ResR.dimen.dimen_global_segment_height)
+    val labelStyle = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(height)
+            .height(rowHeight)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .then(
@@ -117,7 +122,7 @@ fun AppSegmentedRow(
             val count = options.size
             // 每项权重相同（weight(1f)），故滑块位置可精确算出，无需逐项测量（省一次布局回环）。
             val itemWidth = ((maxWidth - gap * (count - 1)) / count).coerceAtLeast(0.dp)
-            val indicatorInset = 3.dp
+            val indicatorInset = if (compact) 2.dp else 3.dp
             // 位移走 spatial spring（允许过冲 → 物理惯性），这是 M3 底部导航/分段条的标准做法。
             // 这里只保留 State 句柄，真正的值在布局阶段（offset 的 lambda 内）读取，
             // 避免每帧动画值都在组合阶段被读到而触发整条分段行的重组。
@@ -190,7 +195,7 @@ fun AppSegmentedRow(
                             }
                             AppText(
                                 text = label,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = labelStyle,
                                 color = textColor,
                             )
                         }
@@ -211,3 +216,9 @@ private fun AppSegmentedRowPreview() {
         showCheck = true,
     )
 }
+
+/** 紧凑模式高度相对常规分段条的比例。 */
+private const val COMPACT_HEIGHT_RATIO = 0.58f
+
+/** 紧凑模式传给原生玻璃层的字号（sp）。 */
+private const val COMPACT_TEXT_SIZE_SP = 12f

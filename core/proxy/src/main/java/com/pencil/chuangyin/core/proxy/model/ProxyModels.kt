@@ -55,7 +55,8 @@ enum class ProxySourceType {
 /**
  * Clash 配置中的节点协议。
  *
- * 只有 [Http] / [Socks5] 会被真正建立连接；其余协议仍会完整解析并展示，
+ * [Http] / [Socks5] 可直接用 [java.net.Proxy] 承载；[Shadowsocks] / [Trojan]
+ * 由进程内本地桥接 + 自研协议栈承载（同样只影响本应用）。其余协议仍会完整解析并展示，
  * 但标记为「不支持」，选中时按不可用处理（不会静默直连）。
  */
 enum class ProxyProtocol(val token: String) {
@@ -74,9 +75,14 @@ enum class ProxyProtocol(val token: String) {
     Unknown("unknown"),
     ;
 
-    /** 当前实现可真正承载流量的协议集合（架构上通过 [OutboundFactory] 扩展）。 */
+    /** 当前实现可真正承载流量的协议集合（架构上通过 OutboundTransport 扩展）。 */
     val isSupported: Boolean
-        get() = this == Http || this == Socks5
+        get() = this == Http || this == Socks5 ||
+            this == Shadowsocks || this == Trojan
+
+    /** 是否必须经由本地 SOCKS5 桥接（java.net.Proxy 无法直接表达该协议）。 */
+    val requiresBridge: Boolean
+        get() = this == Shadowsocks || this == Trojan
 
     companion object {
         fun fromToken(raw: String?): ProxyProtocol {

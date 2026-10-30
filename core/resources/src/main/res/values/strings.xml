@@ -303,6 +303,12 @@
     <string name="pixiv_gallery_print_action">打印</string>
     <string name="pixiv_gallery_print_novel_merged_title">P 站小说 × %1$d</string>
     <string name="pixiv_gallery_print_preparing">正在准备打印内容…</string>
+    <string name="pixiv_gallery_print_empty">所选内容无法展开为可打印文件，请重试</string>
+    <string name="pixiv_gallery_save_type">保存类型</string>
+    <string name="pixiv_gallery_category_label">分类</string>
+    <string name="pixiv_gallery_category_all">全部</string>
+    <string name="pixiv_gallery_category_novel">小说</string>
+    <string name="pixiv_gallery_category_image">图片</string>
     <string name="pixiv_open_repository">P 站仓库</string>
 
     <!-- 屏蔽标签 -->

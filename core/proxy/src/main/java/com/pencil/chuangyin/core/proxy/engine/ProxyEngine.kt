@@ -1,5 +1,6 @@
 package com.pencil.chuangyin.core.proxy.engine
 
+import com.pencil.chuangyin.core.proxy.bridge.LocalSocks5Bridge
 import com.pencil.chuangyin.core.proxy.data.ProxySettingsRepository
 import com.pencil.chuangyin.core.proxy.data.ProxyState
 import com.pencil.chuangyin.core.proxy.model.ProxyConfigEntry
@@ -60,6 +61,14 @@ class ProxyEngine @Inject constructor(
     private val router = ProxyRouter()
     private val transports = OutboundTransportRegistry()
 
+    /**
+     * Shadowsocks / Trojan 无法用 java.net.Proxy 表达，统一走本地 SOCKS5 桥接。
+     * 桥接只监听回环地址，仅本进程可达。
+     */
+    private val bridge: LocalSocks5Bridge by lazy {
+        LocalSocks5Bridge { host, port -> routeFor(host, port) }
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _logs = MutableStateFlow<List<ProxyLogEntry>>(emptyList())
@@ -87,7 +96,11 @@ class ProxyEngine @Inject constructor(
         started = true
         installSocksAuthenticator()
         scope.launch {
-            repository.state.collect { state -> snapshot = state }
+            repository.state.collect { state ->
+                snapshot = state
+                // 关闭代理时顺手停掉本地桥接，避免长期占用端口与线程。
+                if (!state.preferences.enabled) bridge.stop()
+            }
         }
     }
 
@@ -120,11 +133,24 @@ class ProxyEngine @Inject constructor(
             Outbound.Direct -> listOf(Proxy.NO_PROXY)
             Outbound.Reject -> listOf(rejectProxy())
             is Outbound.Node -> {
-                val proxy = transports.createProxy(outbound.node)
+                val proxy = proxyForNode(outbound.node)
                 if (proxy != null) listOf(proxy) else listOf(rejectProxy())
             }
             is Outbound.Unavailable -> listOf(rejectProxy())
         }
+    }
+
+    /**
+     * 节点 → java.net.Proxy。
+     *
+     * HTTP / SOCKS5 直接用系统实现；Shadowsocks / Trojan 指向本地桥接。
+     * 返回 null 表示该节点无法承载流量（调用方必须失败关闭，不能静默直连）。
+     */
+    fun proxyForNode(node: ProxyNode): Proxy? {
+        transports.createProxy(node)?.let { return it }
+        if (!node.protocol.requiresBridge || !node.isSupported) return null
+        val port = bridge.ensureStarted() ?: return null
+        return Proxy(Proxy.Type.SOCKS, InetSocketAddress(BRIDGE_HOST, port))
     }
 
     /** HTTP 代理 407 认证用：按代理地址反查当前配置里的账号密码。 */
@@ -200,7 +226,7 @@ class ProxyEngine @Inject constructor(
         val decision = measurementDecision(policy)
         when (val outbound = decision.outbound) {
             is Outbound.Node -> {
-                val proxy = transports.createProxy(outbound.node) ?: return@withContext null
+                val proxy = proxyForNode(outbound.node) ?: return@withContext null
                 probe(proxy)
             }
             Outbound.Direct -> probe(Proxy.NO_PROXY)
@@ -314,5 +340,6 @@ class ProxyEngine @Inject constructor(
         private const val FAILURE_THROTTLE_MS = 3000L
         private const val REJECT_HOST = "127.0.0.1"
         private const val REJECT_PORT = 1
+        private const val BRIDGE_HOST = "127.0.0.1"
     }
 }

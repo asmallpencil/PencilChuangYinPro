@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -25,13 +26,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Article
@@ -55,7 +58,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -71,6 +73,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -89,6 +92,10 @@ import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.GlassTopAppBar
 import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.resources.R as ResR
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
 /**
@@ -300,22 +307,26 @@ private fun NovelPager(
         val widthPx = with(density) { (maxWidth - horizontalPadding * 2).roundToPx() }
         val heightPx = with(density) { (maxHeight - verticalPadding * 2).roundToPx() }
 
-        // 页边界只在「正文 / 排版样式 / 可用区域」变化时重算，避免每次重组都做文本测量。
-        val pages by produceState<List<Int>?>(
-            initialValue = null,
-            content,
-            style,
-            widthPx,
-            heightPx,
-        ) {
-            value = if (widthPx <= 0 || heightPx <= 0) {
-                listOf(0, content.length)
-            } else {
-                paginate(content, style, measurer, widthPx, heightPx)
+        // 排版按页渐进产出：先在后台算出一小批页（当前可见页立刻用新样式渲染），
+        // 其余页面继续在下一个时间片里补全；主线程不再一次性重排整本书。
+        var paginating by remember { mutableStateOf(false) }
+        val pagesState = remember { mutableStateOf<List<Int>?>(null) }
+        LaunchedEffect(content, style, widthPx, heightPx) {
+            if (widthPx <= 0 || heightPx <= 0) {
+                pagesState.value = listOf(0, content.length)
+                return@LaunchedEffect
+            }
+            paginating = true
+            try {
+                paginateFlow(content, style, measurer, widthPx, heightPx)
+                    .flowOn(Dispatchers.Default)
+                    .collect { pagesState.value = it }
+            } finally {
+                paginating = false
             }
         }
 
-        val pageStarts = pages
+        val pageStarts = pagesState.value
         if (pageStarts == null || pageStarts.size < 2) {
             AppLoadingIndicator(
                 color = textColor,
@@ -329,11 +340,14 @@ private fun NovelPager(
         val scope = rememberCoroutineScope()
         // 字号 / 窗口尺寸变化导致页数重排时，回到原阅读位置所在的页，而不是跳回第一页。
         var anchorChar by remember { mutableIntStateOf(0) }
-        LaunchedEffect(pagerState.currentPage, pageStarts) {
+        LaunchedEffect(pagerState.currentPage, pageStarts, paginating) {
             val start = pageStarts.getOrElse(pagerState.currentPage) { 0 }
-            anchorChar = start
+            // 重排期间分页结果从 0 渐进产出，当前页可能被夹到「已完成区间」的末尾；
+            // 此时不要把锚点跟着回退，否则会丢失用户原本的阅读位置。
+            if (start >= anchorChar || !paginating) anchorChar = start
         }
-        LaunchedEffect(pageStarts) {
+        LaunchedEffect(pageStarts, paginating) {
+            if (paginating) return@LaunchedEffect
             val target = pageStarts.indexOfLast { it <= anchorChar }.coerceAtLeast(0)
             if (target != pagerState.currentPage && target in 0 until pageCount) {
                 pagerState.scrollToPage(target)
@@ -424,35 +438,48 @@ private fun NovelBottomBar(
     }
 }
 
-/** 文本查看器：一条式连续滚动 + 右侧贯穿式快捷拖动条。 */
+/** 文本查看器：分段懒加载的连续滚动 + 右侧贯穿式快捷拖动条。 */
 @Composable
 private fun ScrollTextViewer(
     content: String,
     style: TextStyle,
     textColor: Color,
 ) {
-    val scrollState = rememberScrollState()
+    // 正文按「几百字一段」切块，交给 LazyColumn 懒组合：
+    // 调整字号/字色时只有屏幕内的几块会重新排版，未进入视口的块在滑入时
+    // 直接用新样式即时渲染，避免一次性重排几万字造成掉帧。
+    val chunks = remember(content) { splitTextChunks(content, TEXT_CHUNK_CHARS) }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
+        LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(scrollState)
                 .padding(
                     start = PAGE_HORIZONTAL_PADDING,
                     end = PAGE_HORIZONTAL_PADDING + QUICK_SCROLL_TOUCH_WIDTH,
-                    top = PAGE_VERTICAL_PADDING,
-                    bottom = PAGE_VERTICAL_PADDING,
                 ),
+            contentPadding = PaddingValues(vertical = PAGE_VERTICAL_PADDING),
         ) {
-            Text(
-                text = content,
-                style = style,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            items(chunks.size, key = { it }) { index ->
+                Text(
+                    text = chunks[index],
+                    style = style,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
-        VerticalQuickScrollBar(
-            scrollState = scrollState,
+        LazyQuickScrollBar(
+            listState = listState,
             color = textColor,
+            onJump = { ratio ->
+                if (chunks.isNotEmpty()) {
+                    val target = (ratio * (chunks.size - 1)).toInt()
+                        .coerceIn(0, chunks.size - 1)
+                    scope.launch { listState.scrollToItem(target) }
+                }
+            },
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
@@ -461,43 +488,56 @@ private fun ScrollTextViewer(
     }
 }
 
+/** 懒列表版快捷拖动条：由 [LazyListState] 可见项位置换算滚动比例。 */
+@Composable
+private fun LazyQuickScrollBar(
+    listState: LazyListState,
+    color: Color,
+    onJump: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val info = listState.layoutInfo
+    val first = info.visibleItemsInfo.firstOrNull()
+    val fraction = if (first == null || info.totalItemsCount <= 1) {
+        0f
+    } else {
+        val itemHeight = first.size.coerceAtLeast(1)
+        ((first.index + first.offset.toFloat() / itemHeight) / info.totalItemsCount)
+            .coerceIn(0f, 1f)
+    }
+    QuickScrollBar(fraction = fraction, onJump = onJump, color = color, modifier = modifier)
+}
+
 /** 贯穿内容的快捷拖动条：拖动或点按轨道即跳到对应位置。 */
 @Composable
-private fun VerticalQuickScrollBar(
-    scrollState: androidx.compose.foundation.ScrollState,
+private fun QuickScrollBar(
+    fraction: Float,
+    onJump: (Float) -> Unit,
     color: Color,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
     var barHeightPx by remember { mutableIntStateOf(0) }
     var dragging by remember { mutableStateOf(false) }
     val alpha by animateFloatAsState(
         targetValue = if (dragging) 1f else 0.55f,
         label = "quick-scroll-alpha",
     )
-    val maxScroll = scrollState.maxValue
-    val fraction = if (maxScroll > 0) {
-        (scrollState.value.toFloat() / maxScroll.toFloat()).coerceIn(0f, 1f)
-    } else {
-        0f
-    }
     val thumbHeightPx = (barHeightPx * VIEWPORT_THUMB_RATIO).coerceIn(
         with(density) { QUICK_SCROLL_MIN_THUMB.toPx() },
         with(density) { (QUICK_SCROLL_MIN_THUMB * 2.5f).toPx() },
     )
 
     fun jumpTo(y: Float) {
-        if (maxScroll <= 0 || barHeightPx <= 0) return
-        val ratio = (y / barHeightPx.toFloat()).coerceIn(0f, 1f)
-        scope.launch { scrollState.scrollTo((ratio * maxScroll).toInt()) }
+        if (barHeightPx <= 0) return
+        onJump((y / barHeightPx.toFloat()).coerceIn(0f, 1f))
     }
 
     Box(
         modifier = modifier
             .width(QUICK_SCROLL_TOUCH_WIDTH)
             .onSizeChanged { barHeightPx = it.height }
-            .pointerInput(maxScroll, barHeightPx) {
+            .pointerInput(barHeightPx) {
                 detectVerticalDragGestures(
                     onDragStart = { dragging = true },
                     onDragEnd = { dragging = false },
@@ -507,7 +547,7 @@ private fun VerticalQuickScrollBar(
                     jumpTo(change.position.y)
                 }
             }
-            .pointerInput(maxScroll, barHeightPx) {
+            .pointerInput(barHeightPx) {
                 detectTapGestures { offset -> jumpTo(offset.y) }
             },
     ) {
@@ -716,22 +756,67 @@ internal val READER_TEXT_COLORS = listOf(
 )
 
 /**
+ * 把正文按「几百字一段」切分，优先在自然断点（换行 / 句末标点 / 逗号 / 空格）处切开，
+ * 避免在句子中间硬断开导致视觉上凭空多出一行。
+ */
+private fun splitTextChunks(content: String, chunkChars: Int): List<String> {
+    if (content.isEmpty()) return emptyList()
+    if (content.length <= chunkChars) return listOf(content)
+    val chunks = ArrayList<String>((content.length / chunkChars) + 1)
+    var start = 0
+    while (start < content.length) {
+        val limit = (start + chunkChars).coerceAtMost(content.length)
+        val end = if (limit >= content.length) {
+            content.length
+        } else {
+            findNaturalBreak(content, start, limit, chunkChars)
+        }
+        chunks += content.substring(start, end)
+        start = end
+    }
+    return chunks
+}
+
+/** 从切分上限向前回退，找到不超过半个块长的最近自然断点；找不到就按上限硬切。 */
+private fun findNaturalBreak(content: String, start: Int, limit: Int, chunkChars: Int): Int {
+    val min = start + chunkChars / 2
+    for (i in limit downTo min) {
+        when (content[i - 1]) {
+            '\n', '。', '！', '？', '；', '.', '!', '?', ';' -> return i
+        }
+    }
+    for (i in limit downTo min) {
+        when (content[i - 1]) {
+            ' ', '，', ',', '、', '：', ':' -> return i
+        }
+    }
+    return limit
+}
+
+/**
  * 把正文切成若干页，返回每页起始下标 + 末尾的 `content.length`。
  *
  * 采用「窗口 + 二分」：每页只测量最多 [PAGINATION_WINDOW_CHARS] 个字符的片段，
  * 通过二分找到「恰好撑满一页」的最大字符数，避免对整本小说做一次性超大排版。
+ *
+ * 逐批产出：先发一小批页让可见页立刻用新样式渲染，其余页面随后分批补全
+ * （调用方用 flowOn 切到后台线程，主线程不再被整本重排阻塞）。
  */
-private fun paginate(
+private fun paginateFlow(
     content: String,
     style: TextStyle,
-    measurer: androidx.compose.ui.text.TextMeasurer,
+    measurer: TextMeasurer,
     widthPx: Int,
     heightPx: Int,
-): List<Int> {
-    val result = mutableListOf<Int>()
-    if (content.isEmpty()) return listOf(0)
+): Flow<List<Int>> = flow {
+    if (content.isEmpty()) {
+        emit(listOf(0))
+        return@flow
+    }
     val constraints = Constraints(maxWidth = widthPx)
+    val result = ArrayList<Int>()
     var start = 0
+    var pagesSinceEmit = 0
     fun fits(count: Int): Boolean {
         val end = (start + count).coerceAtMost(content.length)
         if (end <= start) return false
@@ -760,9 +845,20 @@ private fun paginate(
         start += lo
         // 跳过页首连续换行：避免出现整页只有空行的「假页」。
         while (start < content.length && content[start] == '\n') start++
+        pagesSinceEmit++
+        // 开头几页用更小的批次，保证可见页尽快出来；之后按固定批次继续补全。
+        val batchSize = if (result.size <= PAGINATION_FIRST_BATCH_PAGES) {
+            4
+        } else {
+            PAGINATION_PUBLISH_PAGES
+        }
+        if (pagesSinceEmit >= batchSize) {
+            pagesSinceEmit = 0
+            emit(result.toList() + content.length)
+        }
     }
     result += content.length
-    return result
+    emit(result.toList())
 }
 
 private val PAGE_HORIZONTAL_PADDING: Dp = 20.dp
@@ -775,6 +871,13 @@ private val READER_CHIP_SPACING: Dp = 8.dp
 
 private const val PAGINATION_WINDOW_CHARS = 8_000
 private const val LINE_HEIGHT_RATIO = 1.72f
+
+/** 文本查看器每块字数（几百字一段）。 */
+private const val TEXT_CHUNK_CHARS = 400
+
+/** 渐进分页：开头先连着发几小批，之后每算这么多页发一批。 */
+private const val PAGINATION_FIRST_BATCH_PAGES = 8
+private const val PAGINATION_PUBLISH_PAGES = 32
 
 /** 拖动条拇指高度 = 视口高度 * 该比例（近似表示「当前可见内容占比」）。 */
 private const val VIEWPORT_THUMB_RATIO = 0.12f
