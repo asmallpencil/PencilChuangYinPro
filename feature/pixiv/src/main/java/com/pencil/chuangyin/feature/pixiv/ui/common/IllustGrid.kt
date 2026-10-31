@@ -1,8 +1,10 @@
 package com.pencil.chuangyin.feature.pixiv.ui.common
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +29,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,9 +46,11 @@ import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppSkeletonBox
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.motion.animateGridItemMotion
+import com.pencil.chuangyin.core.ui.motion.pressScale
 import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.feature.pixiv.domain.PixivIllust
 import com.pencil.chuangyin.resources.R as ResR
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 /** 双列作品网格（含上拉加载更多）。 */
 @Composable
@@ -58,10 +64,16 @@ fun IllustGrid(
     onLoadMore: (() -> Unit)? = null,
     listState: LazyGridState = rememberLazyGridState(),
 ) {
-    LaunchedEffect(items.size, canLoadMore, loadingMore) {
+    // 预取：监听最后一张可见卡片的位置，进入尾部 [PREFETCH_DISTANCE] 张内就续拉下一页。
+    // 用 snapshotFlow 而不是只依赖 items.size 变化——列表短到一屏装得下、或快速滑到底时，
+    // 只靠 size 变化不会再次触发，表现为"卡在底部不动"。
+    LaunchedEffect(items.size, canLoadMore, loadingMore, onLoadMore) {
         if (!canLoadMore || loadingMore || onLoadMore == null) return@LaunchedEffect
-        val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@LaunchedEffect
-        if (last >= items.size - 3) onLoadMore()
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+            .distinctUntilChanged()
+            .collect { last ->
+                if (last >= items.size - PREFETCH_DISTANCE) onLoadMore()
+            }
     }
 
     val spacing = dimensionResource(ResR.dimen.dimen_pixiv_grid_spacing)
@@ -115,14 +127,22 @@ fun IllustCard(
     modifier: Modifier = Modifier,
 ) {
     val shape = MaterialTheme.shapes.medium
+    // 按压反馈：整张卡片跟手下沉再弹性回弹（与全应用按钮同一套 pressScale 语义）。
+    val interactionSource = remember { MutableInteractionSource() }
 
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().pressScale(interactionSource),
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 0.dp,
     ) {
-        Column(modifier = Modifier.clickable(onClick = onClick)) {
+        Column(
+            modifier = Modifier.clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            ),
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -198,6 +218,9 @@ fun IllustCard(
 
 /** 卡片图片区的统一宽高比（3:4），保证双列卡片高度整齐。 */
 private const val CARD_IMAGE_ASPECT_RATIO = 0.75f
+
+/** 距列表尾部还剩多少张（按卡片数）时开始预取下一页。 */
+private const val PREFETCH_DISTANCE = 6
 
 /** 标题固定行数（两行），短标题也占满两行高度。 */
 private const val CARD_TITLE_LINES = 2

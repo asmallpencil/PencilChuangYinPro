@@ -7,7 +7,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,9 +27,11 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
@@ -72,6 +72,8 @@ import com.pencil.chuangyin.core.ui.components.AppIconButton
 import com.pencil.chuangyin.core.ui.components.AppOutlinedButton
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppSecondaryButton
+import com.pencil.chuangyin.core.ui.components.AppSourceAction
+import com.pencil.chuangyin.core.ui.components.AppSourceCard
 import com.pencil.chuangyin.core.ui.components.AppSegmentedRow
 import com.pencil.chuangyin.core.ui.components.AppSlider
 import com.pencil.chuangyin.core.ui.components.AppSwitch
@@ -318,6 +320,45 @@ fun TextEditorScreen(
                         dimensionResource(ResR.dimen.dimen_global_padding_m),
                 ),
         ) {
+            // 来源入口：与图片打印页同款的圆角卡片 + 圆形图标按钮（不设大圆「+」）。
+            // 导入 TXT / 压缩包 / 字体原先挂在页面底部，需一路下滑才能找到，现上移到标题上方。
+            AppSourceCard(
+                actions = listOf(
+                    AppSourceAction(
+                        icon = Icons.AutoMirrored.Filled.TextSnippet,
+                        label = stringResource(R.string.text_import_txt),
+                        onClick = { txtLauncher.launch(arrayOf("text/plain", "text/*")) },
+                    ),
+                    AppSourceAction(
+                        icon = Icons.Filled.FolderZip,
+                        label = stringResource(R.string.text_import_zip),
+                        onClick = {
+                            zipLauncher.launch(
+                                arrayOf(
+                                    "application/zip",
+                                    "application/x-zip-compressed",
+                                    "application/octet-stream",
+                                ),
+                            )
+                        },
+                    ),
+                    AppSourceAction(
+                        icon = Icons.Filled.TextFields,
+                        label = stringResource(R.string.text_import_font),
+                        onClick = {
+                            fontLauncher.launch(
+                                arrayOf(
+                                    "application/x-font-ttf", "font/ttf",
+                                    "application/x-font-opentype", "font/otf",
+                                    "application/octet-stream",
+                                ),
+                            )
+                        },
+                    ),
+                ),
+            )
+            Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
+
             AppTextField(
                 value = state.doc.title,
                 onValueChange = onTitleChange,
@@ -358,43 +399,6 @@ fun TextEditorScreen(
                 onCopiesChange = onCopiesChange,
             )
 
-            // 导入操作：TXT（系统多选）/ ZIP / 字体
-            FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = dimensionResource(ResR.dimen.dimen_global_padding_s)),
-                horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
-                verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
-            ) {
-                ImportButton(
-                    text = stringResource(R.string.text_import_txt),
-                    icon = Icons.AutoMirrored.Filled.TextSnippet,
-                    onClick = { txtLauncher.launch(arrayOf("text/plain", "text/*")) },
-                )
-                ImportButton(
-                    text = stringResource(R.string.text_import_zip),
-                    icon = Icons.Filled.FolderZip,
-                    onClick = {
-                        zipLauncher.launch(
-                            arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"),
-                        )
-                    },
-                )
-                ImportButton(
-                    text = stringResource(R.string.text_import_font),
-                    icon = null,
-                    onClick = {
-                        fontLauncher.launch(
-                            arrayOf(
-                                "application/x-font-ttf", "font/ttf",
-                                "application/x-font-opentype", "font/otf",
-                                "application/octet-stream",
-                            ),
-                        )
-                    },
-                )
-            }
-
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_l)))
 
             // 排版三项紧贴预览区上方，调整即可看到预览变化。
@@ -413,16 +417,6 @@ fun TextEditorScreen(
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_l)))
         }
     }
-}
-
-@Composable
-private fun ImportButton(text: String, icon: ImageVector?, onClick: () -> Unit) {
-    AppOutlinedButton(
-        text = text,
-        onClick = onClick,
-        // 前置图标以 ImageVector 下发：原生层渲染成位图纹理并与文字并排绘制 → 同样走真玻璃。
-        leadingIcon = icon,
-    )
 }
 
 /**
@@ -629,6 +623,7 @@ private fun PrintParameterControls(
     onBatchChange: (Boolean) -> Unit,
     onCopiesChange: (Int) -> Unit,
 ) {
+    val motion = rememberAppMotion()
     AppText(
         text = stringResource(R.string.text_label_align),
         style = MaterialTheme.typography.titleMedium,
@@ -688,7 +683,12 @@ private fun PrintParameterControls(
         Spacer(modifier = Modifier.weight(1f))
         AppSwitch(checked = batchEnabled, onCheckedChange = onBatchChange)
     }
-    if (batchEnabled) {
+    // 开关打开时份数滑块弹性撑开（收起时快速缩回），避免参数区"啪"地跳高一段。
+    AnimatedVisibility(
+        visible = batchEnabled,
+        enter = motion.expandEnter(),
+        exit = motion.shrinkExit(),
+    ) {
         LabeledSlider(
             label = stringResource(R.string.text_label_copies),
             valueLabel = stringResource(R.string.text_value_copies, copies),

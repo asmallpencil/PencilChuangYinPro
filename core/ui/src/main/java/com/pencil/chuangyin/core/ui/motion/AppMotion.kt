@@ -138,6 +138,21 @@ class AppMotion(val preset: MotionPreset) {
     }
 
     /**
+     * 交错入场：容器内第 [index] 个元素（图标/按钮/卡片）的淡入规格。
+     * 逐个延迟 [stepMs] 毫秒，形成"从左到右依次浮现"的节奏；Reduced 预设下退化为无延迟短补间。
+     */
+    fun <T> staggerSpec(index: Int, stepMs: Int = 60, durationMs: Int = 260): FiniteAnimationSpec<T> =
+        if (isReduced) {
+            tween(durationMillis = 110, easing = LinearOutSlowInEasing)
+        } else {
+            tween(
+                durationMillis = durationMs,
+                delayMillis = index * stepMs,
+                easing = LinearOutSlowInEasing,
+            )
+        }
+
+    /**
      * 列表项 placement：dampingRatio 0.8 + StiffnessLow 是社区验证过的"贴心"参数，
      * 删除时相邻项平滑合拢、新增时让位、重排时带惯性滑到位。
      */

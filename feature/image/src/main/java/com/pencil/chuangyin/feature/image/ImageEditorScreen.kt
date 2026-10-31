@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -84,7 +83,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -100,6 +98,8 @@ import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppOutlinedButton
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppSlider
+import com.pencil.chuangyin.core.ui.components.AppSourceAction
+import com.pencil.chuangyin.core.ui.components.AppSourceCard
 import com.pencil.chuangyin.core.ui.components.AppSwitch
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextButton
@@ -411,21 +411,47 @@ fun ImageEditorScreen(
         ) {
             // 来源入口：一个白色圆角卡片，大「+」为主入口（相册多选），
             // 右侧四个圆形图标入口（文稿扫描/相机/PDF/压缩包）。
-            ImportSourcesCard(
-                onGallery = {
-                    runCatching {
-                        galleryLauncher.launch(androidx.activity.result.PickVisualMediaRequest(
-                            ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }
-                },
-                onScanner = onScanner,
-                onCamera = { cameraSplitOpen = !cameraSplitOpen },
-                onPdf = { pdfLauncher.launch(arrayOf("application/pdf")) },
-                onArchive = {
-                    archiveLauncher.launch(
-                        arrayOf("application/zip", "application/x-zip-compressed"),
-                    )
-                },
+            AppSourceCard(
+                primaryAction = AppSourceAction(
+                    icon = Icons.Filled.Add,
+                    label = stringResource(R.string.image_source_gallery),
+                    onClick = {
+                        runCatching {
+                            galleryLauncher.launch(androidx.activity.result.PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        }
+                    },
+                ),
+                primarySize = 76.dp,
+                primaryIconSize = 36.dp,
+                actionSize = 56.dp,
+                actionIconSize = 26.dp,
+                actions = listOf(
+                    AppSourceAction(
+                        icon = Icons.Filled.DocumentScanner,
+                        label = stringResource(R.string.image_source_scanner),
+                        onClick = onScanner,
+                    ),
+                    AppSourceAction(
+                        icon = Icons.Filled.CameraAlt,
+                        label = stringResource(R.string.image_source_camera),
+                        onClick = { cameraSplitOpen = !cameraSplitOpen },
+                    ),
+                    AppSourceAction(
+                        icon = Icons.Filled.PictureAsPdf,
+                        label = stringResource(R.string.image_source_pdf),
+                        onClick = { pdfLauncher.launch(arrayOf("application/pdf")) },
+                    ),
+                    AppSourceAction(
+                        icon = Icons.Filled.FolderZip,
+                        label = stringResource(R.string.image_source_archive),
+                        onClick = {
+                            archiveLauncher.launch(
+                                arrayOf("application/zip", "application/x-zip-compressed"),
+                            )
+                        },
+                    ),
+                ),
             )
             CameraSplitPanel(
                 visible = cameraSplitOpen,
@@ -515,91 +541,6 @@ fun ImageEditorScreen(
                 onCopiesChange = onCopiesChange,
             )
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-        }
-    }
-}
-
-/**
- * 导入区：白色圆角卡片 + 大号主按钮「+」（相册多选），
- * 右侧四个圆形图标入口：文稿扫描、相机、PDF、压缩包。
- */
-@Composable
-private fun ImportSourcesCard(
-    onGallery: () -> Unit,
-    onScanner: () -> Unit,
-    onCamera: () -> Unit,
-    onPdf: () -> Unit,
-    onArchive: () -> Unit,
-) {
-    Surface(
-        shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_m)),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
-        shadowElevation = 2.dp,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            ImportCircleButton(
-                icon = Icons.Filled.Add,
-                contentDescription = stringResource(R.string.image_source_gallery),
-                onClick = onGallery,
-                size = 76.dp,
-                iconSize = 36.dp,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            )
-            ImportCircleButton(
-                icon = Icons.Filled.DocumentScanner,
-                contentDescription = stringResource(R.string.image_source_scanner),
-                onClick = onScanner,
-            )
-            ImportCircleButton(
-                icon = Icons.Filled.CameraAlt,
-                contentDescription = stringResource(R.string.image_source_camera),
-                onClick = onCamera,
-            )
-            ImportCircleButton(
-                icon = Icons.Filled.PictureAsPdf,
-                contentDescription = stringResource(R.string.image_source_pdf),
-                onClick = onPdf,
-            )
-            ImportCircleButton(
-                icon = Icons.Filled.FolderZip,
-                contentDescription = stringResource(R.string.image_source_archive),
-                onClick = onArchive,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ImportCircleButton(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    size: Dp = 56.dp,
-    iconSize: Dp = 26.dp,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-    contentColor: Color = MaterialTheme.colorScheme.primary,
-) {
-    Surface(
-        onClick = onClick,
-        shape = CircleShape,
-        color = containerColor,
-        modifier = modifier.size(size),
-    ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = contentColor,
-                modifier = Modifier.size(iconSize),
-            )
         }
     }
 }

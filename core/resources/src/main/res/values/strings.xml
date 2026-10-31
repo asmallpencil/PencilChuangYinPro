@@ -92,6 +92,7 @@
     <string name="pixiv_loading_more">正在加载更多…</string>
     <string name="pixiv_no_more">没有更多了</string>
     <string name="pixiv_refresh">刷新</string>
+    <string name="pixiv_back_to_top">回到顶部</string>
 
     <string name="pixiv_related">相关作品</string>
     <string name="pixiv_tags">标签</string>
