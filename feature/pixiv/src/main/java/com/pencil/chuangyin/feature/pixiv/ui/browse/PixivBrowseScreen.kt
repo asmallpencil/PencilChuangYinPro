@@ -22,22 +22,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,7 +38,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -56,15 +47,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pencil.chuangyin.core.theme.LiquidGlassLayer
-import com.pencil.chuangyin.core.ui.components.AppFilterChip
-import com.pencil.chuangyin.core.ui.components.AppIconButton
 import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
-import com.pencil.chuangyin.core.ui.components.AppSegmentedRow
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
-import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
-import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
 import com.pencil.chuangyin.core.ui.motion.animateItemMotion
 import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.feature.pixiv.core.auth.PixivAccount
@@ -75,15 +61,13 @@ import com.pencil.chuangyin.feature.pixiv.ui.PixivImageProvider
 import com.pencil.chuangyin.feature.pixiv.ui.common.FullScreenError
 import com.pencil.chuangyin.feature.pixiv.ui.common.FullScreenLoading
 import com.pencil.chuangyin.feature.pixiv.ui.common.IllustGrid
-import com.pencil.chuangyin.feature.pixiv.ui.common.MEDIA_ILLUST
 import com.pencil.chuangyin.feature.pixiv.ui.common.MEDIA_MANGA
 import com.pencil.chuangyin.feature.pixiv.ui.common.MEDIA_NOVEL
-import com.pencil.chuangyin.feature.pixiv.ui.common.SECTION_RECOMMEND
-import com.pencil.chuangyin.feature.pixiv.ui.common.browseSectionLabel
-import com.pencil.chuangyin.feature.pixiv.ui.common.browseSections
-import com.pencil.chuangyin.feature.pixiv.ui.common.mangaSections
 import com.pencil.chuangyin.feature.pixiv.ui.common.NovelRow
-import com.pencil.chuangyin.feature.pixiv.ui.common.novelSections
+import com.pencil.chuangyin.feature.pixiv.ui.common.PixivBrowseTopBar
+import com.pencil.chuangyin.feature.pixiv.ui.common.PixivFilterChipRow
+import com.pencil.chuangyin.feature.pixiv.ui.common.pixivMediaChipGroup
+import com.pencil.chuangyin.feature.pixiv.ui.common.pixivSectionChipGroup
 import com.pencil.chuangyin.feature.pixiv.ui.drawer.PixivDrawerDestination
 import com.pencil.chuangyin.feature.pixiv.ui.drawer.PixivDrawerSheet
 import com.pencil.chuangyin.resources.R as ResR
@@ -124,7 +108,6 @@ fun PixivBrowseRoute(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PixivBrowseContent(
     account: PixivAccount?,
@@ -147,7 +130,6 @@ private fun PixivBrowseContent(
     val dismissThresholdPx = with(density) {
         dimensionResource(ResR.dimen.dimen_pixiv_drawer_dismiss_threshold).toPx()
     }
-    val glassActive = rememberLiquidGlassActive()
 
     // 抽屉最多占屏幕 75% 宽度（BoxWithConstraints 取实际可用宽度）。
     BoxWithConstraints(modifier = modifier) {
@@ -155,79 +137,33 @@ private fun PixivBrowseContent(
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
-                TopAppBar(
-                    title = { AppText(stringResource(ResR.string.pstation_title)) },
-                    navigationIcon = {
-                        if (account != null) {
-                            AppIconButton(
-                                onClick = { drawerOpen = true },
-                                imageVector = Icons.Filled.Menu,
-                                contentDescription = stringResource(ResR.string.pixiv_menu),
-                                glass = false,
-                            )
-                        }
-                    },
-                    actions = {
-                        if (account != null) {
-                            AppIconButton(
-                                onClick = onOpenSearch,
-                                imageVector = Icons.Filled.Search,
-                                contentDescription = stringResource(ResR.string.pixiv_search),
-                                glass = false,
-                            )
-                            AppIconButton(
-                                onClick = onRefresh,
-                                imageVector = Icons.Filled.Refresh,
-                                contentDescription = stringResource(ResR.string.pixiv_refresh),
-                                glass = false,
-                            )
-                        }
-                    },
-                    modifier = Modifier.nativeGlassSurface(
-                        shape = RoundedCornerShape(0.dp),
-                        enabled = glassActive,
-                        fallbackColor = MaterialTheme.colorScheme.surface,
-                    ),
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                )
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    PixivBrowseTopBar(
+                        title = stringResource(ResR.string.pstation_title),
+                        showActions = account != null,
+                        onMenu = { drawerOpen = true },
+                        onSearch = onOpenSearch,
+                        onRefresh = onRefresh,
+                        menuContentDescription = stringResource(ResR.string.pixiv_menu),
+                        searchContentDescription = stringResource(ResR.string.pixiv_search),
+                        refreshContentDescription = stringResource(ResR.string.pixiv_refresh),
+                    )
+                    if (account != null) {
+                        // 内容模式与榜单合并为一条分组芯片行（组间竖线分隔，组内单选）。
+                        PixivFilterChipRow(
+                            groups = listOf(
+                                pixivMediaChipGroup(state.mediaMode),
+                                pixivSectionChipGroup(state.mediaMode, state.section),
+                            ),
+                            onSelect = { groupIndex, key ->
+                                if (groupIndex == 0) onSelectMode(key) else onSelectSection(key)
+                            },
+                        )
+                    }
+                }
             },
         ) { innerPadding ->
             Column(modifier = Modifier.padding(innerPadding)) {
-                if (account != null) {
-                    // 插画/漫画/小说彻底分区：模式切换走独立入口，不再混排。
-                    AppSegmentedRow(
-                        options = listOf(
-                            stringResource(ResR.string.pixiv_mode_illust),
-                            stringResource(ResR.string.pixiv_mode_manga),
-                            stringResource(ResR.string.pixiv_mode_novel),
-                        ),
-                        selectedIndex = when (state.mediaMode) {
-                            MEDIA_MANGA -> 1
-                            MEDIA_NOVEL -> 2
-                            else -> 0
-                        },
-                        onSelect = { index ->
-                            onSelectMode(
-                                when (index) {
-                                    2 -> MEDIA_NOVEL
-                                    1 -> MEDIA_MANGA
-                                    else -> MEDIA_ILLUST
-                                },
-                            )
-                        },
-                        modifier = Modifier.padding(
-                            horizontal = dimensionResource(ResR.dimen.dimen_pixiv_grid_padding),
-                            vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
-                        ),
-                    )
-                    SectionChipRow(
-                        selected = state.section,
-                        mediaMode = state.mediaMode,
-                        onSelect = onSelectSection,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
                 Box(modifier = Modifier.fillMaxSize()) {
                     when {
                         account == null -> NotLoggedIn(
@@ -338,36 +274,6 @@ private fun PixivBrowseContent(
 }
 
 @Composable
-private fun SectionChipRow(
-    selected: String,
-    mediaMode: String,
-    onSelect: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val chipSpacing = dimensionResource(ResR.dimen.dimen_pixiv_chip_spacing)
-    val screenPadding = dimensionResource(ResR.dimen.dimen_pixiv_grid_padding)
-    val sections = when (mediaMode) {
-        MEDIA_MANGA -> mangaSections
-        MEDIA_NOVEL -> novelSections
-        else -> browseSections
-    }
-    LazyRow(
-        modifier = modifier
-            .padding(vertical = chipSpacing),
-        contentPadding = PaddingValues(horizontal = screenPadding),
-        horizontalArrangement = Arrangement.spacedBy(chipSpacing),
-    ) {
-        items(sections, key = { it }) { key ->
-            AppFilterChip(
-                selected = key == selected,
-                onClick = { onSelect(key) },
-                label = browseSectionLabel(key),
-            )
-        }
-    }
-}
-
-@Composable
 private fun NovelFeed(
     state: PixivFeedState,
     bottomBarSpace: Dp,
@@ -452,12 +358,6 @@ private fun NotLoggedIn(onLogin: () -> Unit, bottomBarSpace: Dp) {
             modifier = Modifier.padding(top = dimensionResource(ResR.dimen.dimen_global_padding_l)),
         )
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun SectionChipRowPreview() {
-    SectionChipRow(selected = SECTION_RECOMMEND, mediaMode = MEDIA_ILLUST, onSelect = {})
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 720)

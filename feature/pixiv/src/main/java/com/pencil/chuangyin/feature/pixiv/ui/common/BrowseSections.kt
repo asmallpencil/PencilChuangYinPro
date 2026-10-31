@@ -24,6 +24,32 @@ val mangaSections: List<String> = listOf(SECTION_RECOMMEND) + PixivRankModes.MAN
  */
 val novelSections: List<String> = listOf("day", "week", "day_male", "day_female")
 
+/** 媒体模式芯片组（插画 / 漫画 / 小说）。 */
+@Composable
+fun pixivMediaChipGroup(selectedMode: String): PixivChipGroup = PixivChipGroup(
+    selectedKey = selectedMode,
+    options = listOf(
+        PixivChipOption(MEDIA_ILLUST, stringResource(ResR.string.pixiv_mode_illust)),
+        PixivChipOption(MEDIA_MANGA, stringResource(ResR.string.pixiv_mode_manga)),
+        PixivChipOption(MEDIA_NOVEL, stringResource(ResR.string.pixiv_mode_novel)),
+    ),
+)
+
+/** 榜单芯片组：榜单集合跟随媒体模式切换。 */
+@Composable
+fun pixivSectionChipGroup(mediaMode: String, selectedSection: String): PixivChipGroup {
+    val sections = when (mediaMode) {
+        MEDIA_MANGA -> mangaSections
+        MEDIA_NOVEL -> novelSections
+        else -> browseSections
+    }
+    val options = mutableListOf<PixivChipOption>()
+    for (key in sections) {
+        options += PixivChipOption(key, browseSectionLabel(key))
+    }
+    return PixivChipGroup(selectedKey = selectedSection, options = options)
+}
+
 @Composable
 fun browseSectionLabel(key: String): String = when (key) {
     SECTION_RECOMMEND -> stringResource(ResR.string.pixiv_recommend)
