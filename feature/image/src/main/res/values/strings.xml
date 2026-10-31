@@ -4,7 +4,7 @@
     <!-- 来源按钮 -->
     <string name="image_source_gallery">从相册选</string>
     <string name="image_source_scanner">文稿扫描</string>
-    <string name="image_source_scanner_desc">FairScan 开源文稿扫描器</string>
+
     <string name="image_source_camera">拍照</string>
     <string name="image_camera_system">系统相机</string>
     <string name="image_camera_system_desc">调用系统摄像 API</string>
@@ -13,7 +13,6 @@
     <string name="image_camera_unavailable">未找到可用的系统相机应用</string>
     <string name="image_source_pdf">导入PDF</string>
     <string name="image_source_archive">导入压缩包</string>
-    <string name="image_source_file">从文件选择图片或压缩包</string>
 
     <!-- 预览 -->
     <string name="image_preview_empty">选择图片后显示打印预览</string>

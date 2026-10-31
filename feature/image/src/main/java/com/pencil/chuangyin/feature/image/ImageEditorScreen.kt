@@ -45,8 +45,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DocumentScanner
+import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Filter1
 import androidx.compose.material.icons.filled.Inventory2
@@ -259,20 +259,10 @@ fun ImageEditorScreen(
     val pdfLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) onImportPdf(uri) }
-    // 「文件」入口同时接受图片与压缩包：按 MIME 分流到相册导入或压缩包导入。
-    val fileLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenMultipleDocuments(),
-    ) { uris ->
-        if (uris.isNotEmpty()) {
-            val resolver = context.contentResolver
-            val images = uris.filter { (resolver.getType(it) ?: "").startsWith("image/") }
-            if (images.isNotEmpty()) onImportGallery(images, resolver)
-            val archive = uris.firstOrNull {
-                !(resolver.getType(it) ?: "").startsWith("image/")
-            }
-            if (archive != null) onImportArchive(archive)
-        }
-    }
+    // 「压缩包」入口：只接受 zip，导入其中的图片页。
+    val archiveLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri -> if (uri != null) onImportArchive(uri) }
 
     // Android 9 及以下保存公共相册需要写存储权限。
     val writeStoragePermission = rememberPermissionState(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -420,7 +410,7 @@ fun ImageEditorScreen(
                 ),
         ) {
             // 来源入口：一个白色圆角卡片，大「+」为主入口（相册多选），
-            // 右侧四个圆形图标入口（文件/相机/PDF/文稿扫描）。
+            // 右侧四个圆形图标入口（文稿扫描/相机/PDF/压缩包）。
             ImportSourcesCard(
                 onGallery = {
                     runCatching {
@@ -428,14 +418,14 @@ fun ImageEditorScreen(
                             ActivityResultContracts.PickVisualMedia.ImageOnly))
                     }
                 },
-                onFile = {
-                    fileLauncher.launch(
-                        arrayOf("image/*", "application/zip", "application/x-zip-compressed"),
-                    )
-                },
+                onScanner = onScanner,
                 onCamera = { cameraSplitOpen = !cameraSplitOpen },
                 onPdf = { pdfLauncher.launch(arrayOf("application/pdf")) },
-                onScanner = onScanner,
+                onArchive = {
+                    archiveLauncher.launch(
+                        arrayOf("application/zip", "application/x-zip-compressed"),
+                    )
+                },
             )
             CameraSplitPanel(
                 visible = cameraSplitOpen,
@@ -447,12 +437,6 @@ fun ImageEditorScreen(
                     cameraSplitOpen = false
                     onCamera()
                 },
-            )
-            AppText(
-                text = stringResource(R.string.image_source_scanner_desc),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, top = 6.dp),
             )
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
 
@@ -537,15 +521,15 @@ fun ImageEditorScreen(
 
 /**
  * 导入区：白色圆角卡片 + 大号主按钮「+」（相册多选），
- * 右侧四个圆形图标入口：文件（图片/压缩包）、相机、PDF、文稿扫描。
+ * 右侧四个圆形图标入口：文稿扫描、相机、PDF、压缩包。
  */
 @Composable
 private fun ImportSourcesCard(
     onGallery: () -> Unit,
-    onFile: () -> Unit,
+    onScanner: () -> Unit,
     onCamera: () -> Unit,
     onPdf: () -> Unit,
-    onScanner: () -> Unit,
+    onArchive: () -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_m)),
@@ -569,9 +553,9 @@ private fun ImportSourcesCard(
                 contentColor = MaterialTheme.colorScheme.onPrimary,
             )
             ImportCircleButton(
-                icon = Icons.Filled.Description,
-                contentDescription = stringResource(R.string.image_source_file),
-                onClick = onFile,
+                icon = Icons.Filled.DocumentScanner,
+                contentDescription = stringResource(R.string.image_source_scanner),
+                onClick = onScanner,
             )
             ImportCircleButton(
                 icon = Icons.Filled.CameraAlt,
@@ -584,9 +568,9 @@ private fun ImportSourcesCard(
                 onClick = onPdf,
             )
             ImportCircleButton(
-                icon = Icons.Filled.DocumentScanner,
-                contentDescription = stringResource(R.string.image_source_scanner),
-                onClick = onScanner,
+                icon = Icons.Filled.FolderZip,
+                contentDescription = stringResource(R.string.image_source_archive),
+                onClick = onArchive,
             )
         }
     }
