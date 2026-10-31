@@ -1,11 +1,6 @@
 package com.pencil.chuangyin.feature.camera.camera
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,20 +10,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -39,14 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import com.pencil.chuangyin.core.agent.aiimage.AiImageScene
-import com.pencil.chuangyin.core.ui.components.AppSegmentedRow
-import com.pencil.chuangyin.core.ui.components.AppText
-import com.pencil.chuangyin.feature.camera.CameraMode
 import com.pencil.chuangyin.feature.camera.R
 import com.pencil.chuangyin.resources.R as ResR
 
@@ -78,19 +67,16 @@ internal fun CameraTopBar(
 }
 
 /**
- * 底部控制区：「裁切方式」小标题 + 四档模式导航（自动 / 手动 / AI 处理 / 不处理）
- * + AI 模式下额外出现的「被摄类型」子导航（实景 / 文稿）
- * + 相册 / 快门 / 闪光灯。背后为从透明到深色的渐变 scrim，保证白色控件在任意画面上可见。
+ * 底部控制区：闪光灯 + 快门。
+ *
+ * 拍照保持极简——不提供裁切模式、AI 处理与相册入口，这些能力分别在
+ * 「文稿扫描」（FairScan）和图片打印页的「从相册选」里。
  */
 @Composable
 internal fun CameraBottomBar(
-    mode: CameraMode,
-    aiScene: AiImageScene,
     flashAuto: Boolean,
-    onSelectMode: (CameraMode) -> Unit,
-    onSelectAiScene: (AiImageScene) -> Unit,
+    capturing: Boolean,
     onShutter: () -> Unit,
-    onPickGallery: () -> Unit,
     onToggleFlash: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -113,80 +99,11 @@ internal fun CameraBottomBar(
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        AppText(
-            text = stringResource(R.string.camera_crop_mode_title),
-            style = MaterialTheme.typography.labelMedium,
-            color = CameraTokens.contentSecondary,
-        )
-        Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-
-        AppSegmentedRow(
-            options = listOf(
-                stringResource(R.string.camera_mode_auto),
-                stringResource(R.string.camera_mode_manual),
-                stringResource(R.string.camera_mode_ai),
-                stringResource(R.string.camera_mode_none),
-            ),
-            selectedIndex = when (mode) {
-                CameraMode.Auto -> 0
-                CameraMode.Manual -> 1
-                CameraMode.Ai -> 2
-                CameraMode.None -> 3
-            },
-            onSelect = { index ->
-                onSelectMode(
-                    when (index) {
-                        0 -> CameraMode.Auto
-                        1 -> CameraMode.Manual
-                        2 -> CameraMode.Ai
-                        else -> CameraMode.None
-                    },
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        // AI 处理的子导航：只在选中 AI 时出现，选择"拍的是实景还是文稿"。
-        AnimatedVisibility(
-            visible = mode == CameraMode.Ai,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-                AppText(
-                    text = stringResource(R.string.camera_ai_scene_title),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = CameraTokens.contentSecondary,
-                )
-                Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-                AppSegmentedRow(
-                    options = listOf(
-                        stringResource(R.string.camera_ai_scene_real),
-                        stringResource(R.string.camera_ai_scene_document),
-                    ),
-                    selectedIndex = if (aiScene == AiImageScene.Document) 1 else 0,
-                    onSelect = { index ->
-                        onSelectAiScene(
-                            if (index == 1) AiImageScene.Document else AiImageScene.RealScene,
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
-        Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_l)))
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            GalleryButton(onClick = onPickGallery)
-
-            ShutterButton(onClick = onShutter)
-
             CircleIconButton(
                 icon = if (flashAuto) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
                 description = stringResource(
@@ -195,15 +112,20 @@ internal fun CameraBottomBar(
                 onClick = onToggleFlash,
                 tint = if (flashAuto) MaterialTheme.colorScheme.primary else CameraTokens.contentSecondary,
             )
+
+            ShutterButton(enabled = !capturing, onClick = onShutter)
+
+            // 右侧留白与左侧闪光灯等宽，保证快门居中。
+            Box(modifier = Modifier.size(dimensionResource(ResR.dimen.dimen_camera_side_btn_size)))
         }
     }
 }
 
 @Composable
-private fun ShutterButton(onClick: () -> Unit) {
+private fun ShutterButton(enabled: Boolean, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.9f else 1f, label = "shutter")
+    val scale by animateFloatAsState(if (pressed && enabled) 0.9f else 1f, label = "shutter")
     val description = stringResource(R.string.camera_shutter)
     Box(
         modifier = Modifier
@@ -211,7 +133,12 @@ private fun ShutterButton(onClick: () -> Unit) {
             .scale(scale)
             .clip(CircleShape)
             .semantics { contentDescription = description }
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+            .clickable(
+                enabled = enabled,
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -219,7 +146,7 @@ private fun ShutterButton(onClick: () -> Unit) {
                 .size(dimensionResource(ResR.dimen.dimen_camera_shutter_size))
                 .border(
                     width = dimensionResource(ResR.dimen.dimen_camera_shutter_ring),
-                    color = CameraTokens.content,
+                    color = CameraTokens.content.copy(alpha = if (enabled) 1f else 0.5f),
                     shape = CircleShape,
                 ),
         )
@@ -227,41 +154,18 @@ private fun ShutterButton(onClick: () -> Unit) {
             modifier = Modifier
                 .size(dimensionResource(ResR.dimen.dimen_camera_shutter_inner))
                 .clip(CircleShape)
-                .background(CameraTokens.content),
-        )
-    }
-}
-
-@Composable
-private fun GalleryButton(onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.small)
-            .clickable(onClick = onClick)
-            .padding(dimensionResource(ResR.dimen.dimen_global_padding_s)),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Image,
-            contentDescription = stringResource(R.string.camera_gallery),
-            tint = CameraTokens.content,
-        )
-        Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s) / 2))
-        AppText(
-            text = stringResource(R.string.camera_gallery),
-            style = MaterialTheme.typography.labelSmall,
-            color = CameraTokens.contentSecondary,
+                .background(CameraTokens.content.copy(alpha = if (enabled) 1f else 0.5f)),
         )
     }
 }
 
 @Composable
 internal fun CircleIconButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     description: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    tint: androidx.compose.ui.graphics.Color = CameraTokens.content,
+    tint: Color = CameraTokens.content,
 ) {
     Box(
         modifier = modifier

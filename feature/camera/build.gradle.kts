@@ -44,10 +44,7 @@ dependencies {
     implementation(project(":core:resources"))
     implementation(project(":core:theme"))
     implementation(project(":core:ui"))
-    implementation(project(":core:scanner"))
     implementation(project(":core:printer"))
-    // AI 图片处理：复用 AI 打印的模型配置与实时对话客户端（不做聊天，只做一轮决策）
-    implementation(project(":core:agent"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

@@ -98,7 +98,7 @@ class SingBoxCore @Inject constructor(
     private fun startLocked(candidates: List<ProxyNode>, key: String): Map<String, Int>? {
         val executable = resolveExecutable()
         if (executable == null) {
-            lastError = "当前设备架构未打包 sing-box 内核（目前仅含 arm64-v8a）"
+            lastError = "当前设备架构没有可用的 sing-box 内核（已内置 arm64-v8a / armeabi-v7a）"
             return null
         }
         val workDir = File(context.filesDir, WORK_DIR_NAME).apply { mkdirs() }

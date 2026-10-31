@@ -149,7 +149,7 @@ class ProxyEngine @Inject constructor(
      * 节点 → java.net.Proxy。
      *
      * HTTP / SOCKS5 直接用系统实现；其余协议交给内置 sing-box 内核（每节点一个回环 SOCKS 端口）。
-     * 内核不可用时（例如 32 位设备），SS / Trojan 回退到进程内手写协议栈桥接。
+     * 内核不可用时（例如 x86 模拟器），SS / Trojan 回退到进程内手写协议栈桥接。
      * 返回 null 表示该节点无法承载流量（调用方必须失败关闭，不能静默直连）。
      */
     fun proxyForNode(node: ProxyNode): Proxy? {

@@ -1,10 +1,24 @@
 package com.pencil.chuangyin.feature.image
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -27,11 +42,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Filter1
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Thermostat
@@ -59,12 +76,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -98,6 +117,7 @@ import com.pencil.chuangyin.printer.PrintResult
 import com.pencil.chuangyin.printer.PrinterStatus
 import com.pencil.chuangyin.resources.R as ResR
 import com.pencil.chuangyin.feature.image.R
+import java.io.File
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
@@ -105,6 +125,7 @@ fun ImageEditorRoute(
     onBack: () -> Unit,
     onGoConnect: () -> Unit,
     onOpenCamera: () -> Unit,
+    onOpenScanner: () -> Unit,
     onOpenPixivGallery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -126,6 +147,26 @@ fun ImageEditorRoute(
     // 选择页打开时，系统返回键先回到编辑页而不是退出整个页面。
     BackHandler(enabled = state.pick != null) { viewModel.cancelPick() }
 
+    // 系统相机通道：拍照写入 libFileProvider 授权的缓存文件，返回后追加到本页。
+    val context = LocalContext.current
+    var cameraOutputUri by remember { mutableStateOf<Uri?>(null) }
+    val systemCameraLauncher = rememberLauncherForActivityResult(TakePictureWithGrant()) { success ->
+        val uri = cameraOutputUri
+        cameraOutputUri = null
+        if (success && uri != null) viewModel.importSystemCameraShot(uri)
+    }
+    val launchSystemCamera: () -> Unit = {
+        runCatching {
+            val dir = File(context.cacheDir, "camera_shots").apply { mkdirs() }
+            val file = File(dir, "capture_${System.nanoTime()}.jpg")
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            cameraOutputUri = uri
+            systemCameraLauncher.launch(uri)
+        }.onFailure {
+            Toast.makeText(context, R.string.image_camera_unavailable, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     val pick = state.pick
     if (pick != null) {
         ImagePickScreen(
@@ -145,6 +186,8 @@ fun ImageEditorRoute(
             onOpenPixivGallery = onOpenPixivGallery,
             onImportGallery = viewModel::importGallery,
             onCamera = onOpenCamera,
+            onSystemCamera = launchSystemCamera,
+            onScanner = onOpenScanner,
             onImportPdf = viewModel::importPdf,
             onImportArchive = viewModel::importArchive,
             onPageChange = viewModel::setCurrentPage,
@@ -181,6 +224,8 @@ fun ImageEditorScreen(
     onOpenPixivGallery: () -> Unit,
     onImportGallery: (List<android.net.Uri>, android.content.ContentResolver) -> Unit,
     onCamera: () -> Unit,
+    onSystemCamera: () -> Unit,
+    onScanner: () -> Unit,
     onImportPdf: (android.net.Uri) -> Unit,
     onImportArchive: (android.net.Uri) -> Unit,
     onPageChange: (Int) -> Unit,
@@ -234,6 +279,9 @@ fun ImageEditorScreen(
             onSave()
         }
     }
+
+    // 拍照按钮的「分裂」态：点一下展开为「系统相机 / 软件内摄像页」两条通道。
+    var cameraSplitOpen by remember { mutableStateOf(false) }
 
     val cooling = state.isPrinting && state.overheatActive
     // 过热冷却期间打印按钮保持可点：点击不重复下单，仅重新弹出冷却提示。
@@ -357,6 +405,23 @@ fun ImageEditorScreen(
                         dimensionResource(ResR.dimen.dimen_global_padding_m),
                 ),
         ) {
+            // 文稿扫描（FairScan 开源文稿扫描器）：独立的全宽入口，成品直达打印页。
+            SourceButton(
+                action = SourceAction(
+                    text = stringResource(R.string.image_source_scanner),
+                    icon = Icons.Filled.DocumentScanner,
+                    onClick = onScanner,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            AppText(
+                text = stringResource(R.string.image_source_scanner_desc),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp),
+            )
+            Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+
             // 2×2 来源入口。
             SourceButtonRow(
                 first = SourceAction(
@@ -372,8 +437,19 @@ fun ImageEditorScreen(
                 second = SourceAction(
                     text = stringResource(R.string.image_source_camera),
                     icon = Icons.Filled.CameraAlt,
-                    onClick = onCamera,
+                    onClick = { cameraSplitOpen = !cameraSplitOpen },
                 ),
+            )
+            CameraSplitPanel(
+                visible = cameraSplitOpen,
+                onSystemCamera = {
+                    cameraSplitOpen = false
+                    onSystemCamera()
+                },
+                onInAppCamera = {
+                    cameraSplitOpen = false
+                    onCamera()
+                },
             )
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
             SourceButtonRow(
@@ -499,6 +575,120 @@ private fun SourceButton(action: SourceAction, modifier: Modifier = Modifier) {
         // 前置图标以 ImageVector 下发 → 原生层渲染成位图纹理并与文字并排绘制（真玻璃）。
         leadingIcon = action.icon,
     )
+}
+
+/**
+ * 「拍照」按钮的分裂面板：点一下按钮后，内容从按钮中线向两侧分开——
+ * 左「系统相机」（ACTION_IMAGE_CAPTURE）与右「软件内摄像页」（CameraX 取景）。
+ * 分裂过程由 [AnimatedVisibility] 的纵向展开与两侧卡片的水平位移共同驱动。
+ */
+@Composable
+private fun CameraSplitPanel(
+    visible: Boolean,
+    onSystemCamera: () -> Unit,
+    onInAppCamera: () -> Unit,
+) {
+    val split by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+        label = "cameraSplit",
+    )
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(200)) +
+            expandVertically(expandFrom = Alignment.Top, animationSpec = tween(260)),
+        exit = fadeOut(animationSpec = tween(180)) +
+            shrinkVertically(shrinkTowards = Alignment.Top, animationSpec = tween(200)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = dimensionResource(ResR.dimen.dimen_global_padding_s)),
+            horizontalArrangement = Arrangement.spacedBy(
+                dimensionResource(ResR.dimen.dimen_global_padding_s),
+            ),
+        ) {
+            SplitCameraOption(
+                icon = Icons.Filled.PhotoCamera,
+                title = stringResource(R.string.image_camera_system),
+                description = stringResource(R.string.image_camera_system_desc),
+                onClick = onSystemCamera,
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer {
+                        translationX = (1f - split) * size.width * 0.35f
+                        alpha = split
+                    },
+            )
+            SplitCameraOption(
+                icon = Icons.Filled.CameraAlt,
+                title = stringResource(R.string.image_camera_inapp),
+                description = stringResource(R.string.image_camera_inapp_desc),
+                onClick = onInAppCamera,
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer {
+                        translationX = -(1f - split) * size.width * 0.35f
+                        alpha = split
+                    },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SplitCameraOption(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_s)),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row(
+            modifier = Modifier.padding(
+                horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+            Column {
+                AppText(text = title, style = MaterialTheme.typography.labelLarge)
+                AppText(
+                    text = description,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * ACTION_IMAGE_CAPTURE 带 URI 授权：
+ * 官方 [ActivityResultContracts.TakePicture] 不会给 EXTRA_OUTPUT 的 FileProvider URI 加授权标志，
+ * 部分系统相机会因此写入失败；这里显式带上读写授权，兼容面更广。
+ */
+private class TakePictureWithGrant : ActivityResultContract<Uri, Boolean>() {
+    override fun createIntent(context: Context, input: Uri): Intent =
+        Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+            putExtra(MediaStore.EXTRA_OUTPUT, input)
+            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+    override fun parseResult(resultCode: Int, intent: Intent?): Boolean =
+        resultCode == Activity.RESULT_OK
 }
 
 /**
@@ -979,6 +1169,8 @@ private fun ImageEditorScreenPreview() {
         onOpenPixivGallery = {},
         onImportGallery = { _, _ -> },
         onCamera = {},
+        onSystemCamera = {},
+        onScanner = {},
         onImportPdf = {},
         onImportArchive = {},
         onPageChange = {},

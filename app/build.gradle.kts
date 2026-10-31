@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// 发布三套安装包：ABI 拆分后一次构建即产出三个 APK ——
+// 32 位（armeabi-v7a）、64 位（arm64-v8a）与通用包（两种架构都含）。
+// 通用包体积大但兼容所有设备；单架构包更小，按设备架构分发可显著节省流量。
+// 产物位于 app/build/outputs/apk/debug（或 release）下，文件名带架构后缀。
+
 android {
     namespace = "com.pencil.chuangyin.pro"
     compileSdk = 35
@@ -15,10 +20,10 @@ android {
         applicationId = "com.pencil.chuangyin.pro"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2000007
-        versionName = "2.0.0.7"
+        versionCode = 2000008
+        versionName = "2.0.0.8"
 
-        // OpenCV 仅打包真机 ARM 架构，控制包体。
+        // OpenCV 与内置代理内核均只打包真机 ARM 架构，控制包体。
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
@@ -27,6 +32,16 @@ android {
             cmake {
                 arguments += listOf("-DANDROID_STL=c++_static")
             }
+        }
+    }
+
+    // 按 ABI 拆分 + 额外产出通用包：三套 APK 由同一次构建生成。
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
         }
     }
 
@@ -90,6 +105,7 @@ dependencies {
     implementation(project(":feature:text"))
     implementation(project(":feature:image"))
     implementation(project(":feature:camera"))
+    implementation(project(":feature:scanner"))
     implementation(project(":feature:pixiv"))
     implementation(project(":feature:ai"))
 

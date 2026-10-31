@@ -3,12 +3,16 @@ package com.pencil.chuangyin.feature.image
 import android.content.ContentResolver
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pencil.chuangyin.feature.image.data.ExtractedImages
 import com.pencil.chuangyin.feature.image.data.FileImageSource
+import com.pencil.chuangyin.feature.image.data.calculateInSampleSize
 import com.pencil.chuangyin.core.ui.data.GallerySaver
 import com.pencil.chuangyin.feature.image.data.ImageArchiveImporter
 import com.pencil.chuangyin.feature.image.data.ImageSource
@@ -33,6 +37,7 @@ import com.pencil.chuangyin.printer.ShotTransferMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -208,6 +213,65 @@ class ImageEditorViewModel @Inject constructor(
             }
             appendSources(appended.map { it.name }, appended)
         }
+    }
+
+    /**
+     * 系统相机（ACTION_IMAGE_CAPTURE）返回的成品：转入本页缓存并追加一页。
+     * 相机的 EXIF 方向在此归一——[FileImageSource] 直接按像素解码，不读方向标签。
+     */
+    fun importSystemCameraShot(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val dir = File(appContext.cacheDir, ShotTransferBus.SHOT_DIR).apply { runCatching { mkdirs() } }
+            val raw = File(dir, "sys_${System.nanoTime()}.jpg")
+            val copied = runCatching {
+                appContext.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(raw).use { output -> input.copyTo(output) }
+                }
+                raw.takeIf { it.length() > 0L }
+            }.getOrNull()
+            if (copied == null) {
+                runCatching { raw.delete() }
+                _state.update { it.copy(notice = ImageNotice.ImportFailed) }
+                return@launch
+            }
+            val prepared = runCatching { normalizeExif(copied) }.getOrElse { copied }
+            if (prepared !== copied) runCatching { copied.delete() }
+            appendSources(listOf(prepared.name), listOf(FileImageSource(appContext, prepared, prepared.name)))
+        }
+    }
+
+    /** EXIF 方向归一：无旋转原样返回，否则旋转像素后写出新文件（避免重编码整张原图）。 */
+    private fun normalizeExif(file: File): File {
+        val orientation = runCatching {
+            ExifInterface(file.absolutePath).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL,
+            )
+        }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+        val degrees = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
+        if (degrees == 0f) return file
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        val decoded = BitmapFactory.decodeFile(
+            file.absolutePath,
+            BitmapFactory.Options().apply {
+                inSampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight)
+            },
+        ) ?: return file
+        val rotated = Bitmap.createBitmap(
+            decoded, 0, 0, decoded.width, decoded.height,
+            Matrix().apply { postRotate(degrees) }, true,
+        )
+        val target = File(file.parentFile, "shot_${System.nanoTime()}.jpg")
+        FileOutputStream(target).use { rotated.compress(Bitmap.CompressFormat.JPEG, 95, it) }
+        if (rotated !== decoded) runCatching { decoded.recycle() }
+        runCatching { rotated.recycle() }
+        return target
     }
 
     /** PDF 导入：先进入页面选择会话，挑选确认后才真正加入任务。 */

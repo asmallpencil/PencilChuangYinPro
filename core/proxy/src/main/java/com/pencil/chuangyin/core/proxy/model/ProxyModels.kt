@@ -96,7 +96,7 @@ enum class ProxyProtocol(val token: String) {
         }
 
     /**
-     * 是否属于手写协议栈（SS AEAD / Trojan）——内核不可用时（例如 32 位设备未打包二进制）
+     * 是否属于手写协议栈（SS AEAD / Trojan）——内核不可用时（例如 x86 模拟器）
      * 仍能靠本地 SOCKS5 桥按老路径连通，作为降级回退。
      */
     val requiresBridge: Boolean

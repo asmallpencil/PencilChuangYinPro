@@ -10,7 +10,7 @@
   <img alt="Compose" src="https://img.shields.io/badge/Jetpack%20Compose-2024.12-4285F4.svg">
   <img alt="Android" src="https://img.shields.io/badge/Android-7.0%2B%20(API%2024)-3DDC84.svg">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%2F11-0078D4.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.0.0.0-orange.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.0.0.8-orange.svg">
 </p>
 
 ---
@@ -52,9 +52,10 @@
 - **图片打印**：裁剪、旋转、滤镜、抖动/二值化（含 Sauvola 等自适应算法）、PDF 导入分页、多页批量。
 - **图表与表格**：AI 助手可生成表格、图表并直接送入打印队列。
 
-### 拍照与扫描
+### 文稿扫描与拍照
 
-- CameraX 实时取景 + OpenCV 文档边缘检测、透视校正、去阴影，拍完即打印。
+- **文稿扫描**：内嵌 **FairScan**（GPL-3.0）的 `imageprocessing` 算法层 —— CameraX 实时取景做文档四边形检测，拍照/导入后自动判定色彩模式，再做透视校正与增强；支持多页连拍、相册导入、旋转与「自动 / 彩色 / 灰度 / 纯黑白」切换，完成后直接送入图片打印。
+- **拍照**：保留一条极简拍照通道，拍完即进入图片处理与打印，不内置任何 AI 图像处理。
 
 ### Pixiv（P 站）图库
 
@@ -90,11 +91,14 @@ feature/
   dashboard          首页、蓝牙打印机连接页
   text               文本编辑与打印
   image              图片处理与打印
-  camera             拍照扫描
+  scanner            文稿扫描（内嵌 FairScan 算法、多页拍摄与校正）
+  camera             极简拍照
   pixiv              P 站浏览 / 评论 / 下载 / 打印
   ai                 AI 打印助手（会话、工具、UI）
   settings           设置
   onboarding         首次引导
+third_party/
+  fairscan-imageprocessing   FairScan 的纯 Kotlin 算法层（GPL-3.0，整体内嵌）
 desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-image）
 ```
 
@@ -117,13 +121,18 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 ### Android
 
 ```bash
-# 调试包
+# 调试包（一次构建产出三个 APK：32 位 / 64 位 / 通用）
 ./gradlew :app:assembleDebug
-# 产物：app/build/outputs/apk/debug/app-debug.apk
+# 产物：app/build/outputs/apk/debug/
+#   app-arm64-v8a-debug.apk     64 位（arm64-v8a）
+#   app-armeabi-v7a-debug.apk   32 位（armeabi-v7a）
+#   app-universal-debug.apk     通用包（两种架构都含）
 
-# 发布包（开启 R8 混淆与资源压缩）
+# 发布包（开启 R8 混淆与资源压缩，同样产出上述三个 APK）
 ./gradlew :app:assembleRelease
 ```
+
+> 按设备架构分发可显著减小下载体积：64 位机型装 `arm64-v8a`，老设备装 `armeabi-v7a`；不确定或需一个包兼容全部时用 `universal`。
 
 ### Windows 桌面版
 
@@ -139,14 +148,16 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 
 安装包与源码归档都在 **[Releases](https://github.com/asmallpencil/PencilChuangYinPro/releases)** 页面。
 
-当前版本 **v2.0.0.0**：
+当前版本 **v2.0.0.8**（Android 分架构提供三个 APK，按设备按需下载即可）：
 
-| 平台 | 文件 | 说明 |
-| --- | --- | --- |
-| Windows 10/11 x64 | [`PencilChuangYinPro-2.0.0.0-windows-x64.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.0/PencilChuangYinPro-2.0.0.0-windows-x64.zip) | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装 |
-| Android 7.0+（arm64-v8a / armeabi-v7a） | [`PencilChuangYinPro-2.0.0.0-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.0/PencilChuangYinPro-2.0.0.0-debug.apk) | debug 签名包，安装前需允许「未知来源」 |
+| 平台 | 文件 | 体积 | 说明 |
+| --- | --- | --- | --- |
+| Android 7.0+ 64 位 | [`PencilChuangYinPro-2.0.0.8-arm64-v8a-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.8/PencilChuangYinPro-2.0.0.8-arm64-v8a-debug.apk) | ≈70 MB | 绝大多数现代机型，体积最小，推荐优先选择 |
+| Android 7.0+ 32 位 | [`PencilChuangYinPro-2.0.0.8-armeabi-v7a-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.8/PencilChuangYinPro-2.0.0.8-armeabi-v7a-debug.apk) | ≈69 MB | 老设备 / 32 位系统专用 |
+| Android 7.0+ 32/64 共通 | [`PencilChuangYinPro-2.0.0.8-universal-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.8/PencilChuangYinPro-2.0.0.8-universal-debug.apk) | ≈106 MB | 不确定架构时的兜底包，同时包含两种 ABI |
+| Windows 10/11 x64 | [`PencilChuangYinPro-2.0.0.0-windows-x64.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.0/PencilChuangYinPro-2.0.0.0-windows-x64.zip) | ≈130 MB | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装；桌面端最新构建也可从源码生成（见上文） |
 
-> APK 使用 debug 签名，仅供测试与自用；如需分发请自行配置 release 签名。
+> 三个 APK 均使用 debug 签名，仅供测试与自用；如需分发请自行配置 release 签名。三者功能完全一致，仅打包的 ABI 不同；`32/64 共通版` 因同时内置两套原生库（含 sing-box）体积约为单包 1.5 倍。
 
 ---
 
@@ -180,6 +191,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 | **Coil** | coil-kt 团队 | Apache-2.0 | 图片加载与内存/磁盘缓存，P 站插图、图库缩略图与打印预览全靠它 | https://github.com/coil-kt/coil |
 | **Compose Multiplatform** | JetBrains | Apache-2.0 | Windows 桌面端的整套 UI 运行时：与 Android 共用同一套 Composition、Layout 与绘制模型，才可能做到「双端 UI 统一」 | https://github.com/JetBrains/compose-multiplatform |
 | **Dear ImGui** | Omar Cornut & 全体贡献者 | MIT | Android 端 C++ 即时模式 UI 框架，承载液态玻璃的光学实验与调试面板（`app/src/main/cpp`） | https://github.com/ocornut/imgui |
+| **FairScan** | pynicolas | GPL-3.0 | **文稿扫描的全部算法来源**。`third_party:fairscan-imageprocessing` 为其 `imageprocessing` 模块的整体内嵌：`detectDocumentQuad` 四边形检测、`autoColorMode` 自动色彩模式判定、`extractDocument` 透视校正与增强。仅内嵌纯 Kotlin 算法层，不含 OCR / PDF 模型，以控制体积并保持 minSdk 24 | https://github.com/pynicolas/FairScan |
 | **Google ADK for Kotlin** | Google | Apache-2.0 | AI 打印助手的工具协议内核：`@Tool` / `@Param` 注解 + KSP 处理器在编译期生成 `FunctionTool` 包装器，`core:agent` 与 `feature:ai` 的工具集全部建在其上 | https://github.com/google/adk-kotlin |
 | **Gradle** | Gradle Inc. | Apache-2.0 | 构建系统本体；仓库自带 wrapper 8.13，克隆即可构建，无需预装 Gradle | https://github.com/gradle/gradle |
 | **Hilt / Dagger** | Google / Square | Apache-2.0 | 全项目依赖注入：打印控制器、P 站会话、AI 引擎、各 ViewModel 均由它装配 | https://github.com/google/dagger |
@@ -213,7 +225,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 
 ### 共同鸣谢
 
-以上 48 个项目，参与方式各不相同 —— 有的是被 vendor 进仓库的源码，有的是 Gradle 坐标引入的依赖，有的是被移植、仿写、参照过的实现。但它们对项目的贡献是**同等**的：少了任何一个，这个项目都不会是现在的样子。
+以上 49 个项目，参与方式各不相同 —— 有的是被 vendor 进仓库的源码，有的是 Gradle 坐标引入的依赖，有的是被移植、仿写、参照过的实现。但它们对项目的贡献是**同等**的：少了任何一个，这个项目都不会是现在的样子。
 
 - 没有 **AndroidLiquidGlass** 与 **Kyant0/shapes**，就没有液态玻璃；
 - 没有 **LiquidGlass-Cpp** 与 **Dear ImGui**，C++ 侧的光学实验无从谈起；
@@ -221,7 +233,8 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 - 没有 **PiPixiv**，评论区至今仍是「暂无评论」；
 - 没有 **BRVAH** 与 **Ketch**（经 Pix-EzViewer 内建），P 站列表与图片下载管线要另起炉灶；
 - 没有 **Operit**，AI 助手的工具确认与权限模型不会成型；
-- 没有 **ImageCorrection** 的双路径思路，拍照扫描只是拍一张照片；
+- 没有 **FairScan**，文稿扫描只是把照片存下来 —— 四边形检测、自动色彩模式、透视校正与增强全部来自它的算法；
+- 没有 **ImageCorrection** 的双路径思路，相机取景里的文档预览就无从谈起；
 - 没有 **OpenCV / CameraX / PDFBox / Coil / Retrofit / OkHttp**，图像与网络两块直接归零；
 - 没有 **Kotlin / Compose / AndroidX / Hilt / Gradle / KSP** 这一整套基础设施，这个项目连编译都过不去。
 
@@ -235,7 +248,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 
 这意味着你可以自由使用、修改、再发布本项目，但**衍生作品也必须以 GPL-3.0 开源**，并保留原作者署名与许可声明。
 
-其中 **Pix-EzViewer**（MIT）、**PiPixiv**（Apache-2.0）、**AndroidLiquidGlass** / **Kyant0/shapes** / **LiquidGlass-Cpp**（Apache-2.0）等源码级来源的许可，与本项目的 GPL-3.0 兼容；**jSerialComm**、**JNA**、**Operit** 的 LGPL 条款通过「不改源码、动态链接」的方式满足。
+其中 **Pix-EzViewer**（MIT）、**PiPixiv**（Apache-2.0）、**AndroidLiquidGlass** / **Kyant0/shapes** / **LiquidGlass-Cpp**（Apache-2.0）等源码级来源的许可，与本项目的 GPL-3.0 兼容；**FairScan** 与 **sing-box** 同为 GPL-3.0，与本项目同协议、源码整体内嵌并保留原署名与许可；**jSerialComm**、**JNA**、**Operit** 的 LGPL 条款通过「不改源码、动态链接」的方式满足。
 
 **Ketch** 与 **ImageCorrection** 的上游仓库目前未附带许可文件。本项目对二者的使用方式为：Ketch 经由 Pix-EzViewer 的源码子模块关系沿用其管线分层，ImageCorrection 采用其双路径算法思路并由本项目代码独立实现。若两位作者希望补充许可或调整署名，请开 Issue。
 

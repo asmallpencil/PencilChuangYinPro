@@ -4,4 +4,8 @@
     <files-path
         name="pixiv_downloads"
         path="pixiv_downloads/" />
+    <!-- 系统相机拍照：输出到 cacheDir/camera_shots，经同一 FileProvider 授权给相机应用 -->
+    <cache-path
+        name="camera_shots"
+        path="camera_shots/" />
 </paths>

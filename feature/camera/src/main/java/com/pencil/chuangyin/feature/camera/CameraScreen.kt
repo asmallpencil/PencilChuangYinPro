@@ -4,9 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ImageCapture
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +21,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,23 +36,19 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
-import com.pencil.chuangyin.core.scanner.ScanMode
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.feature.camera.camera.CameraBottomBar
 import com.pencil.chuangyin.feature.camera.camera.CameraPreview
 import com.pencil.chuangyin.feature.camera.camera.CameraTokens
 import com.pencil.chuangyin.feature.camera.camera.CameraTopBar
-import com.pencil.chuangyin.feature.camera.camera.ProcessingOverlay
-import com.pencil.chuangyin.feature.camera.camera.ViewfinderOverlay
-import com.pencil.chuangyin.feature.camera.result.AdjustScreen
-import com.pencil.chuangyin.feature.camera.result.ResultScreen
 import com.pencil.chuangyin.resources.R as ResR
 
 /**
- * 拍照打印入口：
- * 完成后（结果页大勾）成品文件经 ShotTransferBus 传给图片打印页并回调 [onConfirmed]；
- * 关闭（顶栏 X）回调 [onClose] 返回来源页。
+ * 极简拍照页：取景 → 快门 → 返回图片打印页。
+ *
+ * 不做任何 AI 处理、边缘检测、透视校正或滤镜——拍到的照片原样交给图片打印页，
+ * 由用户在打印页里调整；需要文档校正请使用「文稿扫描」（FairScan）。
  */
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -80,9 +72,7 @@ fun CameraRoute(
     // 需要据此区分"尚未申请"与"永久拒绝"，后者直接引导去系统设置。
     var deniedEver by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(permissionState.status) {
-        if (!permissionState.status.isGranted &&
-            permissionState.status.shouldShowRationale
-        ) {
+        if (!permissionState.status.isGranted && permissionState.status.shouldShowRationale) {
             deniedEver = true
         }
     }
@@ -95,7 +85,6 @@ fun CameraRoute(
             CameraContent(
                 viewModel = viewModel,
                 onClose = onClose,
-                snackbarHostState = snackbarHostState,
             )
         } else {
             PermissionView(
@@ -192,85 +181,36 @@ private fun PermissionView(
 private fun CameraContent(
     viewModel: CameraViewModel,
     onClose: () -> Unit,
-    snackbarHostState: SnackbarHostState,
 ) {
-    val analyzer = remember { viewModel.createAnalyzer() }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var cameraUnavailable by remember { mutableStateOf(false) }
 
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-    ) { uri: Uri? ->
-        if (uri != null) viewModel.importFromUri(uri)
-    }
-
-    val phase = viewModel.phase
-    // AI 处理日志（StateFlow）：只在 Processing 遮罩内展示，展开状态由遮罩自行管理。
-    val aiLogLines by viewModel.aiLogLines.collectAsState()
     Box(Modifier.fillMaxSize().background(CameraTokens.scrim)) {
-        when (phase) {
-            is CameraPhase.Adjust -> {
-                // 角点调整：全屏原图 + 可拖四角，确认后透视拉直。
-                AdjustScreen(viewModel = viewModel, onRetake = {})
-            }
-            is CameraPhase.Result -> {
-                ResultScreen(viewModel = viewModel, onRetake = {})
-            }
-            else -> {
-                CameraPreview(
-                    analyzer = analyzer,
-                    onImageCaptureReady = { imageCapture = it },
-                    onCameraUnavailable = { cameraUnavailable = true },
-                    modifier = Modifier.fillMaxSize(),
-                )
+        CameraPreview(
+            onImageCaptureReady = { imageCapture = it },
+            onCameraUnavailable = { cameraUnavailable = true },
+            modifier = Modifier.fillMaxSize(),
+        )
 
-                ViewfinderOverlay(
-                    quad = if (viewModel.mode.showLiveQuad) viewModel.liveQuad else null,
-                    modifier = Modifier.fillMaxSize(),
-                )
+        CameraTopBar(
+            onClose = onClose,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
 
-                CameraTopBar(
-                    onClose = onClose,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                )
+        CameraBottomBar(
+            flashAuto = viewModel.flashAuto,
+            capturing = viewModel.isCapturing,
+            onShutter = { imageCapture?.let(viewModel::capture) },
+            onToggleFlash = { viewModel.toggleFlash(imageCapture) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
 
-                CameraBottomBar(
-                    mode = viewModel.mode,
-                    aiScene = viewModel.aiScene,
-                    flashAuto = viewModel.flashAuto,
-                    onSelectMode = viewModel::selectMode,
-                    onSelectAiScene = viewModel::selectAiScene,
-                    onShutter = { imageCapture?.let(viewModel::capture) },
-                    onPickGallery = {
-                        galleryLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                        )
-                    },
-                    onToggleFlash = { viewModel.toggleFlash(imageCapture) },
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
-
-                if (phase is CameraPhase.Processing) {
-                    ProcessingOverlay(
-                        stage = phase.stage,
-                        logLines = aiLogLines,
-                        // 取消只对 AI 处理开放：内置算法是毫秒级本地运算，给取消按钮反而制造错觉。
-                        onCancel = if (viewModel.mode == CameraMode.Ai) {
-                            viewModel::cancelProcessing
-                        } else {
-                            null
-                        },
-                    )
-                }
-
-                if (cameraUnavailable) {
-                    AppText(
-                        text = stringResource(R.string.camera_unavailable),
-                        color = CameraTokens.content,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-            }
+        if (cameraUnavailable) {
+            AppText(
+                text = stringResource(R.string.camera_unavailable),
+                color = CameraTokens.content,
+                modifier = Modifier.align(Alignment.Center),
+            )
         }
     }
 }

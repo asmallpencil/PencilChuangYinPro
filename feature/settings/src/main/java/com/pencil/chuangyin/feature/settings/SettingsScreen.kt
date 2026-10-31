@@ -1,10 +1,5 @@
 package com.pencil.chuangyin.feature.settings
 
-import android.content.Intent
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -28,24 +23,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BlurOn
-import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.FormatSize
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Policy
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Router
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -64,7 +56,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -72,60 +63,28 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pencil.chuangyin.core.proxy.model.ProxyScope
-import com.pencil.chuangyin.core.theme.BACKGROUND_ALPHA_MIN
-import com.pencil.chuangyin.core.theme.BACKGROUND_BLUR_MAX_DP
 import com.pencil.chuangyin.core.theme.CornerStyle
-import com.pencil.chuangyin.core.theme.LIQUID_GLASS_BLUR_MAX_DP
-import com.pencil.chuangyin.core.theme.LIQUID_GLASS_LENS_AMOUNT_MAX_DP
-import com.pencil.chuangyin.core.theme.LIQUID_GLASS_LENS_HEIGHT_MAX_DP
-import com.pencil.chuangyin.core.theme.LIQUID_GLASS_SPECTRAL_MAX
-import com.pencil.chuangyin.core.theme.LIQUID_GLASS_TINT_ALPHA_MIN
-import com.pencil.chuangyin.core.theme.LOADING_DURATION_MAX_MS
-import com.pencil.chuangyin.core.theme.LOADING_DURATION_MIN_MS
-import com.pencil.chuangyin.core.theme.LOADING_PARTICLE_MAX
-import com.pencil.chuangyin.core.theme.LOADING_PARTICLE_MIN
-import com.pencil.chuangyin.core.theme.LOADING_PULSE_MAX_MS
-import com.pencil.chuangyin.core.theme.LOADING_PULSE_MIN_MS
-import com.pencil.chuangyin.core.theme.LOADING_ROTATION_MAX_MS
-import com.pencil.chuangyin.core.theme.LOADING_ROTATION_MIN_MS
-import com.pencil.chuangyin.core.theme.LOADING_STROKE_MAX
-import com.pencil.chuangyin.core.theme.LOADING_STROKE_MIN
-import com.pencil.chuangyin.core.theme.LOADING_TRAIL_MAX
-import com.pencil.chuangyin.core.theme.LOADING_TRAIL_MIN
-import com.pencil.chuangyin.core.theme.LiquidGlassLayer
-import com.pencil.chuangyin.core.theme.LoadingAnimationStyle
 import com.pencil.chuangyin.core.theme.MotionPreset
-import com.pencil.chuangyin.core.theme.OUTLINE_ALPHA_DEFAULT
 import com.pencil.chuangyin.core.theme.OUTLINE_ALPHA_MIN
 import com.pencil.chuangyin.core.theme.OUTLINE_WIDTH_MAX_DP
 import com.pencil.chuangyin.core.theme.OUTLINE_WIDTH_MIN_DP
 import com.pencil.chuangyin.core.theme.OutlineColorMode
-import com.pencil.chuangyin.core.theme.PARTICLE_SPEED_MAX
-import com.pencil.chuangyin.core.theme.PARTICLE_SPEED_MIN
-import com.pencil.chuangyin.core.theme.ParticleType
-import com.pencil.chuangyin.core.theme.SURFACE_ALPHA_MIN
 import com.pencil.chuangyin.core.theme.ThemeState
 import com.pencil.chuangyin.core.theme.cornerShape
-import com.pencil.chuangyin.core.ui.components.AppAlertDialog
 import com.pencil.chuangyin.core.ui.components.AppDivider
 import com.pencil.chuangyin.core.ui.components.AppIconButton
-import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
-import com.pencil.chuangyin.core.ui.components.AppOutlinedButton
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppSegmentedRow
-import com.pencil.chuangyin.core.ui.components.AppTextButton
 import com.pencil.chuangyin.core.ui.components.AppSlider
 import com.pencil.chuangyin.core.ui.components.AppSwitch
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextField
 import com.pencil.chuangyin.core.ui.components.GlassPanel
-import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
 import com.pencil.chuangyin.core.ui.components.RgbColorPicker
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
 import com.pencil.chuangyin.core.ui.motion.pressScale
 import com.pencil.chuangyin.resources.R as ResR
-import kotlin.math.roundToInt
 
 // ===================== 设置主菜单 =====================
 
@@ -133,11 +92,12 @@ import kotlin.math.roundToInt
 fun SettingsRoute(
     onBack: () -> Unit,
     onOpenVisual: () -> Unit,
+    onOpenLoading: () -> Unit,
+    onOpenBackground: () -> Unit,
     onOpenLiquidGlass: () -> Unit,
-    onOpenSize: () -> Unit,
+    onOpenPrint: () -> Unit,
     onOpenLicenses: () -> Unit,
     onOpenAiConfig: () -> Unit,
-    onOpenAiImage: () -> Unit,
     onOpenProxy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -146,20 +106,16 @@ fun SettingsRoute(
     SettingsScreen(
         onBack = onBack,
         onOpenVisual = onOpenVisual,
+        onOpenLoading = onOpenLoading,
+        onOpenBackground = onOpenBackground,
         onOpenLiquidGlass = onOpenLiquidGlass,
-        onOpenSize = onOpenSize,
+        onOpenPrint = onOpenPrint,
         onOpenLicenses = onOpenLicenses,
         onOpenAiConfig = onOpenAiConfig,
-        onOpenAiImage = onOpenAiImage,
         onOpenProxy = onOpenProxy,
         proxyEnabled = state.proxyEnabled,
         proxyScope = state.proxyScope,
         proxyConfigCount = state.proxyConfigCount,
-        outputDirName = state.outputDirName,
-        outputTreeName = state.outputTreeName,
-        onSetOutputDirName = viewModel::setOutputDirName,
-        onSetOutputTree = viewModel::setOutputTree,
-        onClearOutputTree = viewModel::clearOutputTree,
         modifier = modifier,
     )
 }
@@ -169,30 +125,18 @@ fun SettingsRoute(
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenVisual: () -> Unit,
+    onOpenLoading: () -> Unit,
+    onOpenBackground: () -> Unit,
     onOpenLiquidGlass: () -> Unit,
-    onOpenSize: () -> Unit,
+    onOpenPrint: () -> Unit,
     onOpenLicenses: () -> Unit,
     onOpenAiConfig: () -> Unit = {},
-    onOpenAiImage: () -> Unit = {},
     onOpenProxy: () -> Unit = {},
     proxyEnabled: Boolean = false,
     proxyScope: ProxyScope = ProxyScope.PixivOnly,
     proxyConfigCount: Int = 0,
-    outputDirName: String = com.pencil.chuangyin.core.ui.data.OUTPUT_DIR_DEFAULT,
-    outputTreeName: String = "",
-    onSetOutputDirName: (String) -> Unit = {},
-    onSetOutputTree: (String) -> Unit = {},
-    onClearOutputTree: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var showOutputDialog by remember { mutableStateOf(false) }
-    // SAF 目录选择器：Android 11+ 无存储权限时，这是唯一能把产物写到用户可见目录的办法。
-    val pickOutputTree = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) {
-            onSetOutputTree(uri.toString())
-            showOutputDialog = false
-        }
-    }
     val glassActive = rememberLiquidGlassActive()
     Scaffold(
         modifier = modifier,
@@ -212,11 +156,6 @@ fun SettingsScreen(
         // 分组依次错峰浮现：卡片像被"放"到页面上，而不是一次性整屏刷出来。
         var appeared by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { appeared = true }
-        val outputDesc = if (outputTreeName.isNotBlank()) {
-            outputTreeName
-        } else {
-            stringResource(R.string.settings_menu_output_default, outputDirName)
-        }
         val proxyScopeText = stringResource(
             if (proxyScope == ProxyScope.Global) {
                 R.string.settings_proxy_scope_global
@@ -238,10 +177,24 @@ fun SettingsScreen(
                 .padding(horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m))
                 .padding(bottom = dimensionResource(ResR.dimen.dimen_global_padding_xl)),
         ) {
+            // 打印与输出：热敏纸宽度、自动连接、产物目录都收进「打印设置」子页，
+            // 主菜单只留一个入口，避免功能项把设置首页撑成流水账。
+            SettingsGroup(
+                label = stringResource(R.string.settings_group_print),
+                visible = appeared,
+                delayMillis = 0,
+            ) {
+                SettingsEntry(
+                    icon = Icons.Filled.Print,
+                    title = stringResource(R.string.settings_menu_print),
+                    desc = stringResource(R.string.settings_menu_print_desc),
+                    onClick = onOpenPrint,
+                )
+            }
             SettingsGroup(
                 label = stringResource(R.string.settings_group_ai),
                 visible = appeared,
-                delayMillis = 0,
+                delayMillis = 70,
             ) {
                 SettingsEntry(
                     icon = Icons.Filled.AutoAwesome,
@@ -249,18 +202,12 @@ fun SettingsScreen(
                     desc = stringResource(R.string.settings_menu_ai_desc),
                     onClick = onOpenAiConfig,
                 )
-                SettingsEntryDivider()
-                SettingsEntry(
-                    icon = Icons.Filled.Image,
-                    title = stringResource(R.string.settings_menu_ai_image),
-                    desc = stringResource(R.string.settings_menu_ai_image_desc),
-                    onClick = onOpenAiImage,
-                )
             }
+            // 外观按「静态外观 / 动画 / 背景装饰」拆成三页，各自只保留同类设置项。
             SettingsGroup(
                 label = stringResource(R.string.settings_group_appearance),
                 visible = appeared,
-                delayMillis = 70,
+                delayMillis = 140,
             ) {
                 SettingsEntry(
                     icon = Icons.Filled.Palette,
@@ -270,30 +217,30 @@ fun SettingsScreen(
                 )
                 SettingsEntryDivider()
                 SettingsEntry(
+                    icon = Icons.Filled.Animation,
+                    title = stringResource(R.string.settings_menu_loading),
+                    desc = stringResource(R.string.settings_menu_loading_desc),
+                    onClick = onOpenLoading,
+                )
+                SettingsEntryDivider()
+                SettingsEntry(
+                    icon = Icons.Filled.Wallpaper,
+                    title = stringResource(R.string.settings_menu_background),
+                    desc = stringResource(R.string.settings_menu_background_desc),
+                    onClick = onOpenBackground,
+                )
+                SettingsEntryDivider()
+                SettingsEntry(
                     icon = Icons.Filled.BlurOn,
                     title = stringResource(R.string.settings_menu_liquid_glass),
                     desc = stringResource(R.string.settings_menu_liquid_glass_desc),
                     onClick = onOpenLiquidGlass,
                 )
             }
-            // 「功能设定」是独立页面：主菜单只保留一个入口，热敏纸与自动连接都在该页内，
-            // 避免主设置页被功能项撑成流水账。
-            SettingsGroup(
-                label = stringResource(R.string.settings_group_function),
-                visible = appeared,
-                delayMillis = 140,
-            ) {
-                SettingsEntry(
-                    icon = Icons.Filled.FormatSize,
-                    title = stringResource(R.string.settings_menu_function),
-                    desc = stringResource(R.string.settings_menu_function_desc),
-                    onClick = onOpenSize,
-                )
-            }
             SettingsGroup(
                 label = stringResource(R.string.settings_group_network),
                 visible = appeared,
-                delayMillis = 175,
+                delayMillis = 210,
             ) {
                 SettingsEntry(
                     icon = Icons.Filled.Router,
@@ -303,17 +250,10 @@ fun SettingsScreen(
                 )
             }
             SettingsGroup(
-                label = stringResource(R.string.settings_group_output),
+                label = stringResource(R.string.settings_group_about),
                 visible = appeared,
-                delayMillis = 245,
+                delayMillis = 280,
             ) {
-                SettingsEntry(
-                    icon = Icons.Filled.FolderOpen,
-                    title = stringResource(R.string.settings_menu_output),
-                    desc = stringResource(R.string.settings_menu_output_desc, outputDesc),
-                    onClick = { showOutputDialog = true },
-                )
-                SettingsEntryDivider()
                 SettingsEntry(
                     icon = Icons.Filled.Policy,
                     title = stringResource(R.string.settings_menu_licenses),
@@ -322,83 +262,6 @@ fun SettingsScreen(
                 )
             }
         }
-    }
-
-    if (showOutputDialog) {
-        OutputPathDialog(
-            currentName = outputTreeName,
-            dirName = outputDirName,
-            onDirNameChange = onSetOutputDirName,
-            onPick = { pickOutputTree.launch(null) },
-            onClear = {
-                onClearOutputTree()
-                showOutputDialog = false
-            },
-            onDismiss = { showOutputDialog = false },
-        )
-    }
-}
-
-@Composable
-private fun OutputPathDialog(
-    currentName: String,
-    dirName: String,
-    onDirNameChange: (String) -> Unit,
-    onPick: () -> Unit,
-    onClear: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    // 目录名写入 DataStore 是异步的，输入框若直接绑 dirName 会逐字延迟/吞字，
-    // 因此本地维护一份输入值，每次输入即同步回写设置。
-    var nameInput by remember { mutableStateOf(dirName) }
-    LiquidGlassLayerScope(LiquidGlassLayer.MODAL) {
-        AppAlertDialog(
-            onDismissRequest = onDismiss,
-            title = { AppText(text = stringResource(R.string.settings_output_dialog_title)) },
-            text = {
-                Column {
-                    AppText(
-                        text = stringResource(R.string.settings_output_dialog_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-                    // 目录名决定未授权 SAF 时的公共目录（Pictures/<目录名>/…）。
-                    AppTextField(
-                        value = nameInput,
-                        onValueChange = {
-                            nameInput = it
-                            onDirNameChange(it)
-                        },
-                        label = stringResource(R.string.settings_output_dialog_name_label),
-                        placeholder = com.pencil.chuangyin.core.ui.data.OUTPUT_DIR_DEFAULT,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-                    AppText(
-                        text = if (currentName.isBlank()) {
-                            stringResource(R.string.settings_output_dialog_none)
-                        } else {
-                            stringResource(R.string.settings_output_dialog_current, currentName)
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            },
-            confirmButton = {
-                AppTextButton(text = stringResource(R.string.settings_output_dialog_pick), onClick = onPick)
-            },
-            dismissButton = {
-                Row {
-                    if (currentName.isNotBlank()) {
-                        AppTextButton(text = stringResource(R.string.settings_output_dialog_clear), onClick = onClear)
-                    }
-                    AppTextButton(text = stringResource(ResR.string.action_cancel), onClick = onDismiss)
-                }
-            },
-            // 产物输出目录弹窗保持实心卡片，不做液态玻璃。
-            glass = false,
-        )
     }
 }
 
@@ -587,7 +450,46 @@ internal fun BackIcon(onBack: () -> Unit) {
     )
 }
 
-// ===================== 画面设置 =====================
+/** 子页通用骨架：玻璃顶栏 + 可滚动内容列，统一各设置子页的进出场与留白。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun SettingsSubPage(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val glassActive = rememberLiquidGlassActive()
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { AppText(text = title) },
+                navigationIcon = { BackIcon(onBack) },
+                modifier = Modifier.nativeGlassSurface(
+                    shape = RoundedCornerShape(0.dp),
+                    enabled = glassActive,
+                    fallbackColor = MaterialTheme.colorScheme.surface,
+                ),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+            )
+        },
+    ) { innerPadding ->
+        var appeared by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { appeared = true }
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = dimensionResource(ResR.dimen.dimen_global_padding_xl)),
+        ) {
+            content()
+        }
+    }
+}
+
+// ===================== 主题外观 =====================
 
 @Composable
 fun VisualSettingsRoute(
@@ -609,25 +511,10 @@ fun VisualSettingsRoute(
         onOutlineAlphaChange = viewModel::setOutlineAlpha,
         onOutlineColorModeSelected = viewModel::setOutlineColorMode,
         onOutlineColorChange = viewModel::setOutlineArgb,
-        onSnowfallChange = viewModel::setSnowfallEnabled,
-        onParticleTypeSelected = viewModel::setParticleType,
-        onParticleSpeedChange = viewModel::setParticleSpeed,
-        onBackgroundUriChange = viewModel::setBackgroundUri,
-        onBackgroundAlphaChange = viewModel::setBackgroundAlpha,
-        onSurfaceAlphaChange = viewModel::setSurfaceAlpha,
-        onBlurChange = viewModel::setBackgroundBlur,
-        onLoadingStyleSelected = viewModel::setLoadingAnimationStyle,
-        onLoadingParticleCountChange = viewModel::setLoadingParticleCount,
-        onLoadingTrailChange = viewModel::setLoadingTrailSpan,
-        onLoadingDurationChange = viewModel::setLoadingDurationMs,
-        onLoadingPulseChange = viewModel::setLoadingPulseDurationMs,
-        onLoadingRotationChange = viewModel::setLoadingRotationDurationMs,
-        onLoadingStrokeChange = viewModel::setLoadingStrokeWidth,
         modifier = modifier,
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VisualSettingsScreen(
     state: SettingsUiState,
@@ -642,45 +529,16 @@ fun VisualSettingsScreen(
     onOutlineAlphaChange: (Float) -> Unit,
     onOutlineColorModeSelected: (OutlineColorMode) -> Unit,
     onOutlineColorChange: (Long) -> Unit,
-    onSnowfallChange: (Boolean) -> Unit,
-    onParticleTypeSelected: (ParticleType) -> Unit,
-    onParticleSpeedChange: (Float) -> Unit,
-    onBackgroundUriChange: (String?) -> Unit,
-    onBackgroundAlphaChange: (Float) -> Unit,
-    onSurfaceAlphaChange: (Float) -> Unit,
-    onBlurChange: (Float) -> Unit,
-    onLoadingStyleSelected: (LoadingAnimationStyle) -> Unit,
-    onLoadingParticleCountChange: (Int) -> Unit,
-    onLoadingTrailChange: (Float) -> Unit,
-    onLoadingDurationChange: (Int) -> Unit,
-    onLoadingPulseChange: (Int) -> Unit,
-    onLoadingRotationChange: (Int) -> Unit,
-    onLoadingStrokeChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val theme = state.themeState
-    val glassActive = rememberLiquidGlassActive()
-    Scaffold(
+    SettingsSubPage(
+        title = stringResource(R.string.settings_visual_title),
+        onBack = onBack,
         modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = { AppText(text = stringResource(R.string.settings_visual_title)) },
-                navigationIcon = { BackIcon(onBack) },
-                modifier = Modifier.nativeGlassSurface(
-                    shape = RoundedCornerShape(0.dp),
-                    enabled = glassActive,
-                    fallbackColor = MaterialTheme.colorScheme.surface,
-                ),
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            )
-        },
-    ) { innerPadding ->
+    ) {
         Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
+            modifier = Modifier.padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
         ) {
             SectionLabel(stringResource(R.string.settings_label_seed_color))
             RgbColorPicker(
@@ -731,19 +589,6 @@ fun VisualSettingsScreen(
                 onSelect = { onMotionSelected(MotionPreset.entries[it]) },
             )
 
-            Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-
-            LoadingAnimationSection(
-                theme = theme,
-                onStyleSelected = onLoadingStyleSelected,
-                onParticleCountChange = onLoadingParticleCountChange,
-                onTrailChange = onLoadingTrailChange,
-                onDurationChange = onLoadingDurationChange,
-                onPulseChange = onLoadingPulseChange,
-                onRotationChange = onLoadingRotationChange,
-                onStrokeChange = onLoadingStrokeChange,
-            )
-
             AppDivider(Modifier.padding(vertical = dimensionResource(ResR.dimen.dimen_global_padding_m)))
 
             SectionLabel(stringResource(R.string.settings_label_outline))
@@ -792,41 +637,6 @@ fun VisualSettingsScreen(
                     previewSize = dimensionResource(ResR.dimen.dimen_color_picker_preview_size),
                 )
             }
-
-            AppDivider(Modifier.padding(vertical = dimensionResource(ResR.dimen.dimen_global_padding_m)))
-            ToggleRow(
-                checked = theme.snowfallEnabled,
-                onCheckedChange = onSnowfallChange,
-                label = stringResource(R.string.settings_label_snowfall),
-            )
-            SectionLabel(stringResource(R.string.settings_label_particle_type))
-            AppSegmentedRow(
-                options = ParticleType.entries.map { stringResource(particleTypeLabel(it)) },
-                selectedIndex = ParticleType.entries.indexOf(theme.particleType),
-                onSelect = { onParticleTypeSelected(ParticleType.entries[it]) },
-                enabled = theme.snowfallEnabled,
-            )
-            SectionLabel(stringResource(R.string.settings_label_particle_speed))
-            AppSlider(
-                value = theme.particleSpeed,
-                onValueChange = onParticleSpeedChange,
-                enabled = theme.snowfallEnabled,
-                valueRange = PARTICLE_SPEED_MIN..PARTICLE_SPEED_MAX,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            AppDivider(Modifier.padding(vertical = dimensionResource(ResR.dimen.dimen_global_padding_m)))
-
-            BackgroundSection(
-                backgroundUri = theme.backgroundUri,
-                backgroundAlpha = theme.backgroundAlpha,
-                surfaceAlpha = theme.surfaceAlpha,
-                backgroundBlur = theme.backgroundBlur,
-                onUriChange = onBackgroundUriChange,
-                onAlphaChange = onBackgroundAlphaChange,
-                onSurfaceAlphaChange = onSurfaceAlphaChange,
-                onBlurChange = onBlurChange,
-            )
         }
     }
 }
@@ -857,252 +667,6 @@ internal fun ToggleRow(
         Spacer(modifier = Modifier.weight(1f))
         AppSwitch(checked = checked, onCheckedChange = onCheckedChange)
     }
-}
-
-/**
- * 加载动画区：样式横向选择 + 6 项全局参数滑杆 + 实时预览。
- *
- * 预览直接复用 [AppLoadingIndicator]，而它读取的是 [com.pencil.chuangyin.core.theme.LocalLoadingAnimation]
- * （由 AppTheme 从主题状态下发），所以这里的调整经 DataStore 落盘后预览即时变化，
- * 同时全局所有页面的加载指示器一起生效。
- */
-@Composable
-private fun LoadingAnimationSection(
-    theme: ThemeState,
-    onStyleSelected: (LoadingAnimationStyle) -> Unit,
-    onParticleCountChange: (Int) -> Unit,
-    onTrailChange: (Float) -> Unit,
-    onDurationChange: (Int) -> Unit,
-    onPulseChange: (Int) -> Unit,
-    onRotationChange: (Int) -> Unit,
-    onStrokeChange: (Float) -> Unit,
-) {
-    SectionLabel(stringResource(R.string.settings_label_loading))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(84.dp)
-                .clip(MaterialTheme.shapes.medium)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-            contentAlignment = Alignment.Center,
-        ) {
-            AppLoadingIndicator(
-                size = 64.dp,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-        Spacer(Modifier.width(16.dp))
-        AppText(
-            text = stringResource(R.string.settings_loading_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-    }
-    Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(LoadingAnimationStyle.entries, key = { it.id }) { style ->
-            LoadingStyleChip(
-                label = stringResource(loadingStyleLabel(style)),
-                selected = theme.loadingAnimationStyle == style,
-                onClick = { onStyleSelected(style) },
-            )
-        }
-    }
-    Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-
-    LoadingParamSlider(
-        label = stringResource(R.string.settings_loading_particles),
-        valueText = theme.loadingParticleCount.toString(),
-        value = theme.loadingParticleCount.toFloat(),
-        range = LOADING_PARTICLE_MIN.toFloat()..LOADING_PARTICLE_MAX.toFloat(),
-        steps = LOADING_PARTICLE_MAX - LOADING_PARTICLE_MIN - 1,
-        onValueChange = { onParticleCountChange(it.roundToInt()) },
-    )
-    LoadingParamSlider(
-        label = stringResource(R.string.settings_loading_trail),
-        valueText = twoDecimals(theme.loadingTrailSpan),
-        value = theme.loadingTrailSpan,
-        range = LOADING_TRAIL_MIN..LOADING_TRAIL_MAX,
-        steps = ((LOADING_TRAIL_MAX - LOADING_TRAIL_MIN) / 0.01f).roundToInt() - 1,
-        onValueChange = onTrailChange,
-    )
-    LoadingParamSlider(
-        label = stringResource(R.string.settings_loading_loop),
-        valueText = stringResource(R.string.settings_loading_seconds, theme.loadingDurationMs / 1000f),
-        value = theme.loadingDurationMs.toFloat(),
-        range = LOADING_DURATION_MIN_MS.toFloat()..LOADING_DURATION_MAX_MS.toFloat(),
-        steps = (LOADING_DURATION_MAX_MS - LOADING_DURATION_MIN_MS) / LOADING_DURATION_STEP_MS - 1,
-        onValueChange = { onDurationChange(it.roundToInt()) },
-    )
-    LoadingParamSlider(
-        label = stringResource(R.string.settings_loading_pulse),
-        valueText = stringResource(R.string.settings_loading_seconds, theme.loadingPulseDurationMs / 1000f),
-        value = theme.loadingPulseDurationMs.toFloat(),
-        range = LOADING_PULSE_MIN_MS.toFloat()..LOADING_PULSE_MAX_MS.toFloat(),
-        steps = (LOADING_PULSE_MAX_MS - LOADING_PULSE_MIN_MS) / LOADING_PULSE_STEP_MS - 1,
-        onValueChange = { onPulseChange(it.roundToInt()) },
-    )
-    LoadingParamSlider(
-        label = stringResource(R.string.settings_loading_rotate),
-        valueText = stringResource(R.string.settings_loading_seconds, theme.loadingRotationDurationMs / 1000f),
-        value = theme.loadingRotationDurationMs.toFloat(),
-        range = LOADING_ROTATION_MIN_MS.toFloat()..LOADING_ROTATION_MAX_MS.toFloat(),
-        steps = (LOADING_ROTATION_MAX_MS - LOADING_ROTATION_MIN_MS) / LOADING_ROTATION_STEP_MS - 1,
-        onValueChange = { onRotationChange(it.roundToInt()) },
-    )
-    LoadingParamSlider(
-        label = stringResource(R.string.settings_loading_stroke),
-        valueText = twoDecimals(theme.loadingStrokeWidth),
-        value = theme.loadingStrokeWidth,
-        range = LOADING_STROKE_MIN..LOADING_STROKE_MAX,
-        steps = ((LOADING_STROKE_MAX - LOADING_STROKE_MIN) / 0.1f).roundToInt() - 1,
-        onValueChange = onStrokeChange,
-    )
-}
-
-/** 加载动画样式选项：横向 chip，选中时用主色容器 + 勾选图标。 */
-@Composable
-private fun LoadingStyleChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val container = if (selected) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-    val contentColor = if (selected) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Row(
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.large)
-            .background(container)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (selected) {
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(Modifier.width(6.dp))
-        }
-        AppText(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = contentColor,
-        )
-    }
-}
-
-/** 参数滑杆：标题带上当前值，避免用户拖动时看不到数值。 */
-@Composable
-private fun LoadingParamSlider(
-    label: String,
-    valueText: String,
-    value: Float,
-    range: ClosedFloatingPointRange<Float>,
-    steps: Int,
-    onValueChange: (Float) -> Unit,
-) {
-    SectionLabel("$label · $valueText")
-    AppSlider(
-        value = value,
-        onValueChange = onValueChange,
-        valueRange = range,
-        steps = steps.coerceAtLeast(0),
-        modifier = Modifier.fillMaxWidth(),
-    )
-}
-
-/** 两位小数展示（避免 Float.toString 出现 0.3799999 之类的长尾）。 */
-private fun twoDecimals(value: Float): String =
-    ((value * 100f).roundToInt() / 100f).toString()
-
-/** 时长类滑杆的步长（毫秒），与 math-curve-loaders 的可调分辨率保持一致量级。 */
-private const val LOADING_DURATION_STEP_MS = 200
-private const val LOADING_PULSE_STEP_MS = 200
-private const val LOADING_ROTATION_STEP_MS = 1000
-
-/**
- * 自定义背景区：系统相册选图（Photo Picker，免存储权限）+ 不透明度滑杆 + 清除。
- */
-@Composable
-private fun BackgroundSection(
-    backgroundUri: String?,
-    backgroundAlpha: Float,
-    surfaceAlpha: Float,
-    backgroundBlur: Float,
-    onUriChange: (String?) -> Unit,
-    onAlphaChange: (Float) -> Unit,
-    onSurfaceAlphaChange: (Float) -> Unit,
-    onBlurChange: (Float) -> Unit,
-) {
-    val context = LocalContext.current
-    val pickImage = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-    ) { uri ->
-        if (uri != null) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
-                )
-            }
-            onUriChange(uri.toString())
-        }
-    }
-    SectionLabel(stringResource(R.string.settings_label_background))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        AppOutlinedButton(
-            text = stringResource(R.string.settings_background_pick),
-            onClick = {
-                pickImage.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                )
-            },
-        )
-        if (backgroundUri != null) {
-            Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-            AppTextButton(
-                text = stringResource(R.string.settings_background_clear),
-                onClick = { onUriChange(null) },
-                contentColor = MaterialTheme.colorScheme.error,
-            )
-        }
-    }
-    SectionLabel(stringResource(R.string.settings_background_opacity))
-    AppSlider(
-        value = backgroundAlpha,
-        onValueChange = onAlphaChange,
-        enabled = backgroundUri != null,
-        valueRange = BACKGROUND_ALPHA_MIN..1f,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    SectionLabel(stringResource(R.string.settings_surface_opacity))
-    AppSlider(
-        value = surfaceAlpha,
-        onValueChange = onSurfaceAlphaChange,
-        enabled = backgroundUri != null,
-        valueRange = SURFACE_ALPHA_MIN..1f,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    SectionLabel(stringResource(R.string.settings_background_blur))
-    AppSlider(
-        value = backgroundBlur,
-        onValueChange = onBlurChange,
-        enabled = backgroundUri != null,
-        valueRange = 0f..BACKGROUND_BLUR_MAX_DP,
-        modifier = Modifier.fillMaxWidth(),
-    )
 }
 
 @Composable
@@ -1235,11 +799,12 @@ private fun SettingsMenuPreview() {
     SettingsScreen(
         onBack = {},
         onOpenVisual = {},
+        onOpenLoading = {},
+        onOpenBackground = {},
         onOpenLiquidGlass = {},
-        onOpenSize = {},
+        onOpenPrint = {},
         onOpenLicenses = {},
         onOpenAiConfig = {},
-        onOpenAiImage = {},
         onOpenProxy = {},
     )
 }
@@ -1262,37 +827,6 @@ private fun outlineModeLabel(mode: OutlineColorMode): Int = when (mode) {
     OutlineColorMode.Seed -> R.string.outline_mode_seed
     OutlineColorMode.Rgb -> R.string.outline_mode_rgb
     OutlineColorMode.Rainbow -> R.string.outline_mode_rainbow
-}
-
-private fun particleTypeLabel(type: ParticleType): Int = when (type) {
-    ParticleType.Snow -> R.string.particle_snow
-    ParticleType.Rain -> R.string.particle_rain
-    ParticleType.Leaf -> R.string.particle_leaf
-    ParticleType.Petal -> R.string.particle_petal
-}
-
-private fun loadingStyleLabel(style: LoadingAnimationStyle): Int = when (style) {
-    LoadingAnimationStyle.Classic -> R.string.loading_classic
-    LoadingAnimationStyle.ThinkingRose -> R.string.loading_thinking_rose
-    LoadingAnimationStyle.ThinkingFive -> R.string.loading_thinking_five
-    LoadingAnimationStyle.ThinkingNine -> R.string.loading_thinking_nine
-    LoadingAnimationStyle.RoseOrbit -> R.string.loading_rose_orbit
-    LoadingAnimationStyle.RoseTwo -> R.string.loading_rose_two
-    LoadingAnimationStyle.RoseThree -> R.string.loading_rose_three
-    LoadingAnimationStyle.RoseFour -> R.string.loading_rose_four
-    LoadingAnimationStyle.LissajousDrift -> R.string.loading_lissajous_drift
-    LoadingAnimationStyle.LemniscateBloom -> R.string.loading_lemniscate_bloom
-    LoadingAnimationStyle.HypotrochoidLoop -> R.string.loading_hypotrochoid_loop
-    LoadingAnimationStyle.SpiralThree -> R.string.loading_spiral_three
-    LoadingAnimationStyle.SpiralFour -> R.string.loading_spiral_four
-    LoadingAnimationStyle.SpiralFive -> R.string.loading_spiral_five
-    LoadingAnimationStyle.SpiralSix -> R.string.loading_spiral_six
-    LoadingAnimationStyle.ButterflyPhase -> R.string.loading_butterfly_phase
-    LoadingAnimationStyle.CardioidGlow -> R.string.loading_cardioid_glow
-    LoadingAnimationStyle.CardioidHeart -> R.string.loading_cardioid_heart
-    LoadingAnimationStyle.HeartWave -> R.string.loading_heart_wave
-    LoadingAnimationStyle.SpiralSearch -> R.string.loading_spiral_search
-    LoadingAnimationStyle.FourierFlow -> R.string.loading_fourier_flow
 }
 
 private fun parseHexColor(input: String): Long? {

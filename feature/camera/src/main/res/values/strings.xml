@@ -1,57 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 模式（裁切方式四档） -->
-    <string name="camera_crop_mode_title">裁切方式</string>
-    <string name="camera_mode_auto">自动模式</string>
-    <string name="camera_mode_manual">手动模式</string>
-    <string name="camera_mode_ai">AI 处理</string>
-    <string name="camera_mode_none">不处理</string>
-    <string name="camera_ai_scene_title">被摄类型</string>
-    <string name="camera_ai_scene_real">实景</string>
-    <string name="camera_ai_scene_document">文稿</string>
-    <string name="camera_ai_scene_hint">AI 处理需要先在设置里配置模型接口</string>
     <string name="camera_close">关闭</string>
-    <string name="camera_gallery">相册</string>
     <string name="camera_flash_auto">自动闪光灯</string>
     <string name="camera_flash_off">关闭闪光灯</string>
     <string name="camera_shutter">拍照</string>
+    <string name="camera_capture_failed">拍摄失败，请重试</string>
+    <string name="camera_unavailable">相机暂时不可用，请检查设备或权限后重试</string>
 
     <!-- 相机权限 -->
     <string name="camera_permission_title">需要相机权限</string>
-    <string name="camera_permission_message">拍照打印需要使用相机拍摄纸面文档，授权后即可开始扫描。</string>
+    <string name="camera_permission_message">拍照需要使用相机拍摄照片，授权后即可开始拍摄。</string>
     <string name="camera_permission_grant">授权相机</string>
     <string name="camera_permission_open_settings">去系统设置开启</string>
-
-    <!-- 处理动画 / 异常 -->
-    <string name="camera_processing_normal">正在处理图片…</string>
-    <string name="camera_processing_edge">正在识别文档边缘…</string>
-    <string name="camera_processing_warp">正在校正透视变形…</string>
-    <string name="camera_processing_light">正在消除纸面阴影…</string>
-    <string name="camera_processing_text">正在提取清晰文字…</string>
-    <string name="camera_processing_ai">AI 正在分析画面…</string>
-    <string name="camera_process_failed">处理失败，请重试或更换拍摄模式</string>
-    <string name="camera_process_cancelled">已取消处理</string>
-    <string name="camera_ai_fallback">AI 处理未成功，已使用内置算法</string>
-    <string name="camera_log_title">处理日志</string>
-    <string name="camera_log_expand">展开处理日志</string>
-    <string name="camera_log_collapse">收起处理日志</string>
-    <string name="camera_log_empty">暂无日志</string>
-    <string name="camera_log_cancel">取消处理</string>
-    <string name="camera_unavailable">相机暂时不可用，请检查设备或权限后重试</string>
-    <string name="camera_crop_failed">裁剪失败，请调整后重试</string>
-    <string name="camera_decode_failed">拍摄照片解码失败</string>
-
-    <!-- 结果页 -->
-    <string name="camera_result_retake">重拍</string>
-    <string name="camera_result_confirm">确认打印</string>
-    <string name="camera_edit_whiteout">涂白</string>
-    <string name="camera_edit_crop">裁剪</string>
-    <string name="camera_edit_undo">撤销</string>
-    <string name="camera_edit_done">完成</string>
-    <string name="camera_edit_cancel">取消</string>
-
-    <!-- 角点调整页 -->
-    <string name="camera_adjust_hint">拖动角点对准纸张四个角，系统将自动校正透视</string>
-    <string name="camera_adjust_apply">生成</string>
-    <string name="camera_adjust_failed">生成失败，请调整角点后重试</string>
 </resources>

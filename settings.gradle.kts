@@ -43,5 +43,8 @@ include(":feature:image")
 include(":feature:camera")
 include(":feature:pixiv")
 include(":feature:ai")
+include(":feature:scanner")
+// FairScan（GPL-3.0）文档扫描算法，随源码内嵌
+include(":third_party:fairscan-imageprocessing")
 // Windows 桌面端（Compose Multiplatform / JVM），产出可运行的 exe
 include(":desktopApp")

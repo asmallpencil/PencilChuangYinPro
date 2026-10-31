@@ -86,11 +86,13 @@ import com.pencil.chuangyin.feature.dashboard.ConnectRoute
 import com.pencil.chuangyin.feature.dashboard.HomeRoute
 import com.pencil.chuangyin.feature.camera.CameraRoute
 import com.pencil.chuangyin.feature.image.ImageEditorRoute
+import com.pencil.chuangyin.feature.scanner.ScannerRoute
 import com.pencil.chuangyin.feature.onboarding.OnboardingRoute
-import com.pencil.chuangyin.feature.settings.AiImageSettingsRoute
+import com.pencil.chuangyin.feature.settings.BackgroundSettingsRoute
 import com.pencil.chuangyin.feature.settings.LicensesRoute
 import com.pencil.chuangyin.feature.settings.LiquidGlassSettingsRoute
-import com.pencil.chuangyin.feature.settings.FunctionSettingsRoute
+import com.pencil.chuangyin.feature.settings.LoadingSettingsRoute
+import com.pencil.chuangyin.feature.settings.PrintSettingsRoute
 import com.pencil.chuangyin.feature.settings.ProxySettingsRoute
 import com.pencil.chuangyin.feature.settings.SettingsRoute
 import com.pencil.chuangyin.feature.settings.VisualSettingsRoute
@@ -133,13 +135,15 @@ object AppRoutes {
     const val PSTATION = "pstation"
     const val IMAGE = "image"
     const val CAMERA = "camera"
+    const val SCANNER = "scanner"
     const val SETTINGS = "settings"
     const val SETTINGS_VISUAL = "settings_visual"
     const val SETTINGS_LIQUID_GLASS = "settings_liquid_glass"
-    const val SETTINGS_SIZE = "settings_function"
+    const val SETTINGS_PRINT = "settings_print"
+    const val SETTINGS_LOADING = "settings_loading"
+    const val SETTINGS_BACKGROUND = "settings_background"
     const val SETTINGS_LICENSES = "settings_licenses"
     const val SETTINGS_AI_CONFIG = "settings_ai_config"
-    const val SETTINGS_AI_IMAGE = "settings_ai_image"
     const val SETTINGS_PROXY = "settings_proxy"
 
     // AI 打印（Agent 客户端）
@@ -290,9 +294,9 @@ fun AppNavHost(
             AppDestination("text_editor", "文本编辑与打印页") { AppRoutes.TEXT },
             AppDestination("image_editor", "图片编辑与打印页") { AppRoutes.IMAGE },
             AppDestination("camera", "相机拍照页") { AppRoutes.CAMERA },
+            AppDestination("scanner", "文稿扫描页（FairScan 开源文稿扫描器）") { AppRoutes.SCANNER },
             AppDestination("settings", "应用设置页") { AppRoutes.SETTINGS },
             AppDestination("ai_config", "AI 模型配置页") { AppRoutes.SETTINGS_AI_CONFIG },
-            AppDestination("ai_image_settings", "AI 图片处理设置页") { AppRoutes.SETTINGS_AI_IMAGE },
             AppDestination("proxy_settings", "应用内代理设置页") { AppRoutes.SETTINGS_PROXY },
             AppDestination("ai_chat", "AI 助手对话页") { AppRoutes.AI },
         )
@@ -425,7 +429,20 @@ fun AppNavHost(
                     onBack = { safeBack() },
                     onGoConnect = { navController.navigate(AppRoutes.CONNECT) },
                     onOpenCamera = { navController.navigate(AppRoutes.CAMERA) },
+                    onOpenScanner = { navController.navigate(AppRoutes.SCANNER) },
                     onOpenPixivGallery = { navController.navigate(AppRoutes.pixivGallery("image")) },
+                )
+            }
+            composable(AppRoutes.SCANNER) {
+                ScannerRoute(
+                    onClose = { safeBack() },
+                    onConfirmed = {
+                        // 与相机页一致：移除扫描页后回到图片打印页，图片页已在栈中则复用。
+                        navController.navigate(AppRoutes.IMAGE) {
+                            popUpTo(AppRoutes.SCANNER) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
             composable(AppRoutes.CAMERA) {
@@ -445,11 +462,12 @@ fun AppNavHost(
                 SettingsRoute(
                     onBack = { safeBack() },
                     onOpenVisual = { navController.navigate(AppRoutes.SETTINGS_VISUAL) },
+                    onOpenLoading = { navController.navigate(AppRoutes.SETTINGS_LOADING) },
+                    onOpenBackground = { navController.navigate(AppRoutes.SETTINGS_BACKGROUND) },
                     onOpenLiquidGlass = { navController.navigate(AppRoutes.SETTINGS_LIQUID_GLASS) },
-                    onOpenSize = { navController.navigate(AppRoutes.SETTINGS_SIZE) },
+                    onOpenPrint = { navController.navigate(AppRoutes.SETTINGS_PRINT) },
                     onOpenLicenses = { navController.navigate(AppRoutes.SETTINGS_LICENSES) },
                     onOpenAiConfig = { navController.navigate(AppRoutes.SETTINGS_AI_CONFIG) },
-                    onOpenAiImage = { navController.navigate(AppRoutes.SETTINGS_AI_IMAGE) },
                     onOpenProxy = { navController.navigate(AppRoutes.SETTINGS_PROXY) },
                 )
             }
@@ -458,12 +476,6 @@ fun AppNavHost(
             }
             composable(AppRoutes.SETTINGS_AI_CONFIG) {
                 AiConfigRoute(onBack = { safeBack() })
-            }
-            composable(AppRoutes.SETTINGS_AI_IMAGE) {
-                AiImageSettingsRoute(
-                    onBack = { safeBack() },
-                    onOpenAiConfig = { navController.navigate(AppRoutes.SETTINGS_AI_CONFIG) },
-                )
             }
             composable(AppRoutes.AI) {
                 AiChatRoute(
@@ -474,11 +486,17 @@ fun AppNavHost(
             composable(AppRoutes.SETTINGS_VISUAL) {
                 VisualSettingsRoute(onBack = { safeBack() })
             }
+            composable(AppRoutes.SETTINGS_LOADING) {
+                LoadingSettingsRoute(onBack = { safeBack() })
+            }
+            composable(AppRoutes.SETTINGS_BACKGROUND) {
+                BackgroundSettingsRoute(onBack = { safeBack() })
+            }
             composable(AppRoutes.SETTINGS_LIQUID_GLASS) {
                 LiquidGlassSettingsRoute(onBack = { safeBack() })
             }
-            composable(AppRoutes.SETTINGS_SIZE) {
-                FunctionSettingsRoute(onBack = { safeBack() })
+            composable(AppRoutes.SETTINGS_PRINT) {
+                PrintSettingsRoute(onBack = { safeBack() })
             }
             composable(AppRoutes.SETTINGS_LICENSES) {
                 LicensesRoute(onBack = { safeBack() })

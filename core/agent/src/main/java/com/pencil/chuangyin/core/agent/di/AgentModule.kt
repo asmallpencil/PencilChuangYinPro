@@ -1,7 +1,5 @@
 package com.pencil.chuangyin.core.agent.di
 
-import com.pencil.chuangyin.core.agent.aiimage.AiImageSettingsRepository
-import com.pencil.chuangyin.core.agent.aiimage.DataStoreAiImageSettingsRepository
 import com.pencil.chuangyin.core.agent.config.AiConfigRepository
 import com.pencil.chuangyin.core.agent.config.DataStoreAiConfigRepository
 import com.pencil.chuangyin.core.agent.model.AgentTool
@@ -27,13 +25,6 @@ abstract class AgentModule {
     @Binds
     @Singleton
     abstract fun bindAiConfigRepository(impl: DataStoreAiConfigRepository): AiConfigRepository
-
-    /** 拍照 AI 处理专属设置（与模型配置分离：模型接口共用，管线参数独立）。 */
-    @Binds
-    @Singleton
-    abstract fun bindAiImageSettingsRepository(
-        impl: DataStoreAiImageSettingsRepository,
-    ): AiImageSettingsRepository
 
     /** 按模型配置的协议分派到 OpenAI / Anthropic / Gemini 实现。 */
     @Binds

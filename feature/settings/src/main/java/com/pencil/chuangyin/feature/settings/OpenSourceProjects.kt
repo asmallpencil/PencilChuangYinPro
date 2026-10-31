@@ -160,6 +160,13 @@ internal val OPEN_SOURCE_PROJECTS: List<OpenSourceProject> = listOf(
         contribution = "Android 端 C++ 即时模式 UI 框架，承载液态玻璃的光学实验与调试面板。",
     ),
     OpenSourceProject(
+        name = "FairScan",
+        author = "pynicolas",
+        license = "GPL-3.0",
+        url = "https://github.com/pynicolas/FairScan",
+        contribution = "文稿扫描的算法来源。third_party:fairscan-imageprocessing 为其 imageprocessing 模块的整体内嵌：文档四边形检测（detectDocumentQuad）、自动色彩模式判定（autoColorMode）与透视校正 + 增强（extractDocument）。仅内嵌纯 Kotlin 算法层，不含 OCR 与 PDF 模型，以控制体积并保持 minSdk 24。",
+    ),
+    OpenSourceProject(
         name = "Google ADK for Kotlin",
         author = "Google",
         license = "Apache-2.0",

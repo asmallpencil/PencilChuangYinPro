@@ -38,8 +38,6 @@ dependencies {
     implementation(project(":core:theme"))
     implementation(project(":core:ui"))
     implementation(project(":core:printer"))
-    // AI 图片处理设置：读写 core:agent 的 AI 图片处理参数与当前模型配置
-    implementation(project(":core:agent"))
     // 网络代理：Clash 兼容配置、路由与连接日志
     implementation(project(":core:proxy"))
     // 二维码配置导入：用 OpenCV 解码用户选择的二维码图片

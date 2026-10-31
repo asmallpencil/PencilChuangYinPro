@@ -5,7 +5,6 @@ import android.view.View
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
-import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
 import androidx.camera.core.UseCaseGroup
@@ -28,27 +27,22 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.doOnNextLayout
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.LifecycleOwner
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 /**
  * CameraX 全屏取景预览：
- * - [PreviewView] 以 FILL_CENTER 铺满（与叠加层角点映射使用同一裁剪规则）；
- * - **ViewPort 把 Preview / ImageCapture / ImageAnalysis 裁到同一视场**——
- *   成片所见即所得（此前成片是传感器全幅 4:3，比预览裁切画面视野更宽，
- *   用户感知为"拍出来和看到的不一样"）；
+ * - [PreviewView] 以 FILL_CENTER 铺满；
+ * - **ViewPort 把 Preview / ImageCapture 裁到同一视场**——成片所见即所得；
  * - 进入页面即以中心为对焦点启动连续自动对焦；点按对焦 3 秒后自动解除锁定，
  *   恢复中心连续对焦——否则一次点按会把 AF 锁死在旧区域，之后全程泛焦模糊；
  * - 点按对焦区域扩大（_sizeRatio 0.35）提高抓焦成功率。
  *
- * 相机生命周期跟随当前 [LifecycleOwner]，分析线程在退出时关闭。
+ * 相机生命周期跟随当前 [LifecycleOwner]。
  */
 @Composable
 internal fun CameraPreview(
-    analyzer: ImageAnalysis.Analyzer,
     onImageCaptureReady: (ImageCapture) -> Unit,
     onCameraUnavailable: () -> Unit,
     modifier: Modifier = Modifier,
@@ -63,18 +57,15 @@ internal fun CameraPreview(
     }
     var boundCamera by remember { mutableStateOf<Camera?>(null) }
     var cameraProvider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
-    val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
 
     DisposableEffect(Unit) {
-        onDispose {
-            runCatching { cameraProvider?.unbindAll() }
-            runCatching { analysisExecutor.shutdown() }
-        }
+        onDispose { runCatching { cameraProvider?.unbindAll() } }
     }
 
-    LaunchedEffect(analyzer) {
+    LaunchedEffect(Unit) {
         runCatching {
             val provider = context.awaitCameraProvider()
+            cameraProvider = provider
 
             val preview = Preview.Builder().build().also {
                 it.surfaceProvider = previewView.surfaceProvider
@@ -83,11 +74,6 @@ internal fun CameraPreview(
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
                 .setFlashMode(ImageCapture.FLASH_MODE_AUTO)
                 .build()
-            val imageAnalysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-                .build()
-                .also { it.setAnalyzer(analysisExecutor, analyzer) }
 
             // 等 PreviewView 完成布局：ViewPort 尺寸必须等于用户实际看到的画幅。
             awaitLayout(previewView)
@@ -101,7 +87,6 @@ internal fun CameraPreview(
                 )
                 .addUseCase(preview)
                 .addUseCase(imageCapture)
-                .addUseCase(imageAnalysis)
                 .build()
 
             runCatching { provider.unbindAll() }

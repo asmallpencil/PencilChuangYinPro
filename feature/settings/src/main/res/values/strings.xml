@@ -2,22 +2,23 @@
     <string name="settings_title">设置</string>
 
     <!-- 设置主菜单 -->
+    <string name="settings_group_print">打印与输出</string>
     <string name="settings_group_ai">智能能力</string>
     <string name="settings_group_appearance">外观与动效</string>
-    <string name="settings_group_function">功能设定</string>
-    <string name="settings_group_output">输出与关于</string>
+    <string name="settings_group_network">网络与代理</string>
+    <string name="settings_group_about">关于</string>
+    <string name="settings_menu_print">打印设置</string>
+    <string name="settings_menu_print_desc">热敏纸宽度 · 自动连接 · 产物输出路径</string>
     <string name="settings_menu_ai">AI 配置设置</string>
     <string name="settings_menu_ai_desc">配置 AI 接口与模型（兼容全部主流接口）</string>
-    <string name="settings_menu_ai_image">AI 图片处理</string>
-    <string name="settings_menu_ai_image_desc">拍照 AI 处理：默认场景、输出尺寸与算法强度</string>
-    <string name="settings_menu_visual">画面设置</string>
-    <string name="settings_menu_visual_desc">主题、描边、粒子、背景</string>
+    <string name="settings_menu_visual">主题外观</string>
+    <string name="settings_menu_visual_desc">种子色 · 深色模式 · 边角形状 · 动效与描边</string>
+    <string name="settings_menu_loading">加载动画</string>
+    <string name="settings_menu_loading_desc">样式与运动参数</string>
+    <string name="settings_menu_background">背景与装饰</string>
+    <string name="settings_menu_background_desc">自定义背景 · 粒子飘落</string>
     <string name="settings_menu_liquid_glass">液态玻璃</string>
     <string name="settings_menu_liquid_glass_desc">渲染实现与详细参数</string>
-    <string name="settings_menu_function">功能设定</string>
-    <string name="settings_menu_function_desc">热敏纸宽度 · 自动连接</string>
-    <string name="settings_menu_size">尺寸设置</string>
-    <string name="settings_menu_size_desc">热敏纸宽度</string>
     <string name="settings_menu_auto_connect">自动连接</string>
     <string name="settings_menu_auto_connect_desc">断线后静默重连上次设备</string>
     <string name="settings_auto_connect_logic">开启后，应用在前台任意页面、任意操作期间都会在后台静默尝试连接上次成功连接的设备。\n\n· 未连接且存在上次设备时，每 5 秒自动尝试一次，成功即停止，失败继续重试，前台不显示任何提示。\n· 进入设备配置页会立即暂停自动连接，离开后仍保持暂停，直到在该页手动连接成功一次才恢复。\n· 打印中若设备断联或数据异常（界面仍显示已连接，但下发任务无效或报错），会立刻断开并刷新状态，随后重新开始自动重连。\n· 关闭本开关后不再发起任何自动连接。</string>
@@ -100,6 +101,8 @@
     <string name="outline_mode_rainbow">RGB彩虹</string>
 
     <string name="settings_label_snowfall">粒子飘落</string>
+    <string name="settings_group_decor">装饰</string>
+    <string name="settings_snowfall_desc">全页面飘落装饰，随主题与动效等级一起生效</string>
     <string name="settings_label_particle_type">飘落类型</string>
     <string name="settings_label_particle_speed">飘落速度</string>
     <string name="particle_snow">雪花</string>
@@ -150,8 +153,11 @@
     <string name="settings_lg_preview_field">输入框</string>
     <string name="settings_lg_preview_slider">滑动条</string>
 
-    <!-- 尺寸设置 -->
-    <string name="settings_size_title">功能设定</string>
+    <!-- 打印设置 -->
+    <string name="settings_print_title">打印设置</string>
+    <string name="settings_group_paper">打印介质</string>
+    <string name="settings_group_connection">连接</string>
+    <string name="settings_group_output_path">产物输出</string>
     <string name="settings_label_paper_width">热敏纸宽度</string>
     <string name="settings_paper_width_value">%1$d mm</string>
     <string name="settings_paper_width_hint">范围 1–58 mm，对应打印头像素宽自动换算</string>
@@ -164,32 +170,7 @@
     <string name="settings_licenses_count">共 %1$d 个项目 · 排名不分先后</string>
     <string name="settings_licenses_count_filtered">匹配 %1$d / %2$d 个项目</string>
 
-    <!-- AI 图片处理设置 -->
-    <string name="settings_ai_image_title">AI 图片处理</string>
-    <string name="settings_ai_image_group_model">当前模型</string>
-    <string name="settings_ai_image_model_ready">%1$s（%2$s）</string>
-    <string name="settings_ai_image_model_none">尚未配置可用模型</string>
-    <string name="settings_ai_image_model_hint">AI 图片处理与 AI 打印共用同一套接口与模型配置。没有可用模型时，拍照的 AI 处理会按下方策略回退到内置算法。</string>
-    <string name="settings_ai_image_open_config">打开 AI 配置设置</string>
-    <string name="settings_ai_image_group_scene">默认拍摄场景</string>
-    <string name="settings_ai_image_scene_real">实景</string>
-    <string name="settings_ai_image_scene_document">文稿</string>
-    <string name="settings_ai_image_scene_hint">只决定进入「AI 处理」时默认选中的场景，拍照页仍可随时切换。\n· 实景：智能混合增强，尽量还原真实细节，得到适合打印的照片。\n· 文稿：先锁定纸张区域、剔除周边并补全拉直，再由模型决定文稿美白或混合增强。</string>
-    <string name="settings_ai_image_group_output">输出与算法</string>
-    <string name="settings_ai_image_output_edge">输出最长边</string>
-    <string name="settings_ai_image_output_edge_value">%1$d px</string>
-    <string name="settings_ai_image_output_edge_hint">AI 处理前先把画面缩放到该最长边，越小越快、越大越清晰；只缩不放，不会放大原图。</string>
-    <string name="settings_ai_image_whiten">文稿美白强度</string>
-    <string name="settings_ai_image_whiten_hint">模型选择「文稿美白」时使用的强度：越高纸张越白、字迹越黑，过高会丢失浅色笔迹。</string>
-    <string name="settings_ai_image_enhance">混合增强强度</string>
-    <string name="settings_ai_image_enhance_hint">模型选择「混合增强」时使用的强度：同时提亮、提对比、加饱和与锐化，过高会出现噪点。</string>
-    <string name="settings_ai_image_percent_value">%1$d%%</string>
-    <string name="settings_ai_image_fallback">失败时回退内置算法</string>
-    <string name="settings_ai_image_fallback_desc">模型不可用、请求超时或方案解析失败时，改用本地算法出图</string>
-    <string name="settings_ai_image_fallback_hint">关闭后，AI 处理失败会直接提示失败并返回取景页，不会输出未经 AI 处理的图片。</string>
-
     <!-- 应用内代理（与 Clash 配置格式通用） -->
-    <string name="settings_group_network">网络与代理</string>
     <string name="settings_menu_proxy">应用内代理</string>
     <string name="settings_menu_proxy_desc_empty">未导入配置 · 默认关闭</string>
     <string name="settings_menu_proxy_desc_on">已开启 · %1$s</string>
