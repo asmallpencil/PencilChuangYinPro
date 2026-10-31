@@ -1,6 +1,7 @@
 package com.pencil.chuangyin.core.proxy.engine
 
 import com.pencil.chuangyin.core.proxy.bridge.LocalSocks5Bridge
+import com.pencil.chuangyin.core.proxy.core.SingBoxCore
 import com.pencil.chuangyin.core.proxy.data.ProxySettingsRepository
 import com.pencil.chuangyin.core.proxy.data.ProxyState
 import com.pencil.chuangyin.core.proxy.model.ProxyConfigEntry
@@ -56,6 +57,7 @@ data class ProxyCredential(val username: String, val password: String)
 @Singleton
 class ProxyEngine @Inject constructor(
     private val repository: ProxySettingsRepository,
+    private val singBoxCore: SingBoxCore,
 ) {
 
     private val router = ProxyRouter()
@@ -98,8 +100,11 @@ class ProxyEngine @Inject constructor(
         scope.launch {
             repository.state.collect { state ->
                 snapshot = state
-                // 关闭代理时顺手停掉本地桥接，避免长期占用端口与线程。
-                if (!state.preferences.enabled) bridge.stop()
+                // 关闭代理时顺手停掉本地桥接与内核，避免长期占用端口与内存。
+                if (!state.preferences.enabled) {
+                    bridge.stop()
+                    singBoxCore.stop()
+                }
             }
         }
     }
@@ -143,12 +148,20 @@ class ProxyEngine @Inject constructor(
     /**
      * 节点 → java.net.Proxy。
      *
-     * HTTP / SOCKS5 直接用系统实现；Shadowsocks / Trojan 指向本地桥接。
+     * HTTP / SOCKS5 直接用系统实现；其余协议交给内置 sing-box 内核（每节点一个回环 SOCKS 端口）。
+     * 内核不可用时（例如 32 位设备），SS / Trojan 回退到进程内手写协议栈桥接。
      * 返回 null 表示该节点无法承载流量（调用方必须失败关闭，不能静默直连）。
      */
     fun proxyForNode(node: ProxyNode): Proxy? {
         transports.createProxy(node)?.let { return it }
-        if (!node.protocol.requiresBridge || !node.isSupported) return null
+        if (!node.isSupported) return null
+        if (node.protocol.handledByCore) {
+            val corePort = singBoxCore.ensureRunning(snapshot.activeConfig?.config)?.get(node.name)
+            if (corePort != null) {
+                return Proxy(Proxy.Type.SOCKS, InetSocketAddress(BRIDGE_HOST, corePort))
+            }
+        }
+        if (!node.protocol.requiresBridge) return null
         val port = bridge.ensureStarted() ?: return null
         return Proxy(Proxy.Type.SOCKS, InetSocketAddress(BRIDGE_HOST, port))
     }

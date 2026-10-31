@@ -15,8 +15,8 @@ android {
         applicationId = "com.pencil.chuangyin.pro"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2000006
-        versionName = "2.0.0.6"
+        versionCode = 2000007
+        versionName = "2.0.0.7"
 
         // OpenCV 仅打包真机 ARM 架构，控制包体。
         ndk {
@@ -51,6 +51,12 @@ android {
     buildFeatures { compose = true }
 
     packaging {
+        // 内置的 sing-box 内核以可执行文件形式放在 jniLibs 里：必须解压到 nativeLibraryDir
+        // 才能 exec（Android 不允许执行应用私有目录里的文件），因此开启传统打包模式。
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += "**/libsingbox.so"
+        }
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
         // Google ADK 依赖链（google-genai / google-auth / api-common）多个 jar 携带同一索引文件
         resources.excludes += setOf(

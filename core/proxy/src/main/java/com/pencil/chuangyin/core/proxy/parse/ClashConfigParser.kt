@@ -86,6 +86,8 @@ class ClashConfigParser {
             if (protocol == ProxyProtocol.Unknown) {
                 warnings.add("节点「$name」的协议「${map["type"].asString().orEmpty()}」无法识别")
             }
+            val extra = mutableMapOf<String, String>()
+            flatten(item, "", extra)
             result += ProxyNode(
                 name = name,
                 protocol = protocol,
@@ -98,9 +100,30 @@ class ClashConfigParser {
                 sni = map["sni"].asString() ?: map["servername"].asString(),
                 udp = map["udp"].asBoolean() ?: false,
                 skipCertVerify = map["skip-cert-verify"].asBoolean() ?: false,
+                extra = extra,
             )
         }
         return result
+    }
+
+    /**
+     * 把节点原始 YAML 展平成 `a.b.c` 形式的字符串表。
+     *
+     * 内置内核需要 `ws-opts.path`、`reality-opts.public-key` 这类深层字段，
+     * 逐个协议定义专用数据类既啰嗦又容易漏，展平后由内核配置生成器按需读取。
+     * 数组元素用下标表示（`alpn.0`、`alpn.1`）。
+     */
+    private fun flatten(value: YamlValue?, prefix: String, into: MutableMap<String, String>) {
+        when (value) {
+            is YamlValue.Obj -> value.entries.forEach { (key, child) ->
+                flatten(child, if (prefix.isEmpty()) key else "$prefix.$key", into)
+            }
+            is YamlValue.Arr -> value.items.forEachIndexed { index, child ->
+                flatten(child, if (prefix.isEmpty()) index.toString() else "$prefix.$index", into)
+            }
+            is YamlValue.Scalar -> if (prefix.isNotEmpty()) into[prefix] = value.value
+            YamlValue.Null, null -> Unit
+        }
     }
 
     // ---------------- 代理组 ----------------

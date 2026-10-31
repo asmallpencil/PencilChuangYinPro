@@ -64,30 +64,53 @@ enum class ProxyProtocol(val token: String) {
     Https("https"),
     Socks5("socks5"),
     Shadowsocks("ss"),
+    Ssr("ssr"),
     Vmess("vmess"),
+    Vless("vless"),
     Trojan("trojan"),
     Hysteria("hysteria"),
     Hysteria2("hysteria2"),
     Tuic("tuic"),
+    AnyTls("anytls"),
     WireGuard("wireguard"),
     Snell("snell"),
     Ssh("ssh"),
     Unknown("unknown"),
     ;
 
-    /** 当前实现可真正承载流量的协议集合（架构上通过 OutboundTransport 扩展）。 */
+    /**
+     * 当前可真正承载流量的协议集合。
+     *
+     * HTTP / SOCKS5 直接用系统 [java.net.Proxy]；其余协议由内置 sing-box 内核承载
+     * （每节点一个本地 SOCKS 入口）。SSR / Snell / WireGuard 暂不支持：
+     * 前两种上游已淘汰，WireGuard 在 sing-box 中属于 endpoint 而非 outbound，无法按节点直连。
+     */
     val isSupported: Boolean
-        get() = this == Http || this == Socks5 ||
-            this == Shadowsocks || this == Trojan
+        get() = this == Http || this == Socks5 || handledByCore
 
-    /** 是否必须经由本地 SOCKS5 桥接（java.net.Proxy 无法直接表达该协议）。 */
+    /** 是否交给内置内核（sing-box）建立隧道。 */
+    val handledByCore: Boolean
+        get() = when (this) {
+            Shadowsocks, Vmess, Vless, Trojan, Hysteria, Hysteria2, Tuic, AnyTls, Ssh -> true
+            else -> false
+        }
+
+    /**
+     * 是否属于手写协议栈（SS AEAD / Trojan）——内核不可用时（例如 32 位设备未打包二进制）
+     * 仍能靠本地 SOCKS5 桥按老路径连通，作为降级回退。
+     */
     val requiresBridge: Boolean
         get() = this == Shadowsocks || this == Trojan
 
     companion object {
         fun fromToken(raw: String?): ProxyProtocol {
             val token = raw?.trim()?.lowercase().orEmpty()
-            return entries.firstOrNull { it.token == token } ?: Unknown
+            return when (token) {
+                // 部分订阅把 SOCKS 写成 socks / socks4，统按 SOCKS5 处理。
+                "socks", "socks5" -> Socks5
+                "hy2" -> Hysteria2
+                else -> entries.firstOrNull { it.token == token } ?: Unknown
+            }
         }
     }
 }
@@ -105,6 +128,11 @@ data class ProxyNode(
     val sni: String? = null,
     val udp: Boolean = false,
     val skipCertVerify: Boolean = false,
+    /**
+     * 节点的完整原始字段（YAML 扁平化，例如 `ws-opts.path` / `reality-opts.public-key`）。
+     * 交给内置内核生成配置时使用，避免为每种协议的每个参数都定义专用字段。
+     */
+    val extra: Map<String, String> = emptyMap(),
 ) {
     /** 是否可用：协议被支持且地址/端口合法。 */
     val isSupported: Boolean

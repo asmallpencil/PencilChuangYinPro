@@ -356,6 +356,13 @@ internal val OPEN_SOURCE_PROJECTS: List<OpenSourceProject> = listOf(
         contribution = "P 站 App API 的声明式 HTTP 封装，接口定义即文档。",
     ),
     OpenSourceProject(
+        name = "sing-box",
+        author = "SagerNet / sing-box 贡献者",
+        license = "GPL-3.0",
+        url = "https://github.com/SagerNet/sing-box",
+        contribution = "应用内代理的协议内核。以官方 Android 可执行文件随包内置，按节点生成出站配置并提供回环 SOCKS 入口，承载 VLESS（含 REALITY）、VMess、Trojan、Shadowsocks、Hysteria / Hysteria2、TUIC、AnyTLS、SSH 等协议；路由、规则与出口选择仍由本应用的 ProxyRouter 负责，内核不触碰系统网络。",
+    ),
+    OpenSourceProject(
         name = "Skia / Skiko",
         author = "Google / JetBrains",
         license = "BSD-3-Clause",

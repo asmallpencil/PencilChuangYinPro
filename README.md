@@ -208,6 +208,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 | **PiPixiv** | darriousliu | Apache-2.0 | P 站 App API 的接口定义与请求签名方式。评论接口的必填参数与 header 组合即参照其实现对齐（否则会表现为「评论区永远显示暂无评论」） | https://github.com/darriousliu/PiPixiv |
 | **Pix-EzViewer** | Ultranity / Perol_Notsfsssf | MIT | **P 站功能的直接来源**。① `PixivConfig.kt` 的 `client_id` / `client_secret` / UA / `X-Client-Hash` 盐值复刻自其 `RestClient`；② `Pkce.kt` 明确移植自其 `Pkce` 实现；③ `PixivApi.kt` 的接口清单与 `NovelWebTextParser` 的小说解析参照其 `PixivApiService` / `NovelViewModel.parseWebNovel`；④ 账号持久化替代了它的 Room 用户表；⑤ 页面信息架构与 UI 组织方式也以它为蓝本 | https://github.com/Ultranity/Pix-EzViewer |
 | **Retrofit** | Square | Apache-2.0 | P 站 App API 的声明式 HTTP 封装，接口定义即文档 | https://github.com/square/retrofit |
+| **sing-box** | SagerNet / sing-box 贡献者 | GPL-3.0 | 应用内代理的协议内核。以官方 Android 可执行文件随包内置（`core:proxy` 的 `jniLibs/arm64-v8a/libsingbox.so`），按节点生成出站配置并暴露回环 SOCKS 入口，承载 VLESS（含 REALITY）、VMess、Trojan、Shadowsocks、Hysteria / Hysteria2、TUIC、AnyTLS、SSH 等协议。路由、规则与出口选择仍由本应用的 ProxyRouter 负责 | https://github.com/SagerNet/sing-box |
 | **Skia / Skiko** | Google / JetBrains | BSD-3-Clause | 桌面端的位图绘制与栅格化后端（随 Compose 提供）。文本打印的逐行位图、图片抖动与预览都经由它落到屏幕与打印机 | https://github.com/JetBrains/skiko |
 
 ### 共同鸣谢
