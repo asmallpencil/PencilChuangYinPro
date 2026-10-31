@@ -34,6 +34,12 @@ jetbrainsAnnotations = "26.1.0"
 googleAdk = "0.2.0"
 # androidx.graphics.shapes：RoundedPolygon / Morph —— 真实形状形变（M3 Expressive 加载指示器）
 graphicsShapes = "1.0.1"
+# FairScan 内嵌依赖（GPL-3.0 文稿扫描）
+litert = "1.4.1"
+# 2.11.x 要求 compileSdk 36；本项目为 35，取 2.9.0（API 与本项目用法一致）。
+zoomable = "2.9.0"
+reorderable = "3.0.0"
+kotlinxCollectionsImmutable = "0.5.2"
 
 [libraries]
 # Google ADK for Kotlin
@@ -108,6 +114,14 @@ zoomimage-compose-coil2 = { module = "io.github.panpf.zoomimage:zoomimage-compos
 
 # core:backdrop —— 液态玻璃 Kotlin/Compose 实现
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrainsAnnotations" }
+
+# FairScan 内嵌依赖
+litert = { module = "com.google.ai.edge.litert:litert", version.ref = "litert" }
+litert-support = { module = "com.google.ai.edge.litert:litert-support", version.ref = "litert" }
+litert-metadata = { module = "com.google.ai.edge.litert:litert-metadata", version.ref = "litert" }
+zoomable = { module = "net.engawapg.lib:zoomable", version.ref = "zoomable" }
+reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinxCollectionsImmutable" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

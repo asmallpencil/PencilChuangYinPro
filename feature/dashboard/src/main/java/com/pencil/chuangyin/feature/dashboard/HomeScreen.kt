@@ -23,7 +23,7 @@ import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Print
@@ -62,7 +62,7 @@ import com.pencil.chuangyin.resources.R as ResR
 fun HomeRoute(
     onOpenConnect: () -> Unit,
     onOpenText: () -> Unit,
-    onOpenImage: () -> Unit,
+    onOpenScanner: () -> Unit,
     onOpenCamera: () -> Unit,
     onOpenAi: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -75,7 +75,7 @@ fun HomeRoute(
         capsule = capsule,
         onOpenConnect = onOpenConnect,
         onOpenText = onOpenText,
-        onOpenImage = onOpenImage,
+        onOpenScanner = onOpenScanner,
         onOpenCamera = onOpenCamera,
         onOpenAi = onOpenAi,
         onOpenSettings = onOpenSettings,
@@ -90,7 +90,7 @@ fun HomeScreen(
     capsule: HomePrinterCapsule,
     onOpenConnect: () -> Unit,
     onOpenText: () -> Unit,
-    onOpenImage: () -> Unit,
+    onOpenScanner: () -> Unit,
     onOpenCamera: () -> Unit,
     onOpenAi: () -> Unit = {},
     onOpenSettings: () -> Unit,
@@ -135,7 +135,7 @@ fun HomeScreen(
             PrinterStatusCapsule(capsule = capsule, onClick = onOpenConnect)
             CreativeToolsCard(
                 onOpenText = onOpenText,
-                onOpenImage = onOpenImage,
+                onOpenScanner = onOpenScanner,
                 onOpenCamera = onOpenCamera,
                 onOpenAi = onOpenAi,
             )
@@ -326,11 +326,11 @@ private fun CapsuleStatusChip(item: CapsuleStatusItem) {
     }
 }
 
-/** 创作工具区：文本/图片/拍照/AI 打印入口，每条带一句功能描述。 */
+/** 创作工具区：文本/文稿扫描/拍照/AI 打印入口，每条带一句功能描述。 */
 @Composable
 private fun CreativeToolsCard(
     onOpenText: () -> Unit,
-    onOpenImage: () -> Unit,
+    onOpenScanner: () -> Unit,
     onOpenCamera: () -> Unit,
     onOpenAi: () -> Unit,
 ) {
@@ -357,7 +357,7 @@ private fun CreativeToolsCard(
             // 一排 2 个功能栏：按入口列表分块，每块一行、等宽并排。
             val tools = listOf(
                 CreativeTool(Icons.Filled.Description, stringResource(ResR.string.creative_text_print), stringResource(ResR.string.creative_text_print_desc), onOpenText),
-                CreativeTool(Icons.Filled.Image, stringResource(ResR.string.creative_image_print), stringResource(ResR.string.creative_image_print_desc), onOpenImage),
+                CreativeTool(Icons.Filled.DocumentScanner, stringResource(ResR.string.creative_scan_print), stringResource(ResR.string.creative_scan_print_desc), onOpenScanner),
                 CreativeTool(Icons.Filled.PhotoCamera, stringResource(ResR.string.creative_photo_print), stringResource(ResR.string.creative_photo_print_desc), onOpenCamera),
                 CreativeTool(Icons.Filled.AutoAwesome, stringResource(ResR.string.creative_ai_print), stringResource(ResR.string.creative_ai_print_desc), onOpenAi),
             )
@@ -436,7 +436,7 @@ private fun HomeScreenPreview() {
         ),
         onOpenConnect = {},
         onOpenText = {},
-        onOpenImage = {},
+        onOpenScanner = {},
         onOpenCamera = {},
         onOpenAi = {},
         onOpenSettings = {},

@@ -13,6 +13,7 @@
     <string name="image_camera_unavailable">未找到可用的系统相机应用</string>
     <string name="image_source_pdf">导入PDF</string>
     <string name="image_source_archive">导入压缩包</string>
+    <string name="image_source_file">从文件选择图片或压缩包</string>
 
     <!-- 预览 -->
     <string name="image_preview_empty">选择图片后显示打印预览</string>

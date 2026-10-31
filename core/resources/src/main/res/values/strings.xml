@@ -46,6 +46,8 @@
     <string name="creative_image_print_desc">相册/PDF/压缩包图片，黑白算法热敏输出</string>
     <string name="creative_photo_print">拍照打印</string>
     <string name="creative_photo_print_desc">拍摄纸面文档，自动拉正、去阴影并提取文字后打印</string>
+    <string name="creative_scan_print">文稿扫描</string>
+    <string name="creative_scan_print_desc">FairScan 开源文稿扫描器，自动识别纸边并校正后打印</string>
     <string name="creative_ai_print">AI 打印</string>
     <string name="creative_ai_print_desc">对话下达任务，AI 自动调用工具完成并打印</string>
     <string name="image_action_camera">拍照打印</string>

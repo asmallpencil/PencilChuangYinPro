@@ -31,22 +31,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Filter1
-import androidx.compose.material.icons.filled.FolderZip
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -82,6 +84,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -256,9 +259,20 @@ fun ImageEditorScreen(
     val pdfLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) onImportPdf(uri) }
-    val archiveLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-    ) { uri -> if (uri != null) onImportArchive(uri) }
+    // 「文件」入口同时接受图片与压缩包：按 MIME 分流到相册导入或压缩包导入。
+    val fileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            val resolver = context.contentResolver
+            val images = uris.filter { (resolver.getType(it) ?: "").startsWith("image/") }
+            if (images.isNotEmpty()) onImportGallery(images, resolver)
+            val archive = uris.firstOrNull {
+                !(resolver.getType(it) ?: "").startsWith("image/")
+            }
+            if (archive != null) onImportArchive(archive)
+        }
+    }
 
     // Android 9 及以下保存公共相册需要写存储权限。
     val writeStoragePermission = rememberPermissionState(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -405,40 +419,23 @@ fun ImageEditorScreen(
                         dimensionResource(ResR.dimen.dimen_global_padding_m),
                 ),
         ) {
-            // 文稿扫描（FairScan 开源文稿扫描器）：独立的全宽入口，成品直达打印页。
-            SourceButton(
-                action = SourceAction(
-                    text = stringResource(R.string.image_source_scanner),
-                    icon = Icons.Filled.DocumentScanner,
-                    onClick = onScanner,
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            AppText(
-                text = stringResource(R.string.image_source_scanner_desc),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, top = 2.dp),
-            )
-            Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-
-            // 2×2 来源入口。
-            SourceButtonRow(
-                first = SourceAction(
-                    text = stringResource(R.string.image_source_gallery),
-                    icon = Icons.Filled.Image,
-                    onClick = {
-                        runCatching {
-                            galleryLauncher.launch(androidx.activity.result.PickVisualMediaRequest(
-                                ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        }
-                    },
-                ),
-                second = SourceAction(
-                    text = stringResource(R.string.image_source_camera),
-                    icon = Icons.Filled.CameraAlt,
-                    onClick = { cameraSplitOpen = !cameraSplitOpen },
-                ),
+            // 来源入口：一个白色圆角卡片，大「+」为主入口（相册多选），
+            // 右侧四个圆形图标入口（文件/相机/PDF/文稿扫描）。
+            ImportSourcesCard(
+                onGallery = {
+                    runCatching {
+                        galleryLauncher.launch(androidx.activity.result.PickVisualMediaRequest(
+                            ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
+                },
+                onFile = {
+                    fileLauncher.launch(
+                        arrayOf("image/*", "application/zip", "application/x-zip-compressed"),
+                    )
+                },
+                onCamera = { cameraSplitOpen = !cameraSplitOpen },
+                onPdf = { pdfLauncher.launch(arrayOf("application/pdf")) },
+                onScanner = onScanner,
             )
             CameraSplitPanel(
                 visible = cameraSplitOpen,
@@ -451,22 +448,11 @@ fun ImageEditorScreen(
                     onCamera()
                 },
             )
-            Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-            SourceButtonRow(
-                first = SourceAction(
-                    text = stringResource(R.string.image_source_pdf),
-                    icon = Icons.Filled.PictureAsPdf,
-                    onClick = { pdfLauncher.launch(arrayOf("application/pdf")) },
-                ),
-                second = SourceAction(
-                    text = stringResource(R.string.image_source_archive),
-                    icon = Icons.Filled.FolderZip,
-                    onClick = {
-                        archiveLauncher.launch(
-                            arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"),
-                        )
-                    },
-                ),
+            AppText(
+                text = stringResource(R.string.image_source_scanner_desc),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, top = 6.dp),
             )
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
 
@@ -549,32 +535,89 @@ fun ImageEditorScreen(
     }
 }
 
-private data class SourceAction(
-    val text: String,
-    val icon: ImageVector,
-    val onClick: () -> Unit,
-)
-
+/**
+ * 导入区：白色圆角卡片 + 大号主按钮「+」（相册多选），
+ * 右侧四个圆形图标入口：文件（图片/压缩包）、相机、PDF、文稿扫描。
+ */
 @Composable
-private fun SourceButtonRow(first: SourceAction, second: SourceAction) {
-    Row(
+private fun ImportSourcesCard(
+    onGallery: () -> Unit,
+    onFile: () -> Unit,
+    onCamera: () -> Unit,
+    onPdf: () -> Unit,
+    onScanner: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_m)),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        shadowElevation = 2.dp,
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
     ) {
-        SourceButton(action = first, modifier = Modifier.weight(1f))
-        SourceButton(action = second, modifier = Modifier.weight(1f))
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            ImportCircleButton(
+                icon = Icons.Filled.Add,
+                contentDescription = stringResource(R.string.image_source_gallery),
+                onClick = onGallery,
+                size = 76.dp,
+                iconSize = 36.dp,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            )
+            ImportCircleButton(
+                icon = Icons.Filled.Description,
+                contentDescription = stringResource(R.string.image_source_file),
+                onClick = onFile,
+            )
+            ImportCircleButton(
+                icon = Icons.Filled.CameraAlt,
+                contentDescription = stringResource(R.string.image_source_camera),
+                onClick = onCamera,
+            )
+            ImportCircleButton(
+                icon = Icons.Filled.PictureAsPdf,
+                contentDescription = stringResource(R.string.image_source_pdf),
+                onClick = onPdf,
+            )
+            ImportCircleButton(
+                icon = Icons.Filled.DocumentScanner,
+                contentDescription = stringResource(R.string.image_source_scanner),
+                onClick = onScanner,
+            )
+        }
     }
 }
 
 @Composable
-private fun SourceButton(action: SourceAction, modifier: Modifier = Modifier) {
-    AppOutlinedButton(
-        text = action.text,
-        onClick = action.onClick,
-        modifier = modifier.height(dimensionResource(ResR.dimen.dimen_global_btn_height_min)),
-        // 前置图标以 ImageVector 下发 → 原生层渲染成位图纹理并与文字并排绘制（真玻璃）。
-        leadingIcon = action.icon,
-    )
+private fun ImportCircleButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 56.dp,
+    iconSize: Dp = 26.dp,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    contentColor: Color = MaterialTheme.colorScheme.primary,
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = containerColor,
+        modifier = modifier.size(size),
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = contentColor,
+                modifier = Modifier.size(iconSize),
+            )
+        }
+    }
 }
 
 /**
