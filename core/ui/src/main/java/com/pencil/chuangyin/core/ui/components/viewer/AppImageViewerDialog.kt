@@ -620,10 +620,15 @@ private fun ImageEditSurface(
         }
 
         // 手势：裁切（移动 / 四角缩放 / 重新拉框）、涂鸦、文字（点按定位）
+        // 注意：颜色/粗细必须作为 pointerInput 的 key —— 否则手势处理器会一直持有
+        // 首次创建时捕获的默认白色，导致「选任何颜色都画成白色」。
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(tool, scale, originX, originY) {
+                .pointerInput(
+                    tool, scale, originX, originY,
+                    doodleColor, doodleWidthDp, textColor, textSizeSp,
+                ) {
                     when (tool) {
                         ViewerEditTool.CROP -> {
                             var dragMode = CropDragMode.NONE

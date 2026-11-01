@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Palette
@@ -99,6 +100,7 @@ fun SettingsRoute(
     onOpenLicenses: () -> Unit,
     onOpenAiConfig: () -> Unit,
     onOpenProxy: () -> Unit,
+    onOpenDevTools: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: SettingsViewModel = hiltViewModel()
@@ -113,6 +115,7 @@ fun SettingsRoute(
         onOpenLicenses = onOpenLicenses,
         onOpenAiConfig = onOpenAiConfig,
         onOpenProxy = onOpenProxy,
+        onOpenDevTools = onOpenDevTools,
         proxyEnabled = state.proxyEnabled,
         proxyScope = state.proxyScope,
         proxyConfigCount = state.proxyConfigCount,
@@ -132,6 +135,7 @@ fun SettingsScreen(
     onOpenLicenses: () -> Unit,
     onOpenAiConfig: () -> Unit = {},
     onOpenProxy: () -> Unit = {},
+    onOpenDevTools: () -> Unit = {},
     proxyEnabled: Boolean = false,
     proxyScope: ProxyScope = ProxyScope.PixivOnly,
     proxyConfigCount: Int = 0,
@@ -259,6 +263,19 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_menu_licenses),
                     desc = stringResource(R.string.settings_menu_licenses_desc),
                     onClick = onOpenLicenses,
+                )
+            }
+            // 开发者调试：高权限入口，集中打印机/网络/文件/AI 提示词等自检与重置能力。
+            SettingsGroup(
+                label = stringResource(R.string.settings_group_dev),
+                visible = appeared,
+                delayMillis = 350,
+            ) {
+                SettingsEntry(
+                    icon = Icons.Filled.BugReport,
+                    title = stringResource(R.string.settings_menu_dev),
+                    desc = stringResource(R.string.settings_menu_dev_desc),
+                    onClick = onOpenDevTools,
                 )
             }
         }
@@ -484,7 +501,14 @@ internal fun SettingsSubPage(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = dimensionResource(ResR.dimen.dimen_global_padding_xl)),
         ) {
-            content()
+            // 子页内容整体淡入并轻微上浮：与主菜单分组入场保持同一节奏。
+            AnimatedVisibility(
+                visible = appeared,
+                enter = fadeIn(tween(durationMillis = 240)) +
+                    slideInVertically(tween(durationMillis = 320)) { it / 14 },
+            ) {
+                Column { content() }
+            }
         }
     }
 }
@@ -806,6 +830,7 @@ private fun SettingsMenuPreview() {
         onOpenLicenses = {},
         onOpenAiConfig = {},
         onOpenProxy = {},
+        onOpenDevTools = {},
     )
 }
 

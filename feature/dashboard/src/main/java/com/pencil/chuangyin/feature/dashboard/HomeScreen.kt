@@ -1,7 +1,9 @@
 package com.pencil.chuangyin.feature.dashboard
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -37,10 +39,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
@@ -55,6 +62,7 @@ import com.pencil.chuangyin.core.ui.components.AppIconButton
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
+import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
 import com.pencil.chuangyin.core.ui.tutorial.CoachMarkHost
 import com.pencil.chuangyin.core.ui.tutorial.CoachMarkStep
 import com.pencil.chuangyin.core.ui.tutorial.coachMarkAnchor
@@ -151,20 +159,51 @@ fun HomeScreen(
                 .padding(bottom = bottomBarSpace),
             verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_m)),
         ) {
-            PrinterStatusCapsule(
-                capsule = capsule,
-                onClick = onOpenConnect,
-                modifier = Modifier.coachMarkAnchor("home_connect"),
-            )
-            CreativeToolsCard(
-                onOpenText = onOpenText,
-                onOpenImage = onOpenImage,
-                onOpenScanner = onOpenScanner,
-                onOpenAi = onOpenAi,
-                modifier = Modifier.coachMarkAnchor("home_tools"),
-            )
+            StaggeredEntrance(index = 0) {
+                PrinterStatusCapsule(
+                    capsule = capsule,
+                    onClick = onOpenConnect,
+                    modifier = Modifier.coachMarkAnchor("home_connect"),
+                )
+            }
+            StaggeredEntrance(index = 1) {
+                CreativeToolsCard(
+                    onOpenText = onOpenText,
+                    onOpenImage = onOpenImage,
+                    onOpenScanner = onOpenScanner,
+                    onOpenAi = onOpenAi,
+                    modifier = Modifier.coachMarkAnchor("home_tools"),
+                )
+            }
         }
     }
+    }
+}
+
+/**
+ * 首页卡片错峰入场：淡入 + 轻微上浮 + 0.94→1.0 缩放，
+ * 使用 [rememberAppMotion] 的 stagger 规格，让两张卡片依次浮现。
+ */
+@Composable
+private fun StaggeredEntrance(index: Int, content: @Composable () -> Unit) {
+    val motion = rememberAppMotion()
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val progress by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = motion.staggerSpec(index),
+        label = "homeEntrance$index",
+    )
+    Box(
+        Modifier.graphicsLayer {
+            alpha = progress
+            translationY = (1f - progress) * 16f
+            val scale = 0.94f + 0.06f * progress
+            scaleX = scale
+            scaleY = scale
+        },
+    ) {
+        content()
     }
 }
 

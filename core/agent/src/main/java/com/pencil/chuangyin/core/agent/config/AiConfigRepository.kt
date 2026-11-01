@@ -27,4 +27,13 @@ interface AiConfigRepository {
 
     /** 切换当前选中的模型；传入 null 或非法 ID 时视为清空。 */
     suspend fun setActive(id: String?)
+
+    /**
+     * 开发者调试用的系统提示词覆盖：非空时替换内置提示词（仅调试页可写）。
+     * 生产路径为空，行为与内置提示词完全一致。
+     */
+    val systemPromptOverride: StateFlow<String?>
+
+    /** 保存/清除提示词覆盖（null 或空白即恢复内置提示词）。 */
+    suspend fun setSystemPromptOverride(value: String?)
 }

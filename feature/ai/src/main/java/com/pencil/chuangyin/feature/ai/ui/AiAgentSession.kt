@@ -358,6 +358,7 @@ class AiAgentSession @Inject constructor(
             readRootPath = workspace.readRootsPath(),
             printerConnected = _state.value.printerConnected,
             printerName = _state.value.printerName,
+            override = configRepository.systemPromptOverride.value,
         )
         val request = base + appended
         runHistory = request.toMutableList()

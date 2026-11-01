@@ -7,6 +7,9 @@
     <string name="settings_group_appearance">外观与动效</string>
     <string name="settings_group_network">网络与代理</string>
     <string name="settings_group_about">关于</string>
+    <string name="settings_group_dev">开发者</string>
+    <string name="settings_menu_dev">开发者调试</string>
+    <string name="settings_menu_dev_desc">打印机 · 网络 · 文件 · AI 提示词 · 重置</string>
     <string name="settings_menu_print">打印设置</string>
     <string name="settings_menu_print_desc">热敏纸宽度 · 自动连接 · 产物输出路径</string>
     <string name="settings_menu_ai">AI 配置设置</string>

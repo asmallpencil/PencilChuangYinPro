@@ -160,6 +160,9 @@ class DataStoreThemeRepository @Inject constructor(
 
     override suspend fun setSeedColor(argb: Long) = editState { set(KEY_SEED, argb) }
 
+    /** 清空所有主题键，回落 [ThemeState.Default]。 */
+    override suspend fun reset() = editState { clear() }
+
     override suspend fun setDarkTheme(enabled: Boolean) = editState { set(KEY_DARK, enabled) }
 
     override suspend fun setCornerStyle(style: CornerStyle) = editState { set(KEY_CORNER_STYLE, style.id) }

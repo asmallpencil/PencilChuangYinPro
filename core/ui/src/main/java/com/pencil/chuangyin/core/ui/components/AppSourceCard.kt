@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -74,17 +73,20 @@ fun AppSourceCard(
         animationSpec = motion.spatialSlowSpec(),
         label = "sourceCardReveal",
     )
-    Surface(
-        shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_m)),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
-        shadowElevation = 2.dp,
+    val shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_m))
+    // 卡片与圆形入口都接入液态玻璃（与页面其他容器一致），关闭玻璃时回退为实底。
+    val panelGlass = rememberLiquidGlassPanelActive()
+    val controlGlass = rememberLiquidGlassActive()
+    GlassPanel(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
                 alpha = cardReveal
                 translationY = (1f - cardReveal) * 24f
             },
+        shape = shape,
+        enabled = panelGlass,
+        fallbackColor = MaterialTheme.colorScheme.surface,
     ) {
         val totalSlots = actions.size + if (primaryAction != null) 1 else 0
         Row(
@@ -107,6 +109,7 @@ fun AppSourceCard(
                     index = 0,
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
+                    glass = controlGlass,
                 )
             }
             actions.forEachIndexed { index, action ->
@@ -118,6 +121,7 @@ fun AppSourceCard(
                     index = if (primaryAction != null) index + 1 else index,
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.primary,
+                    glass = controlGlass,
                 )
             }
         }
@@ -132,6 +136,7 @@ private fun SourceCircleButton(
     index: Int,
     containerColor: Color,
     contentColor: Color,
+    glass: Boolean,
 ) {
     val motion = rememberAppMotion()
     var shown by remember { mutableStateOf(false) }
@@ -153,7 +158,17 @@ private fun SourceCircleButton(
                 translationY = (1f - reveal) * 12f
             }
             .clip(CircleShape)
-            .background(containerColor)
+            .then(
+                if (glass) {
+                    Modifier.nativeGlassSurface(
+                        shape = CircleShape,
+                        enabled = true,
+                        fallbackColor = containerColor,
+                    )
+                } else {
+                    Modifier.background(containerColor)
+                },
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,

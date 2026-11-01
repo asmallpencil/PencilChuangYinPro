@@ -363,6 +363,9 @@ interface ThemeRepository {
     /** 主题状态流：UI 用 collectAsStateWithLifecycle 订阅驱动重组。 */
     val state: Flow<ThemeState>
 
+    /** 恢复全部主题设置为默认值（开发者调试页使用）。 */
+    suspend fun reset()
+
     suspend fun setSeedColor(argb: Long)
 
     suspend fun setDarkTheme(enabled: Boolean)

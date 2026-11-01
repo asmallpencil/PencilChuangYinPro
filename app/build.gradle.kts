@@ -130,6 +130,8 @@ dependencies {
     implementation(project(":feature:scanner"))
     implementation(project(":feature:pixiv"))
     implementation(project(":feature:ai"))
+    // 开发者调试直接调用 AgentTool（参数为 kotlinx.serialization 的 JsonObject），需显式依赖。
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

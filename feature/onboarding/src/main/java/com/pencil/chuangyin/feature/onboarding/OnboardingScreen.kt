@@ -63,6 +63,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -86,6 +87,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.pencil.chuangyin.core.theme.CornerStyle
@@ -121,7 +125,14 @@ private data class OverviewItem(
 )
 
 /** 待申请运行时权限条目：标题 + 用途说明 + 实际权限清单。 */
-private data class PermissionEntry(val labelRes: Int, val descRes: Int)
+private data class PermissionEntry(
+    val labelRes: Int,
+    val descRes: Int,
+    val perms: List<String>,
+)
+
+/** P 站登录步骤在 Pager 中的页序号（0 起算）。 */
+private const val PIXIV_STEP_INDEX = 7
 
 @Composable
 fun OnboardingRoute(
@@ -266,61 +277,73 @@ fun OnboardingScreen(
                         tonalElevation = 2.dp,
                         shadowElevation = 6.dp,
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                                .padding(20.dp),
-                        ) {
-                            when (page) {
-                                0 -> WelcomeContent()
-                                1 -> FeaturesContent()
-                                2 -> PermissionContent()
-                                3 -> SeedColorContent(
-                                    seedArgb = state.themeState.seedArgb,
-                                    onSeedSelected = onSeedSelected,
-                                )
-                                4 -> StyleContent(
-                                    cornerStyle = state.themeState.cornerStyle,
-                                    cornerStrength = state.themeState.cornerStrength,
-                                    motion = state.themeState.motionPreset,
-                                    onCornerStyleSelected = onCornerStyleSelected,
-                                    onCornerStrengthChange = onCornerStrengthChange,
-                                    onMotionSelected = onMotionSelected,
-                                )
-                                5 -> InterfaceContent(
-                                    darkTheme = state.themeState.darkTheme,
-                                    outlineEnabled = state.themeState.outlineEnabled,
-                                    outlineWidthDp = state.themeState.outlineWidthDp,
-                                    surfaceAlpha = state.themeState.surfaceAlpha,
-                                    onDarkChange = onDarkChange,
-                                    onOutlineChange = onOutlineChange,
-                                    onOutlineWidthChange = onOutlineWidthChange,
-                                    onSurfaceAlphaChange = onSurfaceAlphaChange,
-                                )
-                                6 -> AtmosphereContent(
-                                    snowfallEnabled = state.themeState.snowfallEnabled,
-                                    particleType = state.themeState.particleType,
-                                    particleSpeed = state.themeState.particleSpeed,
-                                    onSnowfallChange = onSnowfallChange,
-                                    onParticleTypeChange = onParticleTypeChange,
-                                    onParticleSpeedChange = onParticleSpeedChange,
-                                )
-                                7 -> PixivLoginContent(
+                        if (page == PIXIV_STEP_INDEX) {
+                            // P 站登录页不参与外层滚动：网页占据中间整块区域，
+                            // 上下导航栏保持固定，避免与外层滚动手势冲突。
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(20.dp),
+                            ) {
+                                PixivLoginContent(
                                     isLoggedIn = state.isPixivLoggedIn,
                                     userName = state.pixivUserName,
                                     loginState = pixivLoginState,
                                     onAuthCode = onPixivAuthCode,
+                                    modifier = Modifier.weight(1f),
                                 )
-                                else -> FinishContent(
-                                    themeState = state.themeState,
-                                    darkTheme = state.themeState.darkTheme,
-                                    outlineEnabled = state.themeState.outlineEnabled,
-                                    snowfallEnabled = state.themeState.snowfallEnabled,
-                                    onDarkChange = onDarkChange,
-                                    onOutlineChange = onOutlineChange,
-                                    onSnowfallChange = onSnowfallChange,
-                                )
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(20.dp),
+                            ) {
+                                when (page) {
+                                    0 -> WelcomeContent()
+                                    1 -> FeaturesContent()
+                                    2 -> PermissionContent()
+                                    3 -> SeedColorContent(
+                                        seedArgb = state.themeState.seedArgb,
+                                        onSeedSelected = onSeedSelected,
+                                    )
+                                    4 -> StyleContent(
+                                        cornerStyle = state.themeState.cornerStyle,
+                                        cornerStrength = state.themeState.cornerStrength,
+                                        motion = state.themeState.motionPreset,
+                                        onCornerStyleSelected = onCornerStyleSelected,
+                                        onCornerStrengthChange = onCornerStrengthChange,
+                                        onMotionSelected = onMotionSelected,
+                                    )
+                                    5 -> InterfaceContent(
+                                        darkTheme = state.themeState.darkTheme,
+                                        outlineEnabled = state.themeState.outlineEnabled,
+                                        outlineWidthDp = state.themeState.outlineWidthDp,
+                                        surfaceAlpha = state.themeState.surfaceAlpha,
+                                        onDarkChange = onDarkChange,
+                                        onOutlineChange = onOutlineChange,
+                                        onOutlineWidthChange = onOutlineWidthChange,
+                                        onSurfaceAlphaChange = onSurfaceAlphaChange,
+                                    )
+                                    6 -> AtmosphereContent(
+                                        snowfallEnabled = state.themeState.snowfallEnabled,
+                                        particleType = state.themeState.particleType,
+                                        particleSpeed = state.themeState.particleSpeed,
+                                        onSnowfallChange = onSnowfallChange,
+                                        onParticleTypeChange = onParticleTypeChange,
+                                        onParticleSpeedChange = onParticleSpeedChange,
+                                    )
+                                    else -> FinishContent(
+                                        themeState = state.themeState,
+                                        darkTheme = state.themeState.darkTheme,
+                                        outlineEnabled = state.themeState.outlineEnabled,
+                                        snowfallEnabled = state.themeState.snowfallEnabled,
+                                        onDarkChange = onDarkChange,
+                                        onOutlineChange = onOutlineChange,
+                                        onSnowfallChange = onSnowfallChange,
+                                    )
+                                }
                             }
                         }
                     }
@@ -632,78 +655,93 @@ private fun OverviewRow(item: OverviewItem, index: Int) {
 @Composable
 private fun PermissionContent() {
     val context = LocalContext.current
-    val cameraPerms = remember { listOf(Manifest.permission.CAMERA) }
-    val bluetoothPerms = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
-        } else {
-            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+    // 只展示本机真正需要申请的权限组：空清单（如 Android 12 以下的通知）不再显示，
+    // 避免出现「永远未授予」的假状态。
+    val groups = remember {
+        buildList {
+            add(
+                PermissionEntry(
+                    ResR.string.onboarding_permission_camera,
+                    ResR.string.onboarding_permission_camera_desc,
+                    listOf(Manifest.permission.CAMERA),
+                ),
+            )
+            add(
+                PermissionEntry(
+                    ResR.string.onboarding_permission_bluetooth,
+                    ResR.string.onboarding_permission_bluetooth_desc,
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        listOf(
+                            Manifest.permission.BLUETOOTH_SCAN,
+                            Manifest.permission.BLUETOOTH_CONNECT,
+                        )
+                    } else {
+                        listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+                    },
+                ),
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(
+                    PermissionEntry(
+                        ResR.string.onboarding_permission_notification,
+                        ResR.string.onboarding_permission_notification_desc,
+                        listOf(Manifest.permission.POST_NOTIFICATIONS),
+                    ),
+                )
+            }
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                add(
+                    PermissionEntry(
+                        ResR.string.onboarding_permission_storage,
+                        ResR.string.onboarding_permission_storage_desc,
+                        listOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                    ),
+                )
+            }
         }
     }
-    val notificationPerms = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            listOf(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            emptyList()
-        }
-    }
-    val storagePerms = remember {
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-            listOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        } else {
-            emptyList()
-        }
-    }
-    val allPerms = remember { cameraPerms + bluetoothPerms + notificationPerms + storagePerms }
 
-    fun grantedNow(perms: List<String>): Boolean =
-        perms.isNotEmpty() && perms.all {
-            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+    // refreshToken 既是「授权回调」也是「回到前台」的刷新信号：
+    // 状态真正来自 checkSelfPermission，因此授权完成后无需再翻页即可刷新。
+    var refreshToken by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refreshToken++
         }
-
-    // 请求结果驱动重组（本机权限状态同时真实反映到 grantedNow）。
-    var grantedVersion by remember { mutableIntStateOf(0) }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val allPerms = remember(groups) { groups.flatMap { it.perms } }
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
-    ) { grantedVersion++ }
+    ) { refreshToken++ }
 
-    val allGranted = allPerms.isNotEmpty() && allPerms.all {
-        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+    val grantedFlags = remember(refreshToken, context) {
+        groups.map { entry ->
+            entry.perms.all {
+                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+            }
+        }
     }
+    val allGranted = grantedFlags.all { it }
 
     StepHeader(
         icon = Icons.Filled.Lock,
         title = stringResource(ResR.string.onboarding_permissions_title),
         desc = stringResource(ResR.string.onboarding_permissions_desc),
     )
-    PermissionRow(
-        entry = PermissionEntry(
-            ResR.string.onboarding_permission_camera,
-            ResR.string.onboarding_permission_camera_desc,
-        ),
-        granted = grantedNow(cameraPerms),
-    )
-    PermissionRow(
-        entry = PermissionEntry(
-            ResR.string.onboarding_permission_bluetooth,
-            ResR.string.onboarding_permission_bluetooth_desc,
-        ),
-        granted = grantedNow(bluetoothPerms),
-    )
-    PermissionRow(
-        entry = PermissionEntry(
-            ResR.string.onboarding_permission_notification,
-            ResR.string.onboarding_permission_notification_desc,
-        ),
-        granted = grantedNow(notificationPerms),
-    )
-    if (storagePerms.isNotEmpty()) {
+    groups.forEachIndexed { index, entry ->
         PermissionRow(
-            entry = PermissionEntry(
-                ResR.string.onboarding_permission_storage,
-                ResR.string.onboarding_permission_storage_desc,
-            ),
-            granted = grantedNow(storagePerms),
+            entry = entry,
+            granted = grantedFlags[index],
+            onGrant = {
+                if (entry.perms.isEmpty()) {
+                    refreshToken++
+                } else {
+                    launcher.launch(entry.perms.toTypedArray())
+                }
+            },
         )
     }
     Spacer(modifier = Modifier.height(16.dp))
@@ -731,13 +769,15 @@ private fun PermissionContent() {
     } else {
         AppPrimaryButton(
             text = stringResource(ResR.string.onboarding_permission_grant),
-            onClick = { launcher.launch(allPerms.toTypedArray()) },
+            onClick = {
+                if (allPerms.isEmpty()) refreshToken++ else launcher.launch(allPerms.toTypedArray())
+            },
         )
     }
 }
 
 @Composable
-private fun PermissionRow(entry: PermissionEntry, granted: Boolean) {
+private fun PermissionRow(entry: PermissionEntry, granted: Boolean, onGrant: () -> Unit) {
     val motion = rememberAppMotion()
     Row(
         modifier = Modifier
@@ -768,17 +808,18 @@ private fun PermissionRow(entry: PermissionEntry, granted: Boolean) {
             animationSpec = motion.effectSpec(),
             label = "permissionStatusColor",
         )
-        AppText(
-            text = stringResource(
-                if (granted) {
-                    ResR.string.onboarding_permission_granted
-                } else {
-                    ResR.string.onboarding_permission_not_granted
-                },
-            ),
-            style = MaterialTheme.typography.labelMedium,
-            color = statusColor,
-        )
+        if (granted) {
+            AppText(
+                text = stringResource(ResR.string.onboarding_permission_granted),
+                style = MaterialTheme.typography.labelMedium,
+                color = statusColor,
+            )
+        } else {
+            AppTextButton(
+                onClick = onGrant,
+                text = stringResource(ResR.string.onboarding_permission_grant_one),
+            )
+        }
     }
 }
 
@@ -1118,77 +1159,82 @@ private fun PixivLoginContent(
     userName: String,
     loginState: PixivLoginUiState,
     onAuthCode: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    StepHeader(
-        icon = Icons.Filled.Store,
-        title = stringResource(ResR.string.onboarding_pixiv_title),
-        desc = stringResource(ResR.string.onboarding_pixiv_desc),
-    )
-    if (isLoggedIn) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = stringResource(ResR.string.onboarding_pixiv_logged_in),
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            AppText(
-                text = stringResource(ResR.string.onboarding_pixiv_logged_in_as, userName),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-    } else {
-        AppText(
-            text = stringResource(ResR.string.onboarding_pixiv_not_logged),
-            style = MaterialTheme.typography.bodyLarge,
+    Column(modifier = modifier.fillMaxWidth()) {
+        StepHeader(
+            icon = Icons.Filled.Store,
+            title = stringResource(ResR.string.onboarding_pixiv_title),
+            desc = stringResource(ResR.string.onboarding_pixiv_desc),
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(dimensionResource(ResR.dimen.dimen_onboarding_login_webview_height))
-                .clip(MaterialTheme.shapes.medium)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-        ) {
-            key(loginState.loginUrl) {
-                AndroidView(
-                    modifier = Modifier.fillMaxSize(),
-                    factory = { ctx ->
-                        WebView(ctx).apply {
-                            layoutParams = ViewGroup.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                            )
-                            configureOnboardingWebView(onAuthCode = onAuthCode)
-                            loadUrl(loginState.loginUrl)
-                        }
-                    },
+        if (isLoggedIn) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = stringResource(ResR.string.onboarding_pixiv_logged_in),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                AppText(
+                    text = stringResource(ResR.string.onboarding_pixiv_logged_in_as, userName),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        } else {
+            AppText(
+                text = stringResource(ResR.string.onboarding_pixiv_not_logged),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            // 网页占据本页中部的整块区域：高度由剩余空间决定，
+            // 页面本身不滚动，因此网页内的上下/左右滑动不会再被外层拦截。
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                key(loginState.loginUrl) {
+                    AndroidView(
+                        modifier = Modifier.fillMaxSize(),
+                        factory = { ctx ->
+                            WebView(ctx).apply {
+                                layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                )
+                                configureOnboardingWebView(onAuthCode = onAuthCode)
+                                loadUrl(loginState.loginUrl)
+                            }
+                        },
+                    )
+                }
+            }
+            if (loginState.loading) {
+                Spacer(modifier = Modifier.height(8.dp))
+                AppText(
+                    text = stringResource(ResR.string.pixiv_login_loading),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        if (loginState.loading) {
-            Spacer(modifier = Modifier.height(12.dp))
-            AppText(
-                text = stringResource(ResR.string.pixiv_login_loading),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Spacer(modifier = Modifier.height(10.dp))
+        AppText(
+            text = stringResource(ResR.string.onboarding_pixiv_optional),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
-    Spacer(modifier = Modifier.height(16.dp))
-    AppText(
-        text = stringResource(ResR.string.onboarding_pixiv_optional),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 }
 
 @Composable

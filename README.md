@@ -73,6 +73,7 @@
 
 - **液态玻璃（Liquid Glass）**：Android 侧的 backdrop 模糊、透镜折射、边缘高光、噪点、弹簧动画一整套参数化实现，另有 C++（Dear ImGui + OpenGL ES）玻璃渲染管线；Windows 桌面端已移除玻璃效果，改为纯色实底，保证渲染稳定与性能。
 - **引导与新手教程**：首次启动的全屏引导（主题色 / 形状 / 动效 / 界面细节 / 氛围粒子等全部可配置），完成后进入真实页面还会按页触发挖孔式教程浮层，说明导入入口等晦涩按钮的作用。
+- **开发者调试**：设置内的高权限诊断面板，覆盖打印机链路（扫描 / 连接 / 裸指令 / 走纸 / 测试打印）、网络探测、文件读写自检、AI 配置与内置提示词现场覆盖、主题与引导标记重置，以及全程操作日志。
 - **动态取色**：基于 MaterialKolor 从壁纸/图片生成 Material 3 Expressive 配色，支持手动调色盘与深浅色。
 
 ## 架构
@@ -129,7 +130,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 #   app-armeabi-v7a-debug.apk   32 位（armeabi-v7a）
 #   app-universal-debug.apk     通用包（两种架构都含）
 
-# 发布包（正式签名，同样产出上述三个 APK）
+# 发布包（沿用与历史版本一致的签名，可直接覆盖升级）
 ./gradlew :app:assembleRelease
 ```
 
@@ -158,7 +159,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 | Android 7.0+ 32/64 共通 | [`PencilChuangYinPro-2.1.0.0-universal-release.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.0/PencilChuangYinPro-2.1.0.0-universal-release.apk) | ≈98 MB | 不确定架构时的兜底包，同时包含两种 ABI |
 | Windows 10/11 x64 | [`PencilChuangYinPro-2.1.0.0-windows-x64.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.0/PencilChuangYinPro-2.1.0.0-windows-x64.zip) | ≈68 MB | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装；桌面端最新构建也可从源码生成（见上文） |
 
-> 三个 APK 均为通过正式 keystore 签名的 release 包（非 debug 签名），可直接安装与分发。三者功能完全一致，仅打包的 ABI 不同；`32/64 共通版` 因同时内置两套原生库（含 sing-box）体积约为单包 1.5 倍。签名库与本机 `keystore.properties` 不入库，如需自行构建 release 包请自备 keystore 并按同名键写入。
+> 三个 APK 均为 release 包，并沿用与历史版本完全一致的签名（非新签名），因此可以直接覆盖安装、升级后不丢失任何旧数据。三者功能完全一致，仅打包的 ABI 不同；`32/64 共通版` 因同时内置两套原生库（含 sing-box）体积约为单包 1.5 倍。签名库与本机 `keystore.properties` 不入库；该签名已另行备份，保证后续版本继续沿用、不会因换签名而让老用户丢数据。
 
 ---
 

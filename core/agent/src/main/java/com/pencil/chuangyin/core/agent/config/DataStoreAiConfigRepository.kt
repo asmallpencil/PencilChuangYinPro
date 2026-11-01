@@ -43,6 +43,9 @@ class DataStoreAiConfigRepository @Inject constructor(
     private val _activeModel = MutableStateFlow<AiModelConfig?>(null)
     override val activeModel: StateFlow<AiModelConfig?> = _activeModel.asStateFlow()
 
+    private val _systemPromptOverride = MutableStateFlow<String?>(null)
+    override val systemPromptOverride: StateFlow<String?> = _systemPromptOverride.asStateFlow()
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
@@ -52,10 +55,14 @@ class DataStoreAiConfigRepository @Inject constructor(
                 context.dataStore.data.map { it.toSnapshot() }.first()
             }
             publish(snapshot.models, snapshot.activeId)
+            _systemPromptOverride.value = snapshot.promptOverride
         }
         // 之后持续订阅更新（非阻塞）。
         scope.launch {
-            context.dataStore.data.map { it.toSnapshot() }.collect { publish(it.models, it.activeId) }
+            context.dataStore.data.map { it.toSnapshot() }.collect {
+                publish(it.models, it.activeId)
+                _systemPromptOverride.value = it.promptOverride
+            }
         }
     }
 
@@ -86,6 +93,18 @@ class DataStoreAiConfigRepository @Inject constructor(
         persist(models, active)
     }
 
+    override suspend fun setSystemPromptOverride(value: String?) {
+        val normalized = value?.takeIf { it.isNotBlank() }
+        _systemPromptOverride.value = normalized
+        context.dataStore.edit { prefs ->
+            if (normalized == null) {
+                prefs.remove(KEY_PROMPT_OVERRIDE)
+            } else {
+                prefs[KEY_PROMPT_OVERRIDE] = normalized
+            }
+        }
+    }
+
     /** 同步更新三路状态流，避免界面读到不一致的中间态。 */
     private fun publish(models: List<AiModelConfig>, activeId: String?) {
         val resolved = activeId?.takeIf { id -> models.any { it.id == id } }
@@ -110,15 +129,20 @@ class DataStoreAiConfigRepository @Inject constructor(
         val models = this[KEY_MODELS]
             ?.let { raw -> runCatching { AgentJson.decodeFromString(MODELS_SERIALIZER, raw) }.getOrNull() }
             .orEmpty()
-        return Snapshot(models, this[KEY_ACTIVE_ID])
+        return Snapshot(models, this[KEY_ACTIVE_ID], this[KEY_PROMPT_OVERRIDE])
     }
 
-    private data class Snapshot(val models: List<AiModelConfig>, val activeId: String?)
+    private data class Snapshot(
+        val models: List<AiModelConfig>,
+        val activeId: String?,
+        val promptOverride: String?,
+    )
 
     private companion object {
         const val DATASTORE_NAME = "pencil_ai_config"
         val KEY_MODELS = stringPreferencesKey("models")
         val KEY_ACTIVE_ID = stringPreferencesKey("activeModelId")
+        val KEY_PROMPT_OVERRIDE = stringPreferencesKey("systemPromptOverride")
         val MODELS_SERIALIZER = ListSerializer(AiModelConfig.serializer())
     }
 }

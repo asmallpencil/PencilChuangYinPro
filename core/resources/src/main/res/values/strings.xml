@@ -374,6 +374,7 @@
     <string name="onboarding_permission_notification">通知</string>
     <string name="onboarding_permission_notification_desc">用于展示打印进度与完成提醒</string>
     <string name="onboarding_permission_grant">立即授权</string>
+    <string name="onboarding_permission_grant_one">去授权</string>
     <string name="onboarding_permission_granted">已授予</string>
     <string name="onboarding_permission_not_granted">未授予</string>
     <string name="onboarding_permission_all_granted">所有权限已授予</string>

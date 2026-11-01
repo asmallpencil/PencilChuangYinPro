@@ -99,6 +99,7 @@ import com.pencil.chuangyin.feature.settings.VisualSettingsRoute
 import com.pencil.chuangyin.feature.text.TextEditorRoute
 import com.pencil.chuangyin.pro.OnboardingFlagRepository
 import com.pencil.chuangyin.pro.ui.CreativeScreen
+import com.pencil.chuangyin.pro.ui.dev.DevToolsRoute
 import com.pencil.chuangyin.feature.pixiv.ui.browse.PixivBrowseRoute
 import com.pencil.chuangyin.feature.pixiv.ui.browser.PixivBrowserRoute
 import com.pencil.chuangyin.feature.pixiv.ui.common.MEDIA_NOVEL
@@ -145,6 +146,7 @@ object AppRoutes {
     const val SETTINGS_LICENSES = "settings_licenses"
     const val SETTINGS_AI_CONFIG = "settings_ai_config"
     const val SETTINGS_PROXY = "settings_proxy"
+    const val SETTINGS_DEV = "settings_dev"
 
     // AI 打印（Agent 客户端）
     const val AI = "ai"
@@ -469,7 +471,11 @@ fun AppNavHost(
                     onOpenLicenses = { navController.navigate(AppRoutes.SETTINGS_LICENSES) },
                     onOpenAiConfig = { navController.navigate(AppRoutes.SETTINGS_AI_CONFIG) },
                     onOpenProxy = { navController.navigate(AppRoutes.SETTINGS_PROXY) },
+                    onOpenDevTools = { navController.navigate(AppRoutes.SETTINGS_DEV) },
                 )
+            }
+            composable(AppRoutes.SETTINGS_DEV) {
+                DevToolsRoute(onBack = { safeBack() })
             }
             composable(AppRoutes.SETTINGS_PROXY) {
                 ProxySettingsRoute(onBack = { safeBack() })

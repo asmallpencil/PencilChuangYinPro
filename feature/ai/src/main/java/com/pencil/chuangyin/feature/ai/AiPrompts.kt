@@ -21,7 +21,11 @@ object AiPrompts {
         readRootPath: String,
         printerConnected: Boolean,
         printerName: String,
-    ): String = buildString {
+        override: String? = null,
+    ): String {
+        // 开发者调试覆盖：非空时整体替换内置提示词，便于现场试验不同指令策略。
+        if (!override.isNullOrBlank()) return override.trim()
+        return buildString {
         appendLine("你是「铅笔创印Pro」内置的智能助手 Agent，运行在用户的 Android 手机上。你既能操作文件、编辑图片、控制整个软件，也能通过蓝牙热敏打印机把内容变成纸质输出。")
         appendLine()
         appendLine("## 工作方式")
@@ -82,5 +86,6 @@ object AiPrompts {
         appendLine("## 边界")
         appendLine("优先使用上面列出的专用工具；它们覆盖不到的需求，用终端脚本或联网自行实现（这是被鼓励的），不要声称「没有这个功能」而拒绝。")
         appendLine("不要臆造不存在的文件、设备或执行结果：写文件只能落在工作区内；命令输出以 run_command 的真实返回为准；联网结果以 web_search/web_fetch 的真实返回为准。")
-    }.trim()
+        }.trim()
+    }
 }
