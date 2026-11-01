@@ -36,6 +36,10 @@ ketch_tmp/
 _tmp_shapes/
 .trae/
 
+# ---------- 签名文件（不随源码发布） ----------
+keystore/
+keystore.properties
+
 # ---------- 系统 ----------
 Thumbs.db
 desktop.ini

@@ -2,6 +2,7 @@ package com.pencil.chuangyin.desktop.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -58,6 +60,9 @@ import com.pencil.chuangyin.desktop.text.TextNotice
 import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
 import com.pencil.chuangyin.desktop.ui.motion.animatedProgress
+import com.pencil.chuangyin.desktop.ui.tutorial.CoachMarkStep
+import com.pencil.chuangyin.desktop.ui.tutorial.DesktopCoachMarkHost
+import com.pencil.chuangyin.desktop.ui.tutorial.coachMarkAnchor
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -161,6 +166,16 @@ fun TextPrintScreen(onBack: () -> Unit) {
         )
     }
 
+    DesktopCoachMarkHost(
+        pageKey = "text_print",
+        steps = listOf(
+            CoachMarkStep(
+                "text_import",
+                "导入按钮说明",
+                "「导入TXT」与「导入压缩包」会把文稿追加进待打印列表，P 站图库直达已保存的图片；字体包在下一行单独导入，导入后当前字体显示在导入区上方。",
+            ),
+        ),
+    ) {
     Scaffold(
         topBar = {
             GlassTopAppBar(
@@ -247,9 +262,22 @@ fun TextPrintScreen(onBack: () -> Unit) {
                     onCopiesChange = { TextEditorStore.setCopies(it) },
                 )
 
-                // 导入操作：TXT（系统多选）/ ZIP / 字体
+                // 当前字体：紧跟导入区上方，导入后即可看到生效的字体名。
+                state.customFontName?.let { fontName ->
+                    Text(
+                        text = "当前字体：$fontName",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = PADDING_S),
+                    )
+                }
+
+                // 导入操作：TXT（系统多选）/ ZIP / P 站图库，三个入口同级。
                 FlowRow(
-                    modifier = Modifier.fillMaxWidth().padding(top = PADDING_S),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = PADDING_S)
+                        .coachMarkAnchor("text_import"),
                     horizontalArrangement = Arrangement.spacedBy(PADDING_S),
                     verticalArrangement = Arrangement.spacedBy(PADDING_S),
                 ) {
@@ -269,13 +297,18 @@ fun TextPrintScreen(onBack: () -> Unit) {
                         },
                     )
                     ImportButton(
-                        text = "导入字体",
-                        icon = null,
-                        onClick = {
-                            chooseFontFile()?.let { TextEditorStore.importFont(it) }
-                        },
+                        text = "P 站图库",
+                        icon = AppIcon.Store,
+                        onClick = { DesktopNavigator.navigate(DesktopNavigator.Page.PStation) },
                     )
                 }
+
+                // 字体包：单独一行、小一号的胶囊按钮。
+                CompactImportChip(
+                    text = "导入字体",
+                    modifier = Modifier.padding(top = PADDING_S),
+                    onClick = { chooseFontFile()?.let { TextEditorStore.importFont(it) } },
+                )
 
                 Spacer(modifier = Modifier.height(PADDING_L))
 
@@ -290,6 +323,7 @@ fun TextPrintScreen(onBack: () -> Unit) {
                 Spacer(modifier = Modifier.height(PADDING_L))
             }
         }
+    }
     }
 
     // 全屏正文编辑覆盖层：必须晚于 Scaffold 绘制，否则会被页面内容盖住。
@@ -309,6 +343,26 @@ private fun ImportButton(text: String, icon: AppIcon?, onClick: () -> Unit) {
         onClick = onClick,
         leadingIcon = icon,
     )
+}
+
+/** 小号导入胶囊：字体包这类低频入口单独占一行，不占主入口的视觉权重。 */
+@Composable
+private fun CompactImportChip(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Row(
+        modifier = modifier
+            .height(32.dp)
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
 }
 
 /**
@@ -645,13 +699,6 @@ private fun PreviewCard(state: TextEditorUiState) {
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(modifier = Modifier.weight(1f))
-            state.customFontName?.let { fontName ->
-                Text(
-                    text = fontName,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
         }
         Column(
             modifier = Modifier

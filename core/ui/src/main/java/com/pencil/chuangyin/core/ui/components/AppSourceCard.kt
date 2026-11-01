@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -84,10 +86,18 @@ fun AppSourceCard(
                 translationY = (1f - cardReveal) * 24f
             },
     ) {
+        val totalSlots = actions.size + if (primaryAction != null) 1 else 0
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+            modifier = Modifier
+                .padding(horizontal = 12.dp, vertical = 12.dp)
+                // 入口超过 4 个时允许横向滚动：窄屏上不会把最后一个入口挤出屏幕。
+                .then(if (totalSlots > 4) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = if (totalSlots > 4) {
+                Arrangement.spacedBy(10.dp)
+            } else {
+                Arrangement.SpaceBetween
+            },
         ) {
             if (primaryAction != null) {
                 SourceCircleButton(

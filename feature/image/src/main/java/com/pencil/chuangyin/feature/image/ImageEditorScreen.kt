@@ -105,6 +105,9 @@ import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextButton
 import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
 import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
+import com.pencil.chuangyin.core.ui.tutorial.CoachMarkHost
+import com.pencil.chuangyin.core.ui.tutorial.CoachMarkStep
+import com.pencil.chuangyin.core.ui.tutorial.coachMarkAnchor
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.pseudoGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
@@ -348,8 +351,19 @@ fun ImageEditorScreen(
         )
     }
 
-    Scaffold(
+    CoachMarkHost(
+        pageKey = "image_print",
+        steps = listOf(
+            CoachMarkStep(
+                anchor = "image_import",
+                title = stringResource(ResR.string.tutorial_image_import_title),
+                description = stringResource(ResR.string.tutorial_image_import_desc),
+            ),
+        ),
         modifier = modifier,
+    ) {
+    Scaffold(
+        modifier = Modifier,
         topBar = {
             TopAppBar(
                 title = { AppText(text = stringResource(R.string.image_title)) },
@@ -358,14 +372,6 @@ fun ImageEditorScreen(
                         onClick = onBack,
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(ResR.string.label_back),
-                    )
-                },
-                actions = {
-                    // 「P 站仓库」入口：与 P 站侧边栏指向同一页面，可在打印流程中直接取用已保存内容。
-                    AppIconButton(
-                        onClick = onOpenPixivGallery,
-                        imageVector = Icons.Filled.Inventory2,
-                        contentDescription = stringResource(ResR.string.pixiv_open_repository),
                     )
                 },
                 modifier = Modifier.nativeGlassSurface(
@@ -410,7 +416,7 @@ fun ImageEditorScreen(
                 ),
         ) {
             // 来源入口：一个白色圆角卡片，大「+」为主入口（相册多选），
-            // 右侧四个圆形图标入口（文稿扫描/相机/PDF/压缩包）。
+            // 右侧圆形图标入口（文稿扫描/相机/PDF/压缩包/P 站图库）。
             AppSourceCard(
                 primaryAction = AppSourceAction(
                     icon = Icons.Filled.Add,
@@ -422,10 +428,11 @@ fun ImageEditorScreen(
                         }
                     },
                 ),
-                primarySize = 76.dp,
-                primaryIconSize = 36.dp,
-                actionSize = 56.dp,
-                actionIconSize = 26.dp,
+                primarySize = 64.dp,
+                primaryIconSize = 30.dp,
+                actionSize = 46.dp,
+                actionIconSize = 22.dp,
+                modifier = Modifier.coachMarkAnchor("image_import"),
                 actions = listOf(
                     AppSourceAction(
                         icon = Icons.Filled.DocumentScanner,
@@ -450,6 +457,12 @@ fun ImageEditorScreen(
                                 arrayOf("application/zip", "application/x-zip-compressed"),
                             )
                         },
+                    ),
+                    // 「P 站图库」入口：与其余导入入口同级，直接取用已保存的图片。
+                    AppSourceAction(
+                        icon = Icons.Filled.Inventory2,
+                        label = stringResource(ResR.string.pixiv_open_repository),
+                        onClick = onOpenPixivGallery,
                     ),
                 ),
             )
@@ -542,6 +555,7 @@ fun ImageEditorScreen(
             )
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
         }
+    }
     }
 }
 

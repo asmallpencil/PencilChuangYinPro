@@ -1,7 +1,7 @@
 ﻿# 铅笔创印 Pro · Pencil ChuangYin Pro
 
 > 一支笔，一张纸，一台蓝牙热敏打印机 —— 把屏幕里的文字、图片、照片和小说的即刻印出来。
-> Android 与 Windows 双端同源，共用同一套液态玻璃视觉语言与打印协议栈。
+> Android 与 Windows 双端同源，共用同一套主题体系与打印协议栈。
 
 <p>
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue.svg"></a>
@@ -10,7 +10,7 @@
   <img alt="Compose" src="https://img.shields.io/badge/Jetpack%20Compose-2024.12-4285F4.svg">
   <img alt="Android" src="https://img.shields.io/badge/Android-7.0%2B%20(API%2024)-3DDC84.svg">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%2F11-0078D4.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.0.0.12-orange.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.1.0.0-orange.svg">
 </p>
 
 ---
@@ -71,7 +71,8 @@
 
 ### 界面
 
-- **液态玻璃（Liquid Glass）**：backdrop 模糊、透镜折射、边缘高光、噪点、弹簧动画一整套参数化实现；Android 侧另有 C++（Dear ImGui + OpenGL ES）玻璃渲染管线。
+- **液态玻璃（Liquid Glass）**：Android 侧的 backdrop 模糊、透镜折射、边缘高光、噪点、弹簧动画一整套参数化实现，另有 C++（Dear ImGui + OpenGL ES）玻璃渲染管线；Windows 桌面端已移除玻璃效果，改为纯色实底，保证渲染稳定与性能。
+- **引导与新手教程**：首次启动的全屏引导（主题色 / 形状 / 动效 / 界面细节 / 氛围粒子等全部可配置），完成后进入真实页面还会按页触发挖孔式教程浮层，说明导入入口等晦涩按钮的作用。
 - **动态取色**：基于 MaterialKolor 从壁纸/图片生成 Material 3 Expressive 配色，支持手动调色盘与深浅色。
 
 ## 架构
@@ -128,7 +129,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 #   app-armeabi-v7a-debug.apk   32 位（armeabi-v7a）
 #   app-universal-debug.apk     通用包（两种架构都含）
 
-# 发布包（开启 R8 混淆与资源压缩，同样产出上述三个 APK）
+# 发布包（正式签名，同样产出上述三个 APK）
 ./gradlew :app:assembleRelease
 ```
 
@@ -148,16 +149,16 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 
 安装包与源码归档都在 **[Releases](https://github.com/asmallpencil/PencilChuangYinPro/releases)** 页面。
 
-当前版本 **v2.0.0.12**（Android 分架构提供三个 APK，按设备按需下载即可）：
+当前版本 **v2.1.0.0**（Android 分架构提供三个正式签名 APK，按设备按需下载即可）：
 
 | 平台 | 文件 | 体积 | 说明 |
 | --- | --- | --- | --- |
-| Android 7.0+ 64 位 | [`PencilChuangYinPro-2.0.0.12-arm64-v8a-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.12/PencilChuangYinPro-2.0.0.12-arm64-v8a-debug.apk) | ≈77 MB | 绝大多数现代机型，体积最小，推荐优先选择 |
-| Android 7.0+ 32 位 | [`PencilChuangYinPro-2.0.0.12-armeabi-v7a-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.12/PencilChuangYinPro-2.0.0.12-armeabi-v7a-debug.apk) | ≈76 MB | 老设备 / 32 位系统专用 |
-| Android 7.0+ 32/64 共通 | [`PencilChuangYinPro-2.0.0.12-universal-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.12/PencilChuangYinPro-2.0.0.12-universal-debug.apk) | ≈115 MB | 不确定架构时的兜底包，同时包含两种 ABI |
-| Windows 10/11 x64 | [`PencilChuangYinPro-2.0.0.0-windows-x64.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.0.0.0/PencilChuangYinPro-2.0.0.0-windows-x64.zip) | ≈130 MB | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装；桌面端最新构建也可从源码生成（见上文） |
+| Android 7.0+ 64 位 | [`PencilChuangYinPro-2.1.0.0-arm64-v8a-release.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.0/PencilChuangYinPro-2.1.0.0-arm64-v8a-release.apk) | ≈64 MB | 绝大多数现代机型，体积最小，推荐优先选择 |
+| Android 7.0+ 32 位 | [`PencilChuangYinPro-2.1.0.0-armeabi-v7a-release.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.0/PencilChuangYinPro-2.1.0.0-armeabi-v7a-release.apk) | ≈63 MB | 老设备 / 32 位系统专用 |
+| Android 7.0+ 32/64 共通 | [`PencilChuangYinPro-2.1.0.0-universal-release.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.0/PencilChuangYinPro-2.1.0.0-universal-release.apk) | ≈98 MB | 不确定架构时的兜底包，同时包含两种 ABI |
+| Windows 10/11 x64 | [`PencilChuangYinPro-2.1.0.0-windows-x64.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.0/PencilChuangYinPro-2.1.0.0-windows-x64.zip) | ≈68 MB | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装；桌面端最新构建也可从源码生成（见上文） |
 
-> 三个 APK 均使用 debug 签名，仅供测试与自用；如需分发请自行配置 release 签名。三者功能完全一致，仅打包的 ABI 不同；`32/64 共通版` 因同时内置两套原生库（含 sing-box）体积约为单包 1.5 倍。
+> 三个 APK 均为通过正式 keystore 签名的 release 包（非 debug 签名），可直接安装与分发。三者功能完全一致，仅打包的 ABI 不同；`32/64 共通版` 因同时内置两套原生库（含 sing-box）体积约为单包 1.5 倍。签名库与本机 `keystore.properties` 不入库，如需自行构建 release 包请自备 keystore 并按同名键写入。
 
 ---
 

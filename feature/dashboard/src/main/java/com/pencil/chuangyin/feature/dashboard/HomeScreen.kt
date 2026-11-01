@@ -55,6 +55,9 @@ import com.pencil.chuangyin.core.ui.components.AppIconButton
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
+import com.pencil.chuangyin.core.ui.tutorial.CoachMarkHost
+import com.pencil.chuangyin.core.ui.tutorial.CoachMarkStep
+import com.pencil.chuangyin.core.ui.tutorial.coachMarkAnchor
 import com.pencil.chuangyin.printer.PrinterStatus
 import com.pencil.chuangyin.resources.R as ResR
 
@@ -98,8 +101,24 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     val glassActive = rememberLiquidGlassActive()
-    Scaffold(
+    CoachMarkHost(
+        pageKey = "home",
+        steps = listOf(
+            CoachMarkStep(
+                anchor = "home_connect",
+                title = stringResource(ResR.string.tutorial_home_connect_title),
+                description = stringResource(ResR.string.tutorial_home_connect_desc),
+            ),
+            CoachMarkStep(
+                anchor = "home_tools",
+                title = stringResource(ResR.string.tutorial_home_tools_title),
+                description = stringResource(ResR.string.tutorial_home_tools_desc),
+            ),
+        ),
         modifier = modifier,
+    ) {
+    Scaffold(
+        modifier = Modifier,
         topBar = {
             TopAppBar(
                 title = { AppText(text = stringResource(R.string.dashboard_title)) },
@@ -132,14 +151,20 @@ fun HomeScreen(
                 .padding(bottom = bottomBarSpace),
             verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_m)),
         ) {
-            PrinterStatusCapsule(capsule = capsule, onClick = onOpenConnect)
+            PrinterStatusCapsule(
+                capsule = capsule,
+                onClick = onOpenConnect,
+                modifier = Modifier.coachMarkAnchor("home_connect"),
+            )
             CreativeToolsCard(
                 onOpenText = onOpenText,
                 onOpenImage = onOpenImage,
                 onOpenScanner = onOpenScanner,
                 onOpenAi = onOpenAi,
+                modifier = Modifier.coachMarkAnchor("home_tools"),
             )
         }
+    }
     }
 }
 
@@ -151,13 +176,14 @@ fun HomeScreen(
 private fun PrinterStatusCapsule(
     capsule: HomePrinterCapsule,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val connectedName = capsule.connectedDevice?.let { it.name.ifBlank { it.address } }
     val connected = connectedName != null
     val glassActive = rememberLiquidGlassActive()
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .nativeGlassSurface(
                 shape = CardDefaults.shape,
@@ -333,11 +359,12 @@ private fun CreativeToolsCard(
     onOpenImage: () -> Unit,
     onOpenScanner: () -> Unit,
     onOpenAi: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val glassActive = rememberLiquidGlassActive()
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .nativeGlassSurface(
                 shape = CardDefaults.shape,

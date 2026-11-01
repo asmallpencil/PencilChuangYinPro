@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -11,6 +13,12 @@ plugins {
 // 通用包体积大但兼容所有设备；单架构包更小，按设备架构分发可显著节省流量。
 // 产物位于 app/build/outputs/apk/debug（或 release）下，文件名带架构后缀。
 
+// 正式签名配置从 keystore.properties 读取（该文件与本仓库的 keystore/ 目录均不随源码发布）。
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.pencil.chuangyin.pro"
     compileSdk = 35
@@ -20,8 +28,8 @@ android {
         applicationId = "com.pencil.chuangyin.pro"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2000012
-        versionName = "2.0.0.12"
+        versionCode = 2100000
+        versionName = "2.1.0.0"
 
         // OpenCV 与内置代理内核均只打包真机 ARM 架构，控制包体。
         ndk {
@@ -52,10 +60,24 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystoreProps.isNotEmpty()) {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            // 正式包使用正式签名；本次关闭 R8 / 资源压缩，
+            // 避免 kxml2 的 org.xmlpull 规则引发运行时冲突。
+            isMinifyEnabled = false
+            isShrinkResources = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

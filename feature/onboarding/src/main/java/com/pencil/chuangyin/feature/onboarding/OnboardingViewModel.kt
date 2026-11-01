@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pencil.chuangyin.core.theme.CornerStyle
 import com.pencil.chuangyin.core.theme.MotionPreset
+import com.pencil.chuangyin.core.theme.ParticleType
 import com.pencil.chuangyin.core.theme.SeedOption
 import com.pencil.chuangyin.core.theme.ThemeRepository
 import com.pencil.chuangyin.core.theme.ThemeState
@@ -29,7 +30,8 @@ data class OnboardingUiState(
     val isLastStep: Boolean get() = step >= totalSteps - 1
 
     private companion object {
-        const val TOTAL_STEPS = 7
+        // 欢迎 / 功能 / 权限 / 主题色 / 形状与动效 / 界面细节 / 氛围粒子 / P 站登录 / 完成
+        const val TOTAL_STEPS = 9
     }
 }
 
@@ -97,7 +99,23 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch { themeRepository.setOutlineEnabled(enabled) }
     }
 
+    fun setOutlineWidth(widthDp: Float) {
+        viewModelScope.launch { themeRepository.setOutlineWidth(widthDp) }
+    }
+
+    fun setSurfaceAlpha(alpha: Float) {
+        viewModelScope.launch { themeRepository.setSurfaceAlpha(alpha) }
+    }
+
     fun setSnowfallEnabled(enabled: Boolean) {
         viewModelScope.launch { themeRepository.setSnowfallEnabled(enabled) }
+    }
+
+    fun setParticleType(type: ParticleType) {
+        viewModelScope.launch { themeRepository.setParticleType(type) }
+    }
+
+    fun setParticleSpeed(speed: Float) {
+        viewModelScope.launch { themeRepository.setParticleSpeed(speed) }
     }
 }

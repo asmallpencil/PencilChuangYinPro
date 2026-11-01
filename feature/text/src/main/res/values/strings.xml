@@ -35,6 +35,7 @@
     <string name="text_import_font">导入字体</string>
     <string name="text_fallback_file_name">TXT 文档</string>
     <string name="text_fallback_font_name">自定义字体</string>
+    <string name="text_current_font">当前字体：%1$s</string>
     <string name="text_mounted_files_label">已挂载 TXT 文件（%1$d）· 按顺序连续打印</string>
     <string name="text_notice_mounted">已挂载 %1$d 个文件，共 %2$d 字</string>
     <string name="text_notice_archive_empty">压缩包根目录未找到 TXT 文件</string>

@@ -375,6 +375,7 @@
     <string name="onboarding_permission_notification_desc">用于展示打印进度与完成提醒</string>
     <string name="onboarding_permission_grant">立即授权</string>
     <string name="onboarding_permission_granted">已授予</string>
+    <string name="onboarding_permission_not_granted">未授予</string>
     <string name="onboarding_permission_all_granted">所有权限已授予</string>
 
     <!-- 主题 -->
@@ -399,6 +400,20 @@
     <string name="onboarding_motion_expressive">动感</string>
     <string name="onboarding_motion_reduced">减弱</string>
 
+    <!-- 界面细节 / 氛围 -->
+    <string name="onboarding_interface_title">界面细节</string>
+    <string name="onboarding_interface_desc">这些选项决定界面的明暗与质感，全部可以随时在设置里调整</string>
+    <string name="onboarding_label_outline_width">描边粗细</string>
+    <string name="onboarding_label_surface_alpha">控件不透明度</string>
+    <string name="onboarding_atmosphere_title">氛围与粒子</string>
+    <string name="onboarding_atmosphere_desc">给界面加一点动态氛围，打印时更有仪式感</string>
+    <string name="onboarding_label_particle_type">粒子类型</string>
+    <string name="onboarding_label_particle_speed">飘落速度</string>
+    <string name="onboarding_particle_snow">雪花</string>
+    <string name="onboarding_particle_rain">雨滴</string>
+    <string name="onboarding_particle_leaf">落叶</string>
+    <string name="onboarding_particle_petal">花瓣</string>
+
     <!-- P 站提前登录 -->
     <string name="onboarding_pixiv_title">登录 P 站</string>
     <string name="onboarding_pixiv_desc">可提前登录 P 站账号，登录后无需重复登录即可浏览与打印作品</string>
@@ -409,10 +424,25 @@
 
     <!-- 完成 -->
     <string name="onboarding_finish_title">准备就绪</string>
-    <string name="onboarding_finish_desc">以下选项后续可在设置中随时调整</string>
+    <string name="onboarding_finish_desc">进入应用后，会有悬浮引导带你认识主页、图片打印与文字打印的导入入口</string>
     <string name="onboarding_label_dark_theme">深色模式</string>
     <string name="onboarding_label_outline">控件描边</string>
     <string name="onboarding_label_snowfall">粒子飘落</string>
+    <string name="onboarding_finish_tutorial_hint">下一步：新手引导</string>
+
+    <!-- 新手教程悬浮层 -->
+    <string name="tutorial_badge">新手引导</string>
+    <string name="tutorial_action_skip">跳过教程</string>
+    <string name="tutorial_action_next">下一步</string>
+    <string name="tutorial_action_finish">开始使用</string>
+    <string name="tutorial_home_connect_title">先连接打印机</string>
+    <string name="tutorial_home_connect_desc">点击这张状态卡进入连接页，选择蓝牙热敏打印机。连上后会显示电量、是否合盖、纸张余量与过热状态。</string>
+    <string name="tutorial_home_tools_title">从这里开始创作</string>
+    <string name="tutorial_home_tools_desc">文本打印用于排版文字；图片打印支持相册、PDF、扫描与压缩包；文稿扫描可直接从纸面取字。</string>
+    <string name="tutorial_image_import_title">导入按钮说明</string>
+    <string name="tutorial_image_import_desc">大「＋」从相册多选图片；右侧依次是文稿扫描、相机、PDF 与压缩包。最右侧的 P 站图标会打开已保存的图片库，入口较多时可横向滑动。</string>
+    <string name="tutorial_text_import_title">导入按钮说明</string>
+    <string name="tutorial_text_import_desc">「TXT」与「压缩包」会把文稿追加进待打印列表，字体包在下一行单独导入。同行的 P 站图标直达已保存的图片库。</string>
 
     <!-- 阅读器（小说阅读器 / 文本查看器） -->
     <string name="reader_switch_to_text">切换为文本查看器</string>

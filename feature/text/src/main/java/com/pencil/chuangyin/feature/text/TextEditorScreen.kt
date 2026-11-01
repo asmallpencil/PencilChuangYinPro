@@ -4,6 +4,8 @@ import android.content.ContentResolver
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +17,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -50,10 +55,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
@@ -80,6 +87,9 @@ import com.pencil.chuangyin.core.ui.components.AppSwitch
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextButton
 import com.pencil.chuangyin.core.ui.motion.rememberAppMotion
+import com.pencil.chuangyin.core.ui.tutorial.CoachMarkHost
+import com.pencil.chuangyin.core.ui.tutorial.CoachMarkStep
+import com.pencil.chuangyin.core.ui.tutorial.coachMarkAnchor
 import com.pencil.chuangyin.core.ui.components.AppTextField
 import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
@@ -260,8 +270,19 @@ fun TextEditorScreen(
         )
     }
 
-    Scaffold(
+    CoachMarkHost(
+        pageKey = "text_print",
+        steps = listOf(
+            CoachMarkStep(
+                anchor = "text_import",
+                title = stringResource(ResR.string.tutorial_text_import_title),
+                description = stringResource(ResR.string.tutorial_text_import_desc),
+            ),
+        ),
         modifier = modifier,
+    ) {
+    Scaffold(
+        modifier = Modifier,
         topBar = {
             TopAppBar(
                 title = { AppText(text = stringResource(R.string.text_title)) },
@@ -270,14 +291,6 @@ fun TextEditorScreen(
                         onClick = onBack,
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(ResR.string.label_back),
-                    )
-                },
-                actions = {
-                    // 与图片打印页一致：直接从打印页进入 P 站仓库（已保存内容）挑素材。
-                    AppIconButton(
-                        onClick = onOpenPixivGallery,
-                        imageVector = Icons.Filled.Inventory2,
-                        contentDescription = stringResource(ResR.string.pixiv_open_repository),
                     )
                 },
                 modifier = Modifier.nativeGlassSurface(
@@ -320,8 +333,13 @@ fun TextEditorScreen(
                         dimensionResource(ResR.dimen.dimen_global_padding_m),
                 ),
         ) {
+            // 当前字体：紧跟导入区上方，导入后即可看到生效的字体名。
+            if (state.customFontName != null) {
+                FontBadge(name = state.customFontName)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             // 来源入口：与图片打印页同款的圆角卡片 + 圆形图标按钮（不设大圆「+」）。
-            // 导入 TXT / 压缩包 / 字体原先挂在页面底部，需一路下滑才能找到，现上移到标题上方。
+            // P 站仓库与导入按钮同级；字体包单独放到下一行的小按钮。
             AppSourceCard(
                 actions = listOf(
                     AppSourceAction(
@@ -343,19 +361,26 @@ fun TextEditorScreen(
                         },
                     ),
                     AppSourceAction(
-                        icon = Icons.Filled.TextFields,
-                        label = stringResource(R.string.text_import_font),
-                        onClick = {
-                            fontLauncher.launch(
-                                arrayOf(
-                                    "application/x-font-ttf", "font/ttf",
-                                    "application/x-font-opentype", "font/otf",
-                                    "application/octet-stream",
-                                ),
-                            )
-                        },
+                        icon = Icons.Filled.Inventory2,
+                        label = stringResource(ResR.string.pixiv_open_repository),
+                        onClick = onOpenPixivGallery,
                     ),
                 ),
+                modifier = Modifier.coachMarkAnchor("text_import"),
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            CompactImportChip(
+                icon = Icons.Filled.TextFields,
+                label = stringResource(R.string.text_import_font),
+                onClick = {
+                    fontLauncher.launch(
+                        arrayOf(
+                            "application/x-font-ttf", "font/ttf",
+                            "application/x-font-opentype", "font/otf",
+                            "application/octet-stream",
+                        ),
+                    )
+                },
             )
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
 
@@ -410,12 +435,12 @@ fun TextEditorScreen(
             )
             PreviewCard(
                 previewBitmap = state.previewBitmap,
-                customFontName = state.customFontName,
                 isDocTooLarge = state.isDocTooLargeForPreview,
                 totalChars = state.totalChars,
             )
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_l)))
         }
+    }
     }
 }
 
@@ -777,7 +802,6 @@ private fun LabeledSlider(
 @Composable
 private fun PreviewCard(
     previewBitmap: android.graphics.Bitmap?,
-    customFontName: String?,
     isDocTooLarge: Boolean,
     totalChars: Int,
 ) {
@@ -791,14 +815,6 @@ private fun PreviewCard(
                 text = stringResource(R.string.text_preview),
                 style = MaterialTheme.typography.titleMedium,
             )
-            Spacer(modifier = Modifier.weight(1f))
-            if (customFontName != null) {
-                AppText(
-                    text = customFontName,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
         }
         Surface(
             modifier = Modifier
@@ -849,6 +865,62 @@ private fun PreviewCard(
                 }
             }
         }
+    }
+}
+
+/** 当前生效字体条：导入成功后贴在导入区上方，名称一眼可见。 */
+@Composable
+private fun FontBadge(name: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.TextFields,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        AppText(
+            text = stringResource(R.string.text_current_font, name),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+/** 小号导入胶囊：字体包导入放在单独一行，尺寸比圆形入口更收敛。 */
+@Composable
+private fun CompactImportChip(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        AppText(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 

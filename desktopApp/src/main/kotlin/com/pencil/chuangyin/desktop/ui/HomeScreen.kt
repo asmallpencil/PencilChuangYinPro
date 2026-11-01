@@ -39,6 +39,9 @@ import com.pencil.chuangyin.desktop.ui.icons.AppIcon
 import com.pencil.chuangyin.desktop.ui.icons.AppIconView
 import com.pencil.chuangyin.desktop.ui.motion.StaggerIn
 import com.pencil.chuangyin.desktop.ui.motion.pressScale
+import com.pencil.chuangyin.desktop.ui.tutorial.CoachMarkStep
+import com.pencil.chuangyin.desktop.ui.tutorial.DesktopCoachMarkHost
+import com.pencil.chuangyin.desktop.ui.tutorial.coachMarkAnchor
 
 /**
  * 首页 —— 与安卓端 feature/dashboard/HomeScreen.kt 结构 1:1 对齐：
@@ -61,6 +64,21 @@ fun HomeScreen(
 ) {
     var hint by remember { mutableStateOf<String?>(null) }
 
+    DesktopCoachMarkHost(
+        pageKey = "home",
+        steps = listOf(
+            CoachMarkStep(
+                "home_connect",
+                "先连接打印机",
+                "点击这张状态卡进入连接页，选择蓝牙热敏打印机。连上后会显示电量、是否合盖、纸张余量与过热状态。",
+            ),
+            CoachMarkStep(
+                "home_tools",
+                "从这里开始创作",
+                "文本打印用于排版文字；图片打印支持相册、PDF、压缩包；AI 打印可以先生成内容再出纸。",
+            ),
+        ),
+    ) {
     Scaffold(
         topBar = {
             GlassTopAppBar(
@@ -103,6 +121,7 @@ fun HomeScreen(
             }
         }
     }
+    }
 
     hint?.let { name ->
         AlertDialog(
@@ -142,6 +161,7 @@ private fun PrinterStatusCapsule(onClick: () -> Unit) {
 
     GlassCard(
         modifier = Modifier
+            .coachMarkAnchor("home_connect")
             .fillMaxWidth()
             .pressScale(interaction, pressedScale = 0.98f)
             .clickable(
@@ -283,7 +303,9 @@ private fun StatusItem(cell: StatusCell, modifier: Modifier = Modifier) {
 @Composable
 private fun CreativeToolsCard(onToolClick: (String) -> Unit) {
     GlassCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .coachMarkAnchor("home_tools")
+            .fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
     ) {
         Text(

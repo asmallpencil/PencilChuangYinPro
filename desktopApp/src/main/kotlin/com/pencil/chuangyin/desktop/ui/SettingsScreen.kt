@@ -98,18 +98,13 @@ fun SettingsScreen(onBack: () -> Unit) {
             onBack = { route = SettingsRoute.Menu },
         )
 
-        SettingsRoute.LiquidGlass -> LiquidGlassPage(
-            state = DesktopThemeStore.state.collectAsState().value,
-            onBack = { route = SettingsRoute.Menu },
-        )
-
         SettingsRoute.Size -> SizeSettingsPage(onBack = { route = SettingsRoute.Menu })
 
         SettingsRoute.About -> AboutPage(onBack = { route = SettingsRoute.Menu })
     }
 }
 
-private enum class SettingsRoute { Menu, AiConfig, Visual, LiquidGlass, Size, About }
+private enum class SettingsRoute { Menu, AiConfig, Visual, Size, About }
 
 // ===================== 菜单页 =====================
 
@@ -161,13 +156,6 @@ private fun SettingsMenuPage(
                         title = "画面设置",
                         desc = "主题、描边、粒子、背景",
                         onClick = { onOpen(SettingsRoute.Visual) },
-                    )
-                    SettingsEntryDivider()
-                    MenuEntry(
-                        icon = AppIcon.Ink,
-                        title = "液态玻璃",
-                        desc = "渲染实现与详细参数",
-                        onClick = { onOpen(SettingsRoute.LiquidGlass) },
                     )
                 }
             }
@@ -679,148 +667,6 @@ private fun CornerStylePicker(
     }
 }
 
-// ===================== 液态玻璃 =====================
-
-@Composable
-private fun LiquidGlassPage(state: ThemeState, onBack: () -> Unit) {
-    SettingsPage(title = "液态玻璃", onBack = onBack) {
-        SectionLabel("液态玻璃")
-        Text(
-            text = "开启后，控件与底部导航栏将使用玻璃材质渲染（参数与安卓端共用同一套取值）。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(12.dp))
-
-        ToggleRow(
-            checked = state.liquidGlassControlsEnabled,
-            onCheckedChange = { enabled ->
-                DesktopThemeStore.update { it.copy(liquidGlassControlsEnabled = enabled) }
-            },
-            label = "控件玻璃",
-        )
-        Spacer(Modifier.height(8.dp))
-        ToggleRow(
-            checked = state.liquidGlassNavbarEnabled,
-            onCheckedChange = { enabled ->
-                DesktopThemeStore.update { it.copy(liquidGlassNavbarEnabled = enabled) }
-            },
-            label = "导航栏玻璃",
-        )
-
-        SettingsDivider()
-
-        SectionLabel("细节参数")
-        SliderRow(
-            label = "模糊强度",
-            value = state.liquidGlassBlurDp,
-            valueText = "%.1f".format(state.liquidGlassBlurDp),
-            valueRange = 0f..LIQUID_GLASS_BLUR_MAX_DP,
-            onValueChange = { v -> DesktopThemeStore.update { it.copy(liquidGlassBlurDp = v) } },
-        )
-        SliderRow(
-            label = "透镜高度",
-            value = state.liquidGlassLensHeightDp,
-            valueText = "%.1f".format(state.liquidGlassLensHeightDp),
-            valueRange = 0f..LIQUID_GLASS_LENS_HEIGHT_MAX_DP,
-            onValueChange = { v -> DesktopThemeStore.update { it.copy(liquidGlassLensHeightDp = v) } },
-        )
-        SliderRow(
-            label = "透镜位移",
-            value = state.liquidGlassLensAmountDp,
-            valueText = "%.1f".format(state.liquidGlassLensAmountDp),
-            valueRange = 0f..LIQUID_GLASS_LENS_AMOUNT_MAX_DP,
-            onValueChange = { v -> DesktopThemeStore.update { it.copy(liquidGlassLensAmountDp = v) } },
-        )
-        SliderRow(
-            label = "边缘色散",
-            value = state.liquidGlassSpectral,
-            valueText = "%.2f".format(state.liquidGlassSpectral),
-            valueRange = 0f..LIQUID_GLASS_SPECTRAL_MAX,
-            onValueChange = { v -> DesktopThemeStore.update { it.copy(liquidGlassSpectral = v) } },
-        )
-        SliderRow(
-            label = "着色不透明度",
-            value = state.liquidGlassTintAlpha,
-            valueText = "%.2f".format(state.liquidGlassTintAlpha),
-            valueRange = LIQUID_GLASS_TINT_ALPHA_MIN..1f,
-            onValueChange = { v -> DesktopThemeStore.update { it.copy(liquidGlassTintAlpha = v) } },
-        )
-
-        Spacer(Modifier.height(8.dp))
-        ToggleRow(
-            checked = state.liquidGlassShadowOn,
-            onCheckedChange = { on -> DesktopThemeStore.update { it.copy(liquidGlassShadowOn = on) } },
-            label = "投射阴影",
-        )
-        Spacer(Modifier.height(8.dp))
-        ToggleRow(
-            checked = state.liquidGlassGlassOn,
-            onCheckedChange = { on -> DesktopThemeStore.update { it.copy(liquidGlassGlassOn = on) } },
-            label = "玻璃折射",
-        )
-        Spacer(Modifier.height(8.dp))
-        ToggleRow(
-            checked = state.liquidGlassContourEdge,
-            onCheckedChange = { on -> DesktopThemeStore.update { it.copy(liquidGlassContourEdge = on) } },
-            label = "轮廓高光",
-        )
-
-        SettingsDivider()
-
-        SectionLabel("预览")
-        LiquidGlassPreview()
-    }
-}
-
-@Composable
-private fun LiquidGlassPreview() {
-    var toggleOn by remember { mutableStateOf(true) }
-    var segment by remember { mutableIntStateOf(1) }
-    var sliderValue by remember { mutableStateOf(0.5f) }
-    var text by remember { mutableStateOf("") }
-
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(text = "开关", style = MaterialTheme.typography.bodyLarge)
-            Spacer(Modifier.weight(1f))
-            Switch(checked = toggleOn, onCheckedChange = { toggleOn = it })
-        }
-        Spacer(Modifier.height(12.dp))
-        AppSegmentedRow(
-            options = listOf("开关", "按钮", "滑动"),
-            selectedIndex = segment,
-            onSelected = { segment = it },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(12.dp))
-        Slider(
-            value = sliderValue,
-            onValueChange = { sliderValue = it },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(12.dp))
-        AppTextField(
-            value = text,
-            onValueChange = { text = it },
-            placeholder = "预览输入框",
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(12.dp))
-        AppPrimaryButton(
-            text = "预览按钮",
-            onClick = { toggleOn = !toggleOn },
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
 // ===================== 开源许可 =====================
 
 /**
@@ -1031,7 +877,7 @@ private fun AboutPage(onBack: () -> Unit) {
     SettingsPage(title = "开源许可", onBack = onBack) {
         SectionLabel("铅笔创印Pro 桌面版")
         Text(
-            text = "版本 2.0.0",
+            text = "版本 2.1.0.0",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

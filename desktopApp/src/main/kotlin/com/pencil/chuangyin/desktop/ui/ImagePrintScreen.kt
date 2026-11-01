@@ -74,6 +74,9 @@ import com.pencil.chuangyin.desktop.ui.icons.AppIconView
 import com.pencil.chuangyin.desktop.ui.motion.DesktopLoadingIndicator
 import com.pencil.chuangyin.desktop.ui.motion.animateGridItemMotion
 import com.pencil.chuangyin.desktop.ui.motion.animatedProgress
+import com.pencil.chuangyin.desktop.ui.tutorial.CoachMarkStep
+import com.pencil.chuangyin.desktop.ui.tutorial.DesktopCoachMarkHost
+import com.pencil.chuangyin.desktop.ui.tutorial.coachMarkAnchor
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -200,6 +203,16 @@ fun ImagePrintScreen(onBack: () -> Unit) {
         )
     }
 
+    DesktopCoachMarkHost(
+        pageKey = "image_print",
+        steps = listOf(
+            CoachMarkStep(
+                "image_import",
+                "导入按钮说明",
+                "「从相册选」可多选图片；「拍照」需要手机端配合；第二排依次是 PDF、压缩包与 P 站图库，导入后进入选择页确认要打印的页。",
+            ),
+        ),
+    ) {
     Scaffold(
         topBar = {
             GlassTopAppBar(
@@ -247,22 +260,28 @@ fun ImagePrintScreen(onBack: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(modifier = Modifier.widthIn(max = CONTENT_MAX_WIDTH).fillMaxWidth()) {
-                SourceButtonRow(
-                    first = SourceAction(AppIcon.ImageTool, "从相册选") {
-                        val files = chooseImageFiles()
-                        if (files.isNotEmpty()) ImageEditorStore.importGallery(files)
-                    },
-                    second = SourceAction(AppIcon.CameraTool, "拍照") { cameraHint = true },
-                )
-                Spacer(modifier = Modifier.height(PADDING_S))
-                SourceButtonRow(
-                    first = SourceAction(AppIcon.PicturePdf, "导入PDF") {
-                        choosePdfFile()?.let { ImageEditorStore.importPdf(it) }
-                    },
-                    second = SourceAction(AppIcon.FolderZip, "导入压缩包") {
-                        chooseArchiveFile()?.let { ImageEditorStore.importArchive(it) }
-                    },
-                )
+                Column(modifier = Modifier.coachMarkAnchor("image_import")) {
+                    SourceButtonRow(
+                        first = SourceAction(AppIcon.ImageTool, "从相册选") {
+                            val files = chooseImageFiles()
+                            if (files.isNotEmpty()) ImageEditorStore.importGallery(files)
+                        },
+                        second = SourceAction(AppIcon.CameraTool, "拍照") { cameraHint = true },
+                    )
+                    Spacer(modifier = Modifier.height(PADDING_S))
+                    SourceButtonRow(
+                        first = SourceAction(AppIcon.PicturePdf, "导入PDF") {
+                            choosePdfFile()?.let { ImageEditorStore.importPdf(it) }
+                        },
+                        second = SourceAction(AppIcon.FolderZip, "导入压缩包") {
+                            chooseArchiveFile()?.let { ImageEditorStore.importArchive(it) }
+                        },
+                        // 「P 站图库」与导入入口同级，直接取用已保存的图片。
+                        third = SourceAction(AppIcon.Store, "P 站图库") {
+                            DesktopNavigator.navigate(DesktopNavigator.Page.PStation)
+                        },
+                    )
+                }
                 Spacer(modifier = Modifier.height(PADDING_M))
 
                 if (state.pages.isNotEmpty()) {
@@ -322,6 +341,7 @@ fun ImagePrintScreen(onBack: () -> Unit) {
             }
         }
     }
+    }
 }
 
 // ===================== 来源入口 =====================
@@ -333,13 +353,18 @@ private class SourceAction(
 )
 
 @Composable
-private fun SourceButtonRow(first: SourceAction, second: SourceAction) {
+private fun SourceButtonRow(
+    first: SourceAction,
+    second: SourceAction,
+    third: SourceAction? = null,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(PADDING_S),
     ) {
         SourceButton(action = first, modifier = Modifier.weight(1f))
         SourceButton(action = second, modifier = Modifier.weight(1f))
+        third?.let { SourceButton(action = it, modifier = Modifier.weight(1f)) }
     }
 }
 
