@@ -60,7 +60,7 @@
     <string name="rotate_right">向右旋转</string>
     <string name="print">打印</string>
     <string name="save">保存</string>
-    <string name="scan_new">新建扫描</string>
+    <string name="scan_new">重新拍摄</string>
     <string name="scan_current">当前扫描</string>
     <string name="scan_discard_current">放弃当前扫描</string>
     <string name="scan_resume">继续扫描</string>

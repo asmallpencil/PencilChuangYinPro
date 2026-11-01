@@ -19,17 +19,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -47,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.pencil.chuangyin.core.ui.components.GlassPanel
 import org.fairscan.app.R
 import org.fairscan.app.ui.Navigation
 
@@ -123,20 +126,29 @@ fun DocumentBar(
             CommonPageList(pageListState, modifier = Modifier.fillMaxWidth())
         }
 
-        val color = MaterialTheme.colorScheme.surfaceContainerHigh
         if (isLandscape) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
+            // 操作栏改为宿主液态玻璃面板：跟随软件设置的玻璃开关与形状。
+            GlassPanel(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(color)
-                    .padding(8.dp)
+                    .navigationBarsPadding(),
+                shape = RoundedCornerShape(16.dp),
+                contentPadding = PaddingValues(8.dp),
             ) {
-                buttonBar()
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    buttonBar()
+                }
             }
         } else {
-            BottomAppBar(
-                containerColor = color,
+            GlassPanel(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
             ) {
                 Row(
                     modifier = Modifier

@@ -131,7 +131,7 @@
     <!-- Export screen: button -->
     <string name="save">Save</string>
     <!-- Export screen: button. Resume scan screen: button -->
-    <string name="scan_new">New Scan</string>
+    <string name="scan_new">Retake</string>
     <!-- Resume scan screen -->
     <string name="scan_current">Current scan</string>
     <!-- Resume scan screen -->

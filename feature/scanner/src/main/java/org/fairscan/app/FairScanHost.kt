@@ -39,7 +39,6 @@ import org.fairscan.app.ui.screens.print.PrintScreen
 import org.fairscan.app.ui.screens.print.PrintViewModel
 import org.fairscan.app.ui.screens.settings.SettingsScreen
 import org.fairscan.app.ui.screens.settings.SettingsViewModel
-import org.fairscan.app.ui.theme.FairScanTheme
 import org.opencv.android.OpenCVLoader
 import java.io.File
 
@@ -123,7 +122,9 @@ fun FairScanHost(
     // 相机是最底层页面：系统返回直接退出扫描，回到宿主页面。
     BackHandler(enabled = currentScreen == Screen.Main.Camera) { onExit() }
 
-    FairScanTheme {
+    // 直接继承宿主 AppTheme（颜色/形状/字体/液态玻璃均来自软件设置），
+    // 不再套用 FairScan 自带色板，否则设置里的主题改动对扫描界面无效。
+    run {
         when (val screen = currentScreen) {
             null -> Unit
             is Screen.Main.Camera -> {

@@ -10,7 +10,7 @@
   <img alt="Compose" src="https://img.shields.io/badge/Jetpack%20Compose-2024.12-4285F4.svg">
   <img alt="Android" src="https://img.shields.io/badge/Android-7.0%2B%20(API%2024)-3DDC84.svg">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%2F11-0078D4.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.1.0.0-orange.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.1.0.1-orange.svg">
 </p>
 
 ---
@@ -150,14 +150,14 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 
 安装包与源码归档都在 **[Releases](https://github.com/asmallpencil/PencilChuangYinPro/releases)** 页面。
 
-当前版本 **v2.1.0.0**（Android 分架构提供三个正式签名 APK，按设备按需下载即可）：
+当前版本 **v2.1.0.1**（Android 分架构提供三个正式签名 APK，按设备按需下载即可）：
 
 | 平台 | 文件 | 体积 | 说明 |
 | --- | --- | --- | --- |
-| Android 7.0+ 64 位 | [`PencilChuangYinPro-2.1.0.0-arm64-v8a-release.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.0/PencilChuangYinPro-2.1.0.0-arm64-v8a-release.apk) | ≈64 MB | 绝大多数现代机型，体积最小，推荐优先选择 |
-| Android 7.0+ 32 位 | [`PencilChuangYinPro-2.1.0.0-armeabi-v7a-release.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.0/PencilChuangYinPro-2.1.0.0-armeabi-v7a-release.apk) | ≈63 MB | 老设备 / 32 位系统专用 |
-| Android 7.0+ 32/64 共通 | [`PencilChuangYinPro-2.1.0.0-universal-release.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.0/PencilChuangYinPro-2.1.0.0-universal-release.apk) | ≈98 MB | 不确定架构时的兜底包，同时包含两种 ABI |
-| Windows 10/11 x64 | [`PencilChuangYinPro-2.1.0.0-windows-x64.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.0/PencilChuangYinPro-2.1.0.0-windows-x64.zip) | ≈68 MB | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装；桌面端最新构建也可从源码生成（见上文） |
+| Android 7.0+ 64 位 | [`PencilChuangYinPro-2.1.0.1-arm64-v8a-release.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.1/PencilChuangYinPro-2.1.0.1-arm64-v8a-release.apk) | ≈64 MB | 绝大多数现代机型，体积最小，推荐优先选择 |
+| Android 7.0+ 32 位 | [`PencilChuangYinPro-2.1.0.1-armeabi-v7a-release.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.1/PencilChuangYinPro-2.1.0.1-armeabi-v7a-release.apk) | ≈63 MB | 老设备 / 32 位系统专用 |
+| Android 7.0+ 32/64 共通 | [`PencilChuangYinPro-2.1.0.1-universal-release.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.1/PencilChuangYinPro-2.1.0.1-universal-release.apk) | ≈98 MB | 不确定架构时的兜底包，同时包含两种 ABI |
+| Windows 10/11 x64 | [`PencilChuangYinPro-2.1.0.1-windows-x64.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.1/PencilChuangYinPro-2.1.0.1-windows-x64.zip) | ≈68 MB | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装；桌面端最新构建也可从源码生成（见上文） |
 
 > 三个 APK 均为 release 包，并沿用与历史版本完全一致的签名（非新签名），因此可以直接覆盖安装、升级后不丢失任何旧数据。三者功能完全一致，仅打包的 ABI 不同；`32/64 共通版` 因同时内置两套原生库（含 sing-box）体积约为单包 1.5 倍。签名库与本机 `keystore.properties` 不入库；该签名已另行备份，保证后续版本继续沿用、不会因换签名而让老用户丢数据。
 

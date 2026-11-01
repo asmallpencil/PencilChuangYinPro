@@ -15,26 +15,27 @@
 package org.fairscan.app.ui.components
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import org.fairscan.app.R
 
+/**
+ * 扫描流程主操作按钮：转发到宿主 [AppPrimaryButton]，
+ * 自动获得主题形状、描边与液态玻璃（原生玻璃按钮）能力。
+ */
 @Composable
 fun MainActionButton(
     onClick: () -> Unit,
@@ -44,13 +45,13 @@ fun MainActionButton(
     iconDescription: String? = null,
     enabled: Boolean = true,
     ) {
-    Button(onClick = onClick, enabled = enabled, modifier = modifier) {
-        icon?.let {
-            Icon(icon, contentDescription = iconDescription)
-        }
-        Spacer(Modifier.width(8.dp))
-        Text(text)
-    }
+    AppPrimaryButton(
+        text = text,
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        leadingIcon = icon,
+    )
 }
 
 @Composable

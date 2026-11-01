@@ -112,7 +112,7 @@ private fun DevToolsScreen(
     var hexInput by remember { mutableStateOf("10 FF 40") }
     var thicknessInput by remember { mutableStateOf("2") }
     var copiesInput by remember { mutableStateOf("1") }
-    var testText by remember { mutableStateOf("开发者调试打印\nPencil ChuangYin Pro 2.1.0.0\n${viewModel.versionName()}") }
+    var testText by remember { mutableStateOf("开发者调试打印\nPencil ChuangYin Pro ${viewModel.versionName()}") }
     var urlInput by remember { mutableStateOf("https://www.pixiv.net") }
     var downloadUrl by remember { mutableStateOf("https://www.pixiv.net/robots.txt") }
     var showImageViewer by remember { mutableStateOf(false) }

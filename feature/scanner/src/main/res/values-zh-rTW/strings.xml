@@ -60,7 +60,7 @@
     <string name="rotate_right">向右旋轉</string>
     <string name="print">列印</string>
     <string name="save">儲存</string>
-    <string name="scan_new">開始掃描</string>
+    <string name="scan_new">重新拍攝</string>
     <string name="scan_current">目前掃描</string>
     <string name="scan_discard_current">放棄目前掃描</string>
     <string name="scan_resume">繼續掃描</string>

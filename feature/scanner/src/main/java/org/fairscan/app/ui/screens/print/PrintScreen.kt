@@ -26,16 +26,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
+import com.pencil.chuangyin.core.ui.components.GlassPanel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,6 +81,10 @@ fun PrintScreen(
                 title = { Text(stringResource(R.string.print)) },
                 navigationIcon = { BackButton(navigation.back) },
                 actions = { AppOverflowMenu(navigation) },
+                // 透明顶栏透出宿主壁纸，跟随软件设置的主题背景。
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                ),
             )
         }
     ) { innerPadding ->
@@ -89,14 +95,13 @@ fun PrintScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 1.dp,
+            // 缩略图卡片使用宿主液态玻璃面板：随软件设置的玻璃开关/形状/质感变化。
+            GlassPanel(
                 modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                contentPadding = PaddingValues(12.dp),
             ) {
                 Row(
-                    modifier = Modifier.padding(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     val thumbnail = document.thumbnail(0)
