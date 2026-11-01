@@ -56,7 +56,7 @@ compose.desktop {
             // 因此不走 msi/exe 安装包（packageExe 需要 WiX），
             // 改用 createDistributable 产出可直接运行的 app-image（内含 exe 启动器）。
             packageName = "PencilChuangYinPro"
-            packageVersion = "2.1.0.1"
+            packageVersion = "2.1.0.2"
             description = "Pencil ChuangYin Pro Desktop" // 必须是 ASCII：jpackage 按系统代码页读取 args 文件，中文会报 "Input length = 1"
             vendor = "Pencil"
             windows {

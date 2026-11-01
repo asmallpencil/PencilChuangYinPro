@@ -57,8 +57,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -142,6 +144,13 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val glassActive = rememberLiquidGlassActive()
+    // 版本号页脚：便于用户与发布包核对版本，不必进开发者调试页。
+    val context = LocalContext.current
+    val versionName = remember(context) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull()
+    }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -276,6 +285,17 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_menu_dev),
                     desc = stringResource(R.string.settings_menu_dev_desc),
                     onClick = onOpenDevTools,
+                )
+            }
+            if (!versionName.isNullOrBlank()) {
+                AppText(
+                    text = stringResource(R.string.settings_version, versionName),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    align = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = dimensionResource(ResR.dimen.dimen_global_padding_l)),
                 )
             }
         }

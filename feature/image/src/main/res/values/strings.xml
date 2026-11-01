@@ -21,14 +21,28 @@
 
     <!-- 算法 -->
     <string name="image_section_algorithm">抖动算法</string>
+    <string name="image_alg_auto">智能</string>
     <string name="image_alg_none">无</string>
+    <string name="image_alg_otsu">Otsu</string>
     <string name="image_alg_floyd">Floyd</string>
+    <string name="image_alg_jjn">JJN</string>
+    <string name="image_alg_stucki">Stucki</string>
     <string name="image_alg_atkinson">Atkinson</string>
+    <string name="image_alg_structure">结构感知</string>
+    <string name="image_alg_bayer">Bayer</string>
+    <string name="image_alg_bluenoise">蓝噪声</string>
     <string name="image_alg_sobel">Sobel</string>
     <string name="image_alg_sauvola">Sauvola</string>
+    <string name="image_alg_desc_auto">按画面内容自动选路 · 文档去阴影、照片保细节（推荐）</string>
     <string name="image_alg_desc_none">固定阈值二值化 · 线稿/文字最锐利</string>
+    <string name="image_alg_desc_otsu">Otsu 全局自动阈值 · 自动找到黑白分割点</string>
     <string name="image_alg_desc_floyd">Floyd–Steinberg 误差扩散 · 照片灰阶自然</string>
+    <string name="image_alg_desc_jjn">Jarvis–Judice–Ninke 误差扩散 · 扩散更平滑、层次细腻</string>
+    <string name="image_alg_desc_stucki">Stucki 误差扩散 · 细节与平滑折中</string>
     <string name="image_alg_desc_atkinson">Atkinson 误差扩散 · 高对比、高光干净</string>
+    <string name="image_alg_desc_structure">结构感知误差扩散 · 蛇形扫描 + 沿边缘抑制，细节不糊</string>
+    <string name="image_alg_desc_bayer">Bayer 8×8 有序抖动 · 规则网点、纹理稳定</string>
+    <string name="image_alg_desc_bluenoise">蓝噪声抖动 · 点分布均匀、无低频斑块</string>
     <string name="image_alg_desc_sobel">Sobel 算子边缘检测 · 黑白线稿</string>
     <string name="image_alg_desc_sauvola">Sauvola 局部自适应阈值 · 文档/试卷去阴影</string>
     <string name="image_label_threshold">二值化阈值: %1$d</string>

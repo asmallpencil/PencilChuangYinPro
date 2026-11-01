@@ -136,9 +136,16 @@ object ToolParamValues {
 
     /** 与桌面端 BinarizeAlgorithm 枚举名严格一致。 */
     val BINARIZE_VALUES = listOf(
+        "Auto",
         "FixedThreshold",
+        "OtsuThreshold",
         "FloydSteinberg",
+        "JarvisJudiceNinke",
+        "Stucki",
         "Atkinson",
+        "StructureAware",
+        "BayerOrdered",
+        "BlueNoise",
         "SobelEdge",
         "SauvolaAdaptive",
     )

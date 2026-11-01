@@ -13,16 +13,23 @@ import com.pencil.chuangyin.desktop.text.PrinterStatus
 
 /** 黑白化算法（与安卓端 BinarizeAlgorithm 一致）。 */
 enum class BinarizeAlgorithm {
+    Auto,
     FixedThreshold,
+    OtsuThreshold,
     FloydSteinberg,
+    JarvisJudiceNinke,
+    Stucki,
     Atkinson,
+    StructureAware,
+    BayerOrdered,
+    BlueNoise,
     SobelEdge,
     SauvolaAdaptive,
 }
 
 /** 图片处理参数（与安卓端 ImageProcessOptions 一致）。 */
 data class ImageProcessOptions(
-    val algorithm: BinarizeAlgorithm = BinarizeAlgorithm.FixedThreshold,
+    val algorithm: BinarizeAlgorithm = DEFAULT_ALGORITHM,
     val threshold: Int = DEFAULT_THRESHOLD,
     val rotationDegrees: Int = 0,
 ) {
@@ -39,6 +46,9 @@ data class ImageProcessOptions(
 
         /** 与安卓端一致：默认阈值 149（略高于中点，线稿更锐利）。 */
         const val DEFAULT_THRESHOLD = 149
+
+        /** 与安卓端一致：默认算法为智能自适应。 */
+        val DEFAULT_ALGORITHM = BinarizeAlgorithm.Auto
 
         val ROTATION_STEPS = listOf(0, 90, 180, 270)
     }

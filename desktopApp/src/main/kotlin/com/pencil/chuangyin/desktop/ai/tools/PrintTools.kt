@@ -197,11 +197,11 @@ class PrintTools(private val workspace: Workspace) {
         else -> PrintAlign.Start
     }
 
-    /** 算法名 → [BinarizeAlgorithm]，未提供或无法识别时回退默认算法。 */
+    /** 算法名 → [BinarizeAlgorithm]，未提供或无法识别时回退默认算法（智能自适应）。 */
     private fun parseAlgorithm(raw: String?): BinarizeAlgorithm {
         val name = raw?.trim().orEmpty()
         return BinarizeAlgorithm.entries.firstOrNull { it.name.equals(name, ignoreCase = true) }
-            ?: BinarizeAlgorithm.FixedThreshold
+            ?: ImageProcessOptions.DEFAULT_ALGORITHM
     }
 
     /** 把任意角度归一化到 0/90/180/270，避免 [ImageProcessOptions] 的入参校验抛异常。 */

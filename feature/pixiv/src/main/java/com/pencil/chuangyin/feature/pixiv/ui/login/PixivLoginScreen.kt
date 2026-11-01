@@ -175,8 +175,13 @@ private fun WebView.configureWebView(
 }
 
 private fun handleCallback(url: String, onAuthCode: (String) -> Unit): Boolean {
-    if (!url.startsWith(PixivConfig.REDIRECT_URI)) return false
-    val code = Uri.parse(url).getQueryParameter("code")
-    if (!code.isNullOrBlank()) onAuthCode(code)
-    return true
+    if (url.startsWith(PixivConfig.REDIRECT_URI)) {
+        val code = Uri.parse(url).getQueryParameter("code")
+        if (!code.isNullOrBlank()) onAuthCode(code)
+        return true
+    }
+    // 回调之外的导航只放行 http/https：登录页里的 javascript: / intent: / file: 等链接
+    // 一律拦截，避免这个带登录态 Cookie 的 WebView 被页面内容当作任意 scheme 的跳板。
+    val scheme = runCatching { Uri.parse(url).scheme?.lowercase() }.getOrNull()
+    return scheme != "http" && scheme != "https"
 }

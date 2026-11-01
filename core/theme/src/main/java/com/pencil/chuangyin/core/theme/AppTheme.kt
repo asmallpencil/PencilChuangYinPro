@@ -1,5 +1,6 @@
 package com.pencil.chuangyin.core.theme
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -17,9 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.Dispatchers
@@ -94,7 +97,13 @@ fun AppTheme(
         // 主窗口根 View：下发给 core:ui，用于自动识别独立弹窗窗口（见 LocalLiquidGlassWindowView）。
         val windowView = LocalView.current
         val glassBackground = if (themeState.liquidGlassRenderer == LiquidGlassRenderer.Kyant) {
-            Modifier.fillMaxSize().layerBackdrop(layerBackdrop)
+            Modifier
+                .fillMaxSize()
+                .layerBackdrop(layerBackdrop)
+                // 底色必须画在采样层**内部**：只画在最外层 Box 时，未设置背景图的场景采样层是空的，
+                // drawBackdrop 取不到像素 → 玻璃面整体透明（Kotlin 实现下看起来像「玻璃消失」）。
+                // 背景图带透明度时也一样，先铺底再叠图才能得到与屏幕一致的成色。
+                .background(baseScheme.background)
         } else {
             Modifier.fillMaxSize()
         }
@@ -141,13 +150,16 @@ private fun CustomBackgroundImage(uri: String?, alpha: Float, blurDp: Float) {
     if (uri == null) return
     val context = LocalContext.current
     val density = LocalDensity.current.density
+    // 解码上限：约 1.5 倍屏宽即可（背景按 Crop 铺满，再高的分辨率只会浪费内存）。
+    // 超清壁纸（4000×3000 以上）整图解码可达数百 MB，是旧实现最容易被忽略的 OOM 来源。
+    val maxWidthPx = with(LocalDensity.current) {
+        (LocalConfiguration.current.screenWidthDp.dp.toPx() * 1.5f).roundToInt()
+    }
     // 第一阶段：仅随 URI 重新解码原图，拖滑杆不会反复读盘解码。
-    val source by produceState<Bitmap?>(initialValue = null, uri) {
+    val source by produceState<Bitmap?>(initialValue = null, uri, maxWidthPx) {
         value = withContext(Dispatchers.IO) {
             runCatching {
-                context.contentResolver.openInputStream(Uri.parse(uri))?.use { stream ->
-                    BitmapFactory.decodeStream(stream)
-                }
+                decodeSampledBackground(context, Uri.parse(uri), maxWidthPx)
             }.getOrNull()
         }
     }
@@ -173,3 +185,22 @@ private fun CustomBackgroundImage(uri: String?, alpha: Float, blurDp: Float) {
         )
     }
 }
+
+/**
+ * 按目标宽度做 2 的幂次降采样解码背景图（两遍读取：先读尺寸，再按 inSampleSize 解码）。
+ *
+ * 背景图只用于铺满屏幕，无需保留原始分辨率；直接 `decodeStream` 会让 4000×3000 的壁纸
+ * 在 ARGB_8888 下占用约 48MB，更高像素的手机照片可到数百 MB，低端机极易 OOM。
+ */
+private fun decodeSampledBackground(context: Context, uri: Uri, maxWidthPx: Int): Bitmap? = runCatching {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
+    var sampleSize = 1
+    while (maxWidthPx > 0 && bounds.outWidth / (sampleSize * 2) >= maxWidthPx && sampleSize < 64) {
+        sampleSize *= 2
+    }
+    context.contentResolver.openInputStream(uri)?.use { stream ->
+        BitmapFactory.decodeStream(stream, null, BitmapFactory.Options().apply { inSampleSize = sampleSize })
+    }
+}.getOrNull()

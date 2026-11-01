@@ -28,7 +28,20 @@ import kotlinx.coroutines.withContext
 enum class TextAlign { START, CENTER, END }
 
 /** print_image 的黑白化算法，常量名与 [BinarizeAlgorithm] 枚举名严格一致。 */
-enum class BinarizeOption { FixedThreshold, FloydSteinberg, Atkinson, SobelEdge, SauvolaAdaptive }
+enum class BinarizeOption {
+    Auto,
+    FixedThreshold,
+    OtsuThreshold,
+    FloydSteinberg,
+    JarvisJudiceNinke,
+    Stucki,
+    Atkinson,
+    StructureAware,
+    BayerOrdered,
+    BlueNoise,
+    SobelEdge,
+    SauvolaAdaptive,
+}
 
 /**
  * 打印类工具集合：把「文本 / 图片 / 聊天记录」交给 core:printer 的打印管线。
@@ -207,9 +220,9 @@ private fun parseAlign(raw: TextAlign?): PrintAlign = when (raw) {
     else -> PrintAlign.Start
 }
 
-/** [BinarizeOption] → [BinarizeAlgorithm]，未提供时回退默认算法。 */
+/** [BinarizeOption] → [BinarizeAlgorithm]，未提供时回退默认算法（智能自适应）。 */
 private fun parseAlgorithm(raw: BinarizeOption?): BinarizeAlgorithm =
-    raw?.let { BinarizeAlgorithm.valueOf(it.name) } ?: BinarizeAlgorithm.FixedThreshold
+    raw?.let { BinarizeAlgorithm.valueOf(it.name) } ?: ImageProcessOptions.DEFAULT_ALGORITHM
 
 /** 把任意角度归一化到 0/90/180/270，避免 [ImageProcessOptions] 的入参校验抛异常。 */
 private fun normalizeRotation(degrees: Int): Int {

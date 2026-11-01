@@ -227,7 +227,9 @@ private fun PrinterStatusCapsule(
             .nativeGlassSurface(
                 shape = CardDefaults.shape,
                 enabled = glassActive,
-                fallbackColor = MaterialTheme.colorScheme.surfaceVariant,
+                // 与设置分组/其它页面卡片统一使用 surfaceContainerLow（M3 卡片默认层级），
+                // 避免玻璃关闭时首页卡片偏灰、与其余页面割裂。
+                fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
             )
             .glassAwareOutline(MaterialTheme.shapes.medium, glassActive)
             .clickable(onClick = onClick),
@@ -408,7 +410,7 @@ private fun CreativeToolsCard(
             .nativeGlassSurface(
                 shape = CardDefaults.shape,
                 enabled = glassActive,
-                fallbackColor = MaterialTheme.colorScheme.surfaceVariant,
+                fallbackColor = MaterialTheme.colorScheme.surfaceContainerLow,
             )
             .glassAwareOutline(MaterialTheme.shapes.medium, glassActive),
     ) {

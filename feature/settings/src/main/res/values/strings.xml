@@ -37,6 +37,7 @@
     <string name="settings_output_dialog_clear">恢复默认</string>
     <string name="settings_menu_licenses">开放源代码许可</string>
     <string name="settings_menu_licenses_desc">本应用所使用的开源项目</string>
+    <string name="settings_version">版本 %1$s</string>
 
     <!-- 画面设置 -->
     <string name="settings_visual_title">画面设置</string>

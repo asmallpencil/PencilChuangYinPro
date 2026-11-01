@@ -706,7 +706,7 @@ private fun PreviewPaper(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 AppText(
                     text = stringResource(R.string.image_preview_empty),
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
@@ -754,7 +754,7 @@ private fun PreviewPaper(
                                 }
                                 AppText(
                                     text = stringResource(R.string.image_page_indicator, page + 1, pages.size),
-                                    color = Color.Gray,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -765,7 +765,7 @@ private fun PreviewPaper(
     }
 }
 
-/** 算法选择（全部 5 种可达）+ 算法说明 + 阈值/旋转滑杆。 */
+/** 算法选择（全部 12 种可达）+ 算法说明 + 阈值/旋转滑杆。 */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun AlgorithmControls(
@@ -783,11 +783,18 @@ private fun AlgorithmControls(
     Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
 
     val algorithms = listOf(
-        BinarizeAlgorithm.FixedThreshold,
+        BinarizeAlgorithm.Auto,
+        BinarizeAlgorithm.StructureAware,
         BinarizeAlgorithm.FloydSteinberg,
+        BinarizeAlgorithm.JarvisJudiceNinke,
+        BinarizeAlgorithm.Stucki,
         BinarizeAlgorithm.Atkinson,
-        BinarizeAlgorithm.SobelEdge,
+        BinarizeAlgorithm.BayerOrdered,
+        BinarizeAlgorithm.BlueNoise,
+        BinarizeAlgorithm.OtsuThreshold,
+        BinarizeAlgorithm.FixedThreshold,
         BinarizeAlgorithm.SauvolaAdaptive,
+        BinarizeAlgorithm.SobelEdge,
     )
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
@@ -1068,17 +1075,31 @@ private fun ImagePrintProgressLine(progress: PrintProgress?) {
 }
 
 private fun algorithmLabelRes(algorithm: BinarizeAlgorithm): Int = when (algorithm) {
+    BinarizeAlgorithm.Auto -> R.string.image_alg_auto
     BinarizeAlgorithm.FixedThreshold -> R.string.image_alg_none
+    BinarizeAlgorithm.OtsuThreshold -> R.string.image_alg_otsu
     BinarizeAlgorithm.FloydSteinberg -> R.string.image_alg_floyd
+    BinarizeAlgorithm.JarvisJudiceNinke -> R.string.image_alg_jjn
+    BinarizeAlgorithm.Stucki -> R.string.image_alg_stucki
     BinarizeAlgorithm.Atkinson -> R.string.image_alg_atkinson
+    BinarizeAlgorithm.StructureAware -> R.string.image_alg_structure
+    BinarizeAlgorithm.BayerOrdered -> R.string.image_alg_bayer
+    BinarizeAlgorithm.BlueNoise -> R.string.image_alg_bluenoise
     BinarizeAlgorithm.SobelEdge -> R.string.image_alg_sobel
     BinarizeAlgorithm.SauvolaAdaptive -> R.string.image_alg_sauvola
 }
 
 private fun algorithmDescRes(algorithm: BinarizeAlgorithm): Int = when (algorithm) {
+    BinarizeAlgorithm.Auto -> R.string.image_alg_desc_auto
     BinarizeAlgorithm.FixedThreshold -> R.string.image_alg_desc_none
+    BinarizeAlgorithm.OtsuThreshold -> R.string.image_alg_desc_otsu
     BinarizeAlgorithm.FloydSteinberg -> R.string.image_alg_desc_floyd
+    BinarizeAlgorithm.JarvisJudiceNinke -> R.string.image_alg_desc_jjn
+    BinarizeAlgorithm.Stucki -> R.string.image_alg_desc_stucki
     BinarizeAlgorithm.Atkinson -> R.string.image_alg_desc_atkinson
+    BinarizeAlgorithm.StructureAware -> R.string.image_alg_desc_structure
+    BinarizeAlgorithm.BayerOrdered -> R.string.image_alg_desc_bayer
+    BinarizeAlgorithm.BlueNoise -> R.string.image_alg_desc_bluenoise
     BinarizeAlgorithm.SobelEdge -> R.string.image_alg_desc_sobel
     BinarizeAlgorithm.SauvolaAdaptive -> R.string.image_alg_desc_sauvola
 }

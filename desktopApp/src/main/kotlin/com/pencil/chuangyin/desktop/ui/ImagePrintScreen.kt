@@ -551,11 +551,18 @@ private fun AlgorithmControls(
 }
 
 private val ALGORITHMS = listOf(
-    BinarizeAlgorithm.FixedThreshold,
+    BinarizeAlgorithm.Auto,
+    BinarizeAlgorithm.StructureAware,
     BinarizeAlgorithm.FloydSteinberg,
+    BinarizeAlgorithm.JarvisJudiceNinke,
+    BinarizeAlgorithm.Stucki,
     BinarizeAlgorithm.Atkinson,
-    BinarizeAlgorithm.SobelEdge,
+    BinarizeAlgorithm.BayerOrdered,
+    BinarizeAlgorithm.BlueNoise,
+    BinarizeAlgorithm.OtsuThreshold,
+    BinarizeAlgorithm.FixedThreshold,
     BinarizeAlgorithm.SauvolaAdaptive,
+    BinarizeAlgorithm.SobelEdge,
 )
 
 @Composable
@@ -930,17 +937,31 @@ private fun pickItemLabel(item: PickItem): String = when (item) {
 // ===================== 文案映射 =====================
 
 private fun algorithmLabel(algorithm: BinarizeAlgorithm): String = when (algorithm) {
+    BinarizeAlgorithm.Auto -> "智能"
     BinarizeAlgorithm.FixedThreshold -> "无"
+    BinarizeAlgorithm.OtsuThreshold -> "Otsu"
     BinarizeAlgorithm.FloydSteinberg -> "Floyd"
+    BinarizeAlgorithm.JarvisJudiceNinke -> "JJN"
+    BinarizeAlgorithm.Stucki -> "Stucki"
     BinarizeAlgorithm.Atkinson -> "Atkinson"
+    BinarizeAlgorithm.StructureAware -> "结构感知"
+    BinarizeAlgorithm.BayerOrdered -> "Bayer"
+    BinarizeAlgorithm.BlueNoise -> "蓝噪声"
     BinarizeAlgorithm.SobelEdge -> "Sobel"
     BinarizeAlgorithm.SauvolaAdaptive -> "Sauvola"
 }
 
 private fun algorithmDescription(algorithm: BinarizeAlgorithm): String = when (algorithm) {
+    BinarizeAlgorithm.Auto -> "按画面内容自动选路 · 文档去阴影、照片保细节（推荐）"
     BinarizeAlgorithm.FixedThreshold -> "固定阈值二值化 · 线稿/文字最锐利"
+    BinarizeAlgorithm.OtsuThreshold -> "Otsu 全局自动阈值 · 自动找到黑白分割点"
     BinarizeAlgorithm.FloydSteinberg -> "Floyd–Steinberg 误差扩散 · 照片灰阶自然"
+    BinarizeAlgorithm.JarvisJudiceNinke -> "Jarvis–Judice–Ninke 误差扩散 · 扩散更平滑、层次细腻"
+    BinarizeAlgorithm.Stucki -> "Stucki 误差扩散 · 细节与平滑折中"
     BinarizeAlgorithm.Atkinson -> "Atkinson 误差扩散 · 高对比、高光干净"
+    BinarizeAlgorithm.StructureAware -> "结构感知误差扩散 · 蛇形扫描 + 沿边缘抑制，细节不糊"
+    BinarizeAlgorithm.BayerOrdered -> "Bayer 8×8 有序抖动 · 规则网点、纹理稳定"
+    BinarizeAlgorithm.BlueNoise -> "蓝噪声抖动 · 点分布均匀、无低频斑块"
     BinarizeAlgorithm.SobelEdge -> "Sobel 算子边缘检测 · 黑白线稿"
     BinarizeAlgorithm.SauvolaAdaptive -> "Sauvola 局部自适应阈值 · 文档/试卷去阴影"
 }
