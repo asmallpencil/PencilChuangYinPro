@@ -1,8 +1,13 @@
 package com.pencil.chuangyin.feature.ai.ui
 
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
@@ -18,6 +23,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -41,15 +47,18 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BrokenImage
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -61,6 +70,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
@@ -92,7 +102,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -100,9 +112,11 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pencil.chuangyin.core.theme.LiquidGlassLayer
@@ -116,7 +130,6 @@ import com.pencil.chuangyin.core.ui.components.AppLoadingIndicator
 import com.pencil.chuangyin.core.ui.components.AppPrimaryButton
 import com.pencil.chuangyin.core.ui.components.AppText
 import com.pencil.chuangyin.core.ui.components.AppTextButton
-import com.pencil.chuangyin.core.ui.components.AppTextField
 import com.pencil.chuangyin.core.ui.components.LiquidGlassLayerScope
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.pseudoGlassSurface
@@ -127,6 +140,7 @@ import com.pencil.chuangyin.feature.ai.R
 import com.pencil.chuangyin.feature.ai.data.ConversationSummary
 import com.pencil.chuangyin.feature.ai.tools.ToolNames
 import com.pencil.chuangyin.resources.R as ResR
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -215,8 +229,8 @@ fun AiChatScreen(
     var pendingDelete by remember { mutableStateOf<ConversationSummary?>(null) }
     // 正在查看的产物：点开聊天里的图片/视频/文件后进入全屏查看器。
     var viewingArtifact by remember { mutableStateOf<AiUiArtifact?>(null) }
-    // 上传入口：底部表单先让用户选择「图片 / 任意文件」，再各自拉起系统文档选择器。
-    var attachSheetVisible by remember { mutableStateOf(false) }
+    // 上传入口：输入栏下方的三宫格（拍照 / 相册 / 文件），空会话默认展开。
+    var attachExpanded by remember { mutableStateOf(false) }
     // 权限模式入口：与上传同级，点开后选择审批粒度。
     var permissionSheetVisible by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -231,11 +245,28 @@ fun AiChatScreen(
     val reportImport: (String) -> Unit = { message ->
         scope.launch { snackbarHostState.showSnackbar(message) }
     }
+    val context = LocalContext.current
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { onImport(it, reportImport) }
     }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { onImport(it, reportImport) }
+    }
+    // 系统相机：照片先写进 FileProvider 授权的缓存文件，再按普通 Uri 导入工作区。
+    var cameraOutputUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(TakePictureWithGrant()) { success ->
+        val uri = cameraOutputUri
+        cameraOutputUri = null
+        if (success && uri != null) onImport(uri, reportImport)
+    }
+    val launchCamera: () -> Unit = {
+        runCatching {
+            val dir = File(context.cacheDir, CAMERA_DIR).apply { mkdirs() }
+            val file = File(dir, "ai_shot_${System.nanoTime()}.jpg")
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            cameraOutputUri = uri
+            cameraLauncher.launch(uri)
+        }.onFailure { reportImport(context.getString(R.string.ai_camera_unavailable)) }
     }
 
     Scaffold(
@@ -279,16 +310,29 @@ fun AiChatScreen(
         },
         bottomBar = {
             if (state.hasUsableModel) {
-                AiInputBar(
+                AiComposer(
                     value = state.input,
                     attachments = state.attachments,
                     streaming = state.streaming,
                     printerConnected = state.printerConnected,
                     permissionMode = state.permissionMode,
+                    uploadExpanded = attachExpanded || state.isEmpty,
                     onValueChange = onInputChange,
                     onSend = onSend,
                     onStop = onStop,
-                    onAttach = { attachSheetVisible = true },
+                    onToggleUpload = { attachExpanded = !attachExpanded },
+                    onPickCamera = {
+                        attachExpanded = false
+                        launchCamera()
+                    },
+                    onPickImage = {
+                        attachExpanded = false
+                        imagePicker.launch(arrayOf("image/*"))
+                    },
+                    onPickFile = {
+                        attachExpanded = false
+                        filePicker.launch(arrayOf("*/*"))
+                    },
                     onPermissionClick = { permissionSheetVisible = true },
                     onRemoveAttachment = onRemoveAttachment,
                     resolveImage = resolveImage,
@@ -316,6 +360,10 @@ fun AiChatScreen(
                     resolveImage = resolveImage,
                     onCopyMessage = onCopyMessage,
                     onOpenArtifact = { viewingArtifact = it },
+                    onSuggestion = { suggestion ->
+                        onInputChange(suggestion)
+                        onSend()
+                    },
                 )
             }
         }
@@ -340,24 +388,6 @@ fun AiChatScreen(
                     onNewConversation = onNewConversation,
                     onOpen = onOpenConversation,
                     onDelete = { pendingDelete = it },
-                )
-            }
-        }
-    }
-
-    if (attachSheetVisible) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(onDismissRequest = { attachSheetVisible = false }, sheetState = sheetState) {
-            LiquidGlassLayerScope(LiquidGlassLayer.MODAL) {
-                AiAttachSheet(
-                    onPickImage = {
-                        attachSheetVisible = false
-                        imagePicker.launch(arrayOf("image/*"))
-                    },
-                    onPickFile = {
-                        attachSheetVisible = false
-                        filePicker.launch(arrayOf("*/*"))
-                    },
                 )
             }
         }
@@ -534,7 +564,7 @@ private fun AiTopBarTitle(
     }
 }
 
-/** 消息列表：欢迎卡 / 气泡 / 工具活动 / 错误卡。 */
+/** 消息列表：欢迎页 / 气泡 / 工具活动 / 错误卡。 */
 @Composable
 private fun AiConversationList(
     state: AiChatUiState,
@@ -544,6 +574,7 @@ private fun AiConversationList(
     resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
     onCopyMessage: (String) -> Unit,
     onOpenArtifact: (AiUiArtifact) -> Unit,
+    onSuggestion: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val padM = dimensionResource(ResR.dimen.dimen_global_padding_m)
@@ -596,7 +627,12 @@ private fun AiConversationList(
         verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.ai_message_gap)),
     ) {
         if (showWelcome) {
-            item(key = KEY_WELCOME) { AiWelcomeCard() }
+            item(key = KEY_WELCOME) {
+                AiWelcomePanel(
+                    onSuggestion = onSuggestion,
+                    modifier = Modifier.fillParentMaxSize(),
+                )
+            }
         }
         items(messages, key = { MESSAGE_KEY_PREFIX + it.id }) { message ->
             // 新气泡带着弹簧就位，流式增长时下方内容会平滑让位。
@@ -634,27 +670,108 @@ private fun AiConversationList(
     }
 }
 
-/** 欢迎卡：空会话时的首次引导。 */
+/**
+ * 空会话欢迎页：大标题 + 说明 + 建议任务卡。
+ *
+ * 视觉参考主流 AI 客户端：标题落在屏幕中上部的留白区，建议项靠下、逐条可点，
+ * 点一下就等于把这句话发出去，减少用户「不知道能干什么」的空白感。
+ */
 @Composable
-private fun AiWelcomeCard(modifier: Modifier = Modifier) {
+private fun AiWelcomePanel(
+    onSuggestion: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val padL = dimensionResource(ResR.dimen.dimen_global_padding_l)
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .pseudoGlassSurface(
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            )
-            .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
     ) {
+        Spacer(Modifier.weight(0.9f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+        Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
         AppText(
             text = stringResource(R.string.ai_welcome_title),
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.SemiBold),
         )
         Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
         AppText(
             text = stringResource(R.string.ai_welcome_desc),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.weight(1f))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
+        ) {
+            AiSuggestionRow(Icons.Filled.AutoAwesome, R.string.ai_suggestion_table, onSuggestion)
+            AiSuggestionRow(Icons.Filled.Lightbulb, R.string.ai_suggestion_note, onSuggestion)
+            AiSuggestionRow(Icons.Filled.Image, R.string.ai_suggestion_image, onSuggestion)
+            AiSuggestionRow(Icons.Filled.Info, R.string.ai_suggestion_tips, onSuggestion)
+        }
+        Spacer(Modifier.height(padL))
+    }
+}
+
+/** 建议任务行：左图标 + 文案 + 右侧箭头，整行可点。 */
+@Composable
+private fun AiSuggestionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    @StringRes textRes: Int,
+    onSuggestion: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val text = stringResource(textRes)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(18.dp),
+            )
+            .clickable { onSuggestion(text) }
+            .padding(horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m), vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+        AppText(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier
+                .size(16.dp)
+                .graphicsLayer(rotationZ = 180f),
         )
     }
 }
@@ -682,9 +799,18 @@ private fun AiMessageBubble(
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Top,
     ) {
+        if (!isUser) {
+            AiAssistantAvatar()
+            Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+        }
         Column(
-            modifier = Modifier.widthIn(max = dimensionResource(R.dimen.ai_bubble_max_width)),
+            modifier = if (isUser) {
+                Modifier.widthIn(max = dimensionResource(R.dimen.ai_bubble_max_width))
+            } else {
+                Modifier.weight(1f)
+            },
             horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
         ) {
             if (message.reasoning != null) {
@@ -712,7 +838,31 @@ private fun AiMessageBubble(
     }
 }
 
-/** 气泡本体：按角色取底色，工具消息额外带一行工具名，右下角带一键复制按钮。 */
+/** 助手头像：与欢迎页同源的品牌圆标，替代整条气泡底色，让长回答更像正文而不是卡片。 */
+@Composable
+private fun AiAssistantAvatar(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.AutoAwesome,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+/**
+ * 气泡本体。
+ *
+ * 用户消息：右侧有底色气泡；助手正文：扁平排版（无底色、占满可用宽度），避免大段回答被
+ * 层层玻璃卡包住显得笨重；工具消息：浅色小卡，标题行写明工具名，正文可折叠。
+ */
 @Composable
 private fun AiBubbleSurface(
     message: AiUiMessage,
@@ -720,11 +870,12 @@ private fun AiBubbleSurface(
     onCopyMessage: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val flat = message.role == AiMessageRole.Assistant
     val container = when (message.role) {
         AiMessageRole.User -> MaterialTheme.colorScheme.primaryContainer
         AiMessageRole.Error -> MaterialTheme.colorScheme.errorContainer
         AiMessageRole.Tool -> MaterialTheme.colorScheme.surfaceContainer
-        AiMessageRole.Assistant -> MaterialTheme.colorScheme.surfaceContainerHigh
+        AiMessageRole.Assistant -> Color.Transparent
     }
     val contentColor = when (message.role) {
         AiMessageRole.User -> MaterialTheme.colorScheme.onPrimaryContainer
@@ -732,9 +883,13 @@ private fun AiBubbleSurface(
         else -> MaterialTheme.colorScheme.onSurface
     }
     Column(
-        modifier = modifier
-            .pseudoGlassSurface(shape = MaterialTheme.shapes.large, color = container)
-            .padding(dimensionResource(R.dimen.ai_bubble_padding)),
+        modifier = if (flat) {
+            modifier.fillMaxWidth()
+        } else {
+            modifier
+                .pseudoGlassSurface(shape = MaterialTheme.shapes.large, color = container)
+                .padding(dimensionResource(R.dimen.ai_bubble_padding))
+        },
     ) {
         if (message.role == AiMessageRole.Tool) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -776,24 +931,34 @@ private fun AiBubbleSurface(
                 color = contentColor,
             )
         }
-        if (copyText.isNotBlank()) {
+        if (copyText.isNotBlank() && !message.isStreaming) {
             Spacer(Modifier.height(2.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = if (message.role == AiMessageRole.User) {
+                    Arrangement.End
+                } else {
+                    Arrangement.Start
+                },
             ) {
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .clickable { onCopyMessage(copyText) },
-                    contentAlignment = Alignment.Center,
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onCopyMessage(copyText) }
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         imageVector = Icons.Filled.ContentCopy,
                         contentDescription = stringResource(R.string.ai_copy_bubble),
-                        tint = contentColor.copy(alpha = 0.62f),
-                        modifier = Modifier.size(18.dp),
+                        tint = contentColor.copy(alpha = 0.55f),
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    AppText(
+                        text = stringResource(R.string.ai_copy_short),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = contentColor.copy(alpha = 0.55f),
                     )
                 }
             }
@@ -801,27 +966,21 @@ private fun AiBubbleSurface(
     }
 }
 
-/** 等待回答占位气泡：任务已送达但还没有任何助手内容时的即时反馈。 */
+/** 等待回答占位：任务已送达但还没有任何助手内容时的即时反馈，与助手消息同样带圆标。 */
 @Composable
 private fun AiWaitingBubble(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start,
+        verticalAlignment = Alignment.Top,
     ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = dimensionResource(R.dimen.ai_bubble_max_width))
-                .pseudoGlassSurface(
-                    shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                )
-                .padding(dimensionResource(R.dimen.ai_bubble_padding)),
-        ) {
-            AiThinkingRow(
-                text = stringResource(R.string.ai_waiting_reply),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+        AiAssistantAvatar()
+        Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+        AiThinkingRow(
+            text = stringResource(R.string.ai_waiting_reply),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 
@@ -1165,11 +1324,18 @@ private fun AiImageArtifact(
             }
         }
     }
+    // 图片产物按整行宽度预览：生成的表格/图表要能看清结构，再点开进入全屏查看器。
     Box(
         modifier = modifier
-            .size(dimensionResource(R.dimen.ai_artifact_size))
+            .fillMaxWidth()
+            .height(dimensionResource(R.dimen.ai_artifact_preview_height))
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                shape = shape,
+            )
             .clickable { onOpen(artifact) },
         contentAlignment = Alignment.Center,
     ) {
@@ -1178,8 +1344,10 @@ private fun AiImageArtifact(
             Image(
                 bitmap = bitmap,
                 contentDescription = stringResource(R.string.ai_artifact_image),
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(4.dp),
             )
         } else {
             Icon(
@@ -1192,10 +1360,10 @@ private fun AiImageArtifact(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(4.dp)
+                .padding(8.dp)
                 .clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.42f))
-                .padding(4.dp),
+                .padding(5.dp),
         ) {
             Icon(
                 imageVector = Icons.Filled.OpenInFull,
@@ -1292,115 +1460,330 @@ private fun AiNoModelGuide(onOpenConfig: () -> Unit, modifier: Modifier = Modifi
 }
 
 /**
- * 底部输入栏：未连接打印机时给出提示，运行中按钮切换为「停止」。
+ * 底部输入区：三宫格上传 + 悬浮输入卡 + 底部状态提示。
  *
  * 使用 [pseudoGlassSurface]（同帧自绘磨砂）而非真玻璃：呼起输入法时该栏会随窗口 inset 上移，
  * 真玻璃需要采样背景、布局变化瞬间采样区尚未就绪会呈现黑屏，自绘方案不依赖背景采样。
  */
 @Composable
-private fun AiInputBar(
+private fun AiComposer(
     value: String,
     attachments: List<AiUiArtifact>,
     streaming: Boolean,
     printerConnected: Boolean,
     permissionMode: AgentPermissionMode,
+    uploadExpanded: Boolean,
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
     onStop: () -> Unit,
-    onAttach: () -> Unit,
+    onToggleUpload: () -> Unit,
+    onPickCamera: () -> Unit,
+    onPickImage: () -> Unit,
+    onPickFile: () -> Unit,
     onPermissionClick: () -> Unit,
     onRemoveAttachment: (String) -> Unit,
     resolveImage: (suspend (AiUiArtifact) -> ImageBitmap?)?,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.pseudoGlassSurface(
-            // 与全局底栏一致：圆角取主题边角尺寸，0 会被原生层按直角处理而产生形状错位。
-            shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_l)),
-            color = MaterialTheme.colorScheme.surface,
-        ),
-        color = Color.Transparent,
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .pseudoGlassSurface(
+                shape = RoundedCornerShape(
+                    topStart = dimensionResource(ResR.dimen.dimen_shape_corner_l),
+                    topEnd = dimensionResource(ResR.dimen.dimen_shape_corner_l),
+                ),
+                color = MaterialTheme.colorScheme.surface,
+            )
+            .padding(top = 8.dp, bottom = 6.dp),
     ) {
-        Column(
+        // 挂载区：平时不显示，有附件时展开；发送后随状态清空自动折叠。
+        AnimatedVisibility(
+            visible = attachments.isNotEmpty(),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp),
+            ) {
+                AiAttachmentStrip(
+                    attachments = attachments,
+                    onRemove = onRemoveAttachment,
+                    resolveImage = resolveImage,
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+        // 三宫格：空会话默认展示，点回形针也能随时唤起。
+        AnimatedVisibility(
+            visible = uploadExpanded && !streaming,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            AiUploadGrid(
+                onPickCamera = onPickCamera,
+                onPickImage = onPickImage,
+                onPickFile = onPickFile,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            )
+        }
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(dimensionResource(ResR.dimen.dimen_global_padding_m)),
+                .padding(horizontal = 12.dp),
+            shape = RoundedCornerShape(26.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 0.dp,
         ) {
-            // 挂载区：平时不显示，有附件时展开；发送后随状态清空自动折叠。
-            AnimatedVisibility(
-                visible = attachments.isNotEmpty(),
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
+            Column(
+                modifier = Modifier.padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 6.dp),
             ) {
-                Column {
-                    AiAttachmentStrip(
-                        attachments = attachments,
-                        onRemove = onRemoveAttachment,
-                        resolveImage = resolveImage,
-                    )
-                    Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-                }
-            }
-            if (!printerConnected) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Filled.Info,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(dimensionResource(R.dimen.ai_inline_icon_size)),
-                    )
-                    Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-                    AppText(
-                        text = stringResource(R.string.ai_printer_off_hint),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-            }
-            Row(verticalAlignment = Alignment.Bottom) {
-                AppIconButton(
-                    onClick = onPermissionClick,
-                    imageVector = Icons.Filled.Security,
-                    contentDescription = stringResource(R.string.ai_permission_desc),
-                    tint = permissionMode.tintColor(),
-                )
-                Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-                AppIconButton(
-                    onClick = onAttach,
-                    imageVector = Icons.Filled.AttachFile,
-                    contentDescription = stringResource(R.string.ai_attach),
-                    enabled = !streaming,
-                    glass = false,
-                )
-                Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-                AppTextField(
+                BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
                     modifier = Modifier
-                        .weight(1f)
-                        .heightIn(max = dimensionResource(R.dimen.ai_input_max_height)),
-                    placeholder = stringResource(R.string.ai_input_hint),
+                        .fillMaxWidth()
+                        .heightIn(
+                            min = 40.dp,
+                            max = dimensionResource(R.dimen.ai_input_max_height),
+                        ),
                     enabled = !streaming,
-                    singleLine = false,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    maxLines = 6,
+                    decorationBox = { innerTextField ->
+                        Box(contentAlignment = Alignment.TopStart) {
+                            if (value.isEmpty()) {
+                                AppText(
+                                    text = stringResource(R.string.ai_input_hint),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                                )
+                            }
+                            innerTextField()
+                        }
+                    },
                 )
-                Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-                if (streaming) {
-                    AppIconButton(
-                        onClick = onStop,
-                        imageVector = Icons.Filled.Stop,
-                        contentDescription = stringResource(R.string.ai_desc_stop),
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AiComposerChip(
+                        icon = Icons.Filled.Security,
+                        text = stringResource(permissionMode.titleRes()),
+                        tint = permissionMode.tintColor(),
+                        onClick = onPermissionClick,
                     )
-                } else {
-                    AppIconButton(
-                        onClick = onSend,
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = stringResource(R.string.ai_desc_send),
+                    Spacer(Modifier.width(8.dp))
+                    if (!printerConnected) {
+                        AiComposerChip(
+                            icon = Icons.Filled.Info,
+                            text = stringResource(R.string.ai_printer_chip_off),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            onClick = null,
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    AiIconTap(
+                        icon = if (uploadExpanded) Icons.Filled.Close else Icons.Filled.AttachFile,
+                        contentDescription = stringResource(R.string.ai_attach),
+                        enabled = !streaming,
+                        onClick = onToggleUpload,
+                    )
+                    Spacer(Modifier.width(2.dp))
+                    AiSendButton(
+                        streaming = streaming,
                         enabled = value.isNotBlank() || attachments.isNotEmpty(),
+                        onSend = onSend,
+                        onStop = onStop,
                     )
                 }
             }
         }
+        if (!printerConnected) {
+            Spacer(Modifier.height(4.dp))
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                AppText(
+                    text = stringResource(R.string.ai_printer_off_hint),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** 输入卡底部的圆角小标签：图标 + 短文案，可选点击。 */
+@Composable
+private fun AiComposerChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    tint: Color,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(4.dp))
+        AppText(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** 输入卡右侧的图标按钮：无底色，只有点击态，避免与发送按钮抢视觉。 */
+@Composable
+private fun AiIconTap(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                alpha = if (enabled) 1f else 0.4f,
+            ),
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+/** 圆形发送按钮：运行中切换为「停止」，输入为空时降为弱色但仍可点（会给出提示）。 */
+@Composable
+private fun AiSendButton(
+    streaming: Boolean,
+    enabled: Boolean,
+    onSend: () -> Unit,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val active = streaming || enabled
+    Box(
+        modifier = modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(
+                if (active) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                },
+            )
+            .clickable {
+                if (streaming) onStop() else if (enabled) onSend()
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = if (streaming) Icons.Filled.Stop else Icons.Filled.ArrowUpward,
+            contentDescription = stringResource(
+                if (streaming) R.string.ai_desc_stop else R.string.ai_desc_send,
+            ),
+            tint = if (active) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+/** 上传三宫格：拍照 / 相册 / 文件，与主流 AI 客户端的首页入口一致。 */
+@Composable
+private fun AiUploadGrid(
+    onPickCamera: () -> Unit,
+    onPickImage: () -> Unit,
+    onPickFile: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AiUploadTile(
+            icon = Icons.Filled.CameraAlt,
+            label = stringResource(R.string.ai_upload_camera),
+            onClick = onPickCamera,
+            modifier = Modifier.weight(1f),
+        )
+        AiUploadTile(
+            icon = Icons.Filled.PhotoLibrary,
+            label = stringResource(R.string.ai_upload_gallery),
+            onClick = onPickImage,
+            modifier = Modifier.weight(1f),
+        )
+        AiUploadTile(
+            icon = Icons.Filled.AttachFile,
+            label = stringResource(R.string.ai_upload_file),
+            onClick = onPickFile,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/** 单个上传入口：方形卡片，图标在上、文字在下。 */
+@Composable
+private fun AiUploadTile(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(18.dp)
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                shape = shape,
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.height(6.dp))
+        AppText(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -1524,79 +1907,6 @@ private fun AiAttachmentThumbnail(
                 imageVector = Icons.Filled.BrokenImage,
                 contentDescription = stringResource(R.string.ai_artifact_image),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-/** 上传方式选择：图片走 image/* 过滤器，任意文件走 */*。 */
-@Composable
-private fun AiAttachSheet(
-    onPickImage: () -> Unit,
-    onPickFile: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(bottom = dimensionResource(ResR.dimen.dimen_global_padding_m)),
-    ) {
-        AppText(
-            text = stringResource(R.string.ai_attach_title),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(
-                horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
-                vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
-            ),
-        )
-        AppDivider()
-        AiAttachRow(
-            icon = Icons.Filled.Image,
-            title = stringResource(R.string.ai_attach_image),
-            description = stringResource(R.string.ai_attach_image_desc),
-            onClick = onPickImage,
-        )
-        AiAttachRow(
-            icon = Icons.AutoMirrored.Filled.InsertDriveFile,
-            title = stringResource(R.string.ai_attach_file),
-            description = stringResource(R.string.ai_attach_file_desc),
-            onClick = onPickFile,
-        )
-    }
-}
-
-/** 上传选项行：图标 + 标题 + 说明。 */
-@Composable
-private fun AiAttachRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    description: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(
-                horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
-                vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(dimensionResource(R.dimen.ai_inline_icon_size)),
-        )
-        Spacer(Modifier.width(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-        Column(modifier = Modifier.weight(1f)) {
-            AppText(text = title, style = MaterialTheme.typography.bodyLarge)
-            AppText(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -1818,6 +2128,25 @@ private fun AiHistoryRow(
 /** 是否需要在列表中渲染该气泡：空白载体（纯工具调用的助手消息）不展示。 */
 private fun AiUiMessage.isRenderable(): Boolean =
     role == AiMessageRole.Tool || content.isNotBlank() || !reasoning.isNullOrBlank() || artifacts.isNotEmpty()
+
+/**
+ * ACTION_IMAGE_CAPTURE 带 URI 授权：
+ * 官方 [ActivityResultContracts.TakePicture] 不会给 EXTRA_OUTPUT 的 FileProvider URI 加授权标志，
+ * 部分系统相机会因此写入失败；这里显式带上读写授权，兼容面更广。
+ */
+private class TakePictureWithGrant : ActivityResultContract<Uri, Boolean>() {
+    override fun createIntent(context: Context, input: Uri): Intent =
+        Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+            putExtra(MediaStore.EXTRA_OUTPUT, input)
+            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+    override fun parseResult(resultCode: Int, intent: Intent?): Boolean =
+        resultCode == Activity.RESULT_OK
+}
+
+/** 拍照临时文件目录：与 pixiv_file_paths.xml 里声明的 camera_shots 保持一致。 */
+private const val CAMERA_DIR = "camera_shots"
 
 /** 工具结果超出该字符数时默认折叠，避免整份文件内容刷屏。 */
 private const val TOOL_RESULT_COLLAPSE_CHARS = 240

@@ -91,6 +91,7 @@ class ShellRuntime @Inject constructor(
         val dir = File(context.filesDir, BIN_DIR_NAME)
         if (!dir.exists()) dir.mkdirs()
         ensureBashShim(dir)
+        ensureMissingCommandShims(dir)
         dir
     }
 
@@ -106,6 +107,42 @@ class ShellRuntime @Inject constructor(
         if (!linked) {
             runCatching { bash.writeText("#!/system/bin/sh\nexec $target \"$@\"\n") }
             bash.setExecutable(true, false)
+        }
+    }
+
+    /**
+     * 为当前终端里确实不存在的解释器/工具放置「明确的失败提示」。
+     *
+     * 以前模型会反复尝试 `python3 script.py`，然后在大量 `command not found` 里打转；
+     * 这里让这些命令直接返回一段可读的替代方案并以 127 退出，模型一次就能知道该换工具。
+     */
+    private fun ensureMissingCommandShims(dir: File) {
+        val shell = systemShell?.absolutePath ?: "/system/bin/sh"
+        MISSING_COMMANDS.forEach { name ->
+            val file = File(dir, name)
+            if (file.exists()) return@forEach
+            val hint = when (name) {
+                "python", "python3", "pip", "pip3" ->
+                    "当前内置终端不支持 Python。请改用项目内置工具（create_table / create_chart / create_note / draw_image / edit_image），或用 sh + awk/sed 处理文本。"
+                "node", "npm", "npx" ->
+                    "当前内置终端不支持 Node.js。请改用项目内置工具，或只用 sh 脚本完成文本/文件处理。"
+                "git" ->
+                    "当前内置终端不提供 git。文件操作请使用内置工具（read_file / write_file / copy_file / move_file / list_files）。"
+                else ->
+                    "当前内置终端不提供 $name，请改用项目内置工具或 sh 脚本。"
+            }
+            runCatching {
+                file.writeText("#!/bin/sh\nprintf '%s\\n' \"[pencil] $hint\" >&2\nexit 127\n")
+                file.setExecutable(true, false)
+            }
+        }
+        // 兼容 shell 名：模型常用 `sh` 直接跑脚本，这里保证 PATH 中 sh 可被解析。
+        val sh = File(dir, "sh")
+        if (!sh.exists()) {
+            runCatching {
+                sh.writeText("#!/bin/sh\nexec $shell \"$@\"\n")
+                sh.setExecutable(true, false)
+            }
         }
     }
 
@@ -468,6 +505,9 @@ class ShellRuntime @Inject constructor(
 
         /** 这些命令依赖 apt/dpkg 数据库，只有真正可执行的 Termux 用户land才支持。 */
         val PACKAGE_MANAGERS = setOf("apt", "apt-get", "pkg", "dpkg")
+
+        /** 当前终端里不存在、需要给出明确替代方案的命令。 */
+        val MISSING_COMMANDS = setOf("python", "python3", "pip", "pip3", "node", "npm", "npx", "git")
 
         val PACKAGE_UNAVAILABLE_MESSAGE = """
             无法安装额外的 Linux 包：当前 Android 版本禁止应用从私有目录执行下载的二进制（W^X），

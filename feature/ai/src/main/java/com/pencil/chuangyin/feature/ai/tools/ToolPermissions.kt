@@ -23,12 +23,14 @@ object ToolPermissions {
         ToolNames.EDIT_IMAGE,
         ToolNames.EXTRACT_VIDEO_FRAMES,
         ToolNames.DRAW_IMAGE,
+        ToolNames.CREATE_TABLE,
+        ToolNames.CREATE_CHART,
+        ToolNames.CREATE_NOTE,
     )
 
     private val DANGEROUS = setOf(
         ToolNames.DELETE_FILE,
         ToolNames.PRINT_TEXT,
-        ToolNames.PRINT_TABLE,
         ToolNames.PRINT_IMAGE,
         ToolNames.PRINT_CONVERSATION,
         ToolNames.TEST_FEED,
@@ -36,6 +38,7 @@ object ToolPermissions {
         ToolNames.PIXIV_DOWNLOAD_ILLUST,
         ToolNames.PIXIV_DOWNLOAD_NOVEL,
         ToolNames.RUN_COMMAND,
+        ToolNames.RUN_SCRIPT,
         ToolNames.SHELL_SETUP,
     )
 

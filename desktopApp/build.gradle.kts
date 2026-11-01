@@ -1,4 +1,4 @@
-// FILE: desktopApp/build.gradle.kts
+﻿// FILE: desktopApp/build.gradle.kts
 // 铅笔创印 Pro —— Windows 桌面端（Compose Multiplatform / JVM）
 // 与 Android 主工程共用一套 P 站协议实现，UI 为桌面原生 Compose 版本。
 
@@ -56,7 +56,7 @@ compose.desktop {
             // 因此不走 msi/exe 安装包（packageExe 需要 WiX），
             // 改用 createDistributable 产出可直接运行的 app-image（内含 exe 启动器）。
             packageName = "PencilChuangYinPro"
-            packageVersion = "2.1.0.2"
+            packageVersion = "2.1.0.3"
             description = "Pencil ChuangYin Pro Desktop" // 必须是 ASCII：jpackage 按系统代码页读取 args 文件，中文会报 "Input length = 1"
             vendor = "Pencil"
             windows {

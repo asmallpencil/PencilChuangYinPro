@@ -31,7 +31,9 @@ internal fun toolLabelRes(toolName: String?): Int = when (toolName) {
     ToolNames.EXTRACT_ARCHIVE -> R.string.ai_tool_extract_archive
     ToolNames.CREATE_ARCHIVE -> R.string.ai_tool_create_archive
     ToolNames.EDIT_IMAGE -> R.string.ai_tool_edit_image
-    ToolNames.PRINT_TABLE -> R.string.ai_tool_print_table
+    ToolNames.CREATE_TABLE -> R.string.ai_tool_create_table
+    ToolNames.CREATE_CHART -> R.string.ai_tool_create_chart
+    ToolNames.CREATE_NOTE -> R.string.ai_tool_create_note
     ToolNames.APP_NAVIGATE -> R.string.ai_tool_app_navigate
     ToolNames.APP_LIST_DESTINATIONS -> R.string.ai_tool_app_list_destinations
     ToolNames.PIXIV_HOME_FEED -> R.string.ai_tool_pixiv_home_feed
@@ -43,6 +45,7 @@ internal fun toolLabelRes(toolName: String?): Int = when (toolName) {
     ToolNames.WEB_SEARCH -> R.string.ai_tool_web_search
     ToolNames.WEB_FETCH -> R.string.ai_tool_web_fetch
     ToolNames.RUN_COMMAND -> R.string.ai_tool_run_command
+    ToolNames.RUN_SCRIPT -> R.string.ai_tool_run_script
     ToolNames.SHELL_SETUP -> R.string.ai_tool_shell_setup
     ToolNames.SHELL_STATUS -> R.string.ai_tool_shell_status
     else -> R.string.ai_tool_unknown

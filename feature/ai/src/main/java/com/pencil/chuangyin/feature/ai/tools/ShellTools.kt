@@ -128,6 +128,67 @@ class ShellTools @Inject constructor(
         return ToolOutput(format(command = cmd, dir = dir, result = result), isError = result.exitCode != 0 && !result.timedOut)
     }
 
+    /**
+     * 把一段脚本写入工作区并直接执行。
+     *
+     * 相比 run_command 手工拼多行命令，这个工具让模型只专注脚本内容本身：
+     * 路径、执行位、解释器都由这里处理，避免引号/换行/权限导致的失败。
+     */
+    @Tool
+    suspend fun run_script(
+        @Param(description = "脚本内容（sh 语法）。支持多行、变量、管道与重定向。") script: String,
+        @Param(description = "可选脚本文件名（不含路径），默认自动命名，扩展名固定为 .sh。") file_name: String?,
+        @Param(description = "可选命令行参数，会以 $1 $2 … 传给脚本。") args: List<String>?,
+        @Param(description = "工作目录，省略则使用工作区根目录；须位于工作区内。") cwd: String?,
+        @Param(description = "超时毫秒数，默认 60000，最大 300000。") timeout_ms: Int?,
+        @Param(description = "可选：写入脚本标准输入的内容。") stdin: String?,
+    ): ToolOutput {
+        val body = script.trim()
+        if (body.isEmpty()) return ToolOutput("脚本内容不能为空。", isError = true)
+
+        val dir = resolveCwd(cwd) ?: return ToolOutput(
+            "工作目录不在工作区范围内：${cwd?.trim()}（只能在工作区内执行）",
+            isError = true,
+        )
+        val timeout = (timeout_ms ?: DEFAULT_TIMEOUT_MS).toLong().coerceIn(MIN_TIMEOUT_MS, MAX_TIMEOUT_MS)
+        val baseName = file_name?.trim()?.takeIf { it.isNotEmpty() }?.removeSuffix(".sh")
+            ?.map { ch -> if (ch.isLetterOrDigit() || ch == '_' || ch == '-') ch else '_' }
+            ?.takeIf { it.isNotEmpty() }
+            ?: ("script_" + System.currentTimeMillis())
+        // 脚本必须落在真实可执行的私有工作区（授权输出目录走 SAF，无法被 sh 直接读取）。
+        val scriptsDir = File(workspace.writeRoot, "scripts").apply { mkdirs() }
+        var target = File(scriptsDir, "$baseName.sh")
+        var suffix = 1
+        while (target.exists()) {
+            target = File(scriptsDir, "$baseName ($suffix).sh")
+            suffix++
+        }
+        val saved = runCatching {
+            target.parentFile?.mkdirs()
+            target.writeBytes(body.toByteArray(Charsets.UTF_8))
+            true
+        }.getOrDefault(false)
+        if (!saved) return ToolOutput("脚本写入失败：${target.absolutePath}", isError = true)
+        runCatching { target.setExecutable(true, false) }
+
+        val relative = "scripts/${target.name}"
+        val quotedArgs = args.orEmpty().joinToString(" ") { shQuote(it) }
+        val command = buildString {
+            append("sh ").append(shQuote(target.absolutePath))
+            if (quotedArgs.isNotEmpty()) append(' ').append(quotedArgs)
+        }
+
+        scope.current?.reportProgress("正在运行脚本 ${target.name}")
+        val result = runtime.run(command, dir, timeout, stdin)
+        val output = buildString {
+            appendLine("脚本已保存为 $relative")
+            appendLine()
+            append(format(command = command, dir = dir, result = result))
+            if (result.exitCode == 127) appendLine().append(COMMAND_NOT_FOUND_HINT)
+        }
+        return ToolOutput(output.trimEnd(), isError = result.exitCode != 0 && !result.timedOut)
+    }
+
     private fun resolveCwd(cwd: String?): File? {
         val raw = cwd?.trim()?.takeIf { it.isNotEmpty() } ?: return ensureDir(workspace.writeRoot)
         val target = runCatching { workspace.resolveForWrite(raw) }.getOrNull() ?: return null
@@ -151,10 +212,22 @@ class ShellTools @Inject constructor(
         when {
             result.timedOut -> builder.append("—— 命令超时被终止（退出码 ${result.exitCode}）")
             result.exitCode == 0 -> builder.append("—— 命令执行成功")
+            result.exitCode == 127 -> builder.append("—— 命令不存在或无法执行（退出码 127）").appendLine().append(COMMAND_NOT_FOUND_HINT)
             else -> builder.append("—— 命令退出码 ${result.exitCode}")
         }
         return builder.toString().trimEnd()
     }
+
+    /** 命令不存在时的固定指引，避免模型反复换命令试探。 */
+    private val COMMAND_NOT_FOUND_HINT: String = """
+        可用能力提示：
+        - 文本/文件处理：sh、cat、ls、cp、mv、rm、mkdir、find、grep、sed、awk、sort、wc、head、tail、base64、md5sum、tar、unzip；
+        - 制表/制图/排版：直接用 create_table / create_chart / create_note；
+        - 图片处理：edit_image（缩放/裁剪/旋转/灰度/格式转换）；
+        - 当前终端没有 python / node / git / apt，不要继续尝试安装或调用它们。
+    """.trimIndent()
+
+    private fun shQuote(text: String): String = "'" + text.replace("'", "'\\''") + "'"
 
     private companion object {
         const val DEFAULT_TIMEOUT_MS = 60_000

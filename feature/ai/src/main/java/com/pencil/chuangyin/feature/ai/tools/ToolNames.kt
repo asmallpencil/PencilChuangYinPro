@@ -26,12 +26,16 @@ object ToolNames {
 
     // 打印类
     const val PRINT_TEXT = "print_text"
-    const val PRINT_TABLE = "print_table"
     const val PRINT_IMAGE = "print_image"
     const val PRINT_CONVERSATION = "print_conversation"
     const val PRINTER_STATUS = "printer_status"
     const val TEST_FEED = "test_feed"
     const val DRAW_IMAGE = "draw_image"
+
+    // 内容生成类（只生成图片、默认不打印）
+    const val CREATE_TABLE = "create_table"
+    const val CREATE_CHART = "create_chart"
+    const val CREATE_NOTE = "create_note"
 
     // 应用控制类
     const val APP_NAVIGATE = "app_navigate"
@@ -43,6 +47,7 @@ object ToolNames {
 
     // 终端类
     const val RUN_COMMAND = "run_command"
+    const val RUN_SCRIPT = "run_script"
     const val SHELL_SETUP = "shell_setup"
     const val SHELL_STATUS = "shell_status"
 
@@ -91,9 +96,13 @@ object ToolParams {
     const val FORMAT = "format"
     const val QUALITY = "quality"
 
-    // 表格
+    // 表格 / 图表 / 笔记
     const val HEADERS = "headers"
     const val ROWS = "rows"
+    const val LABELS = "labels"
+    const val VALUES = "values"
+    const val UNIT = "unit"
+    const val CHART_TYPE = "type"
 
     // 应用控制
     const val PAGE_KEY = "page"

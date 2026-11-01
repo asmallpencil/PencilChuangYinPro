@@ -1,4 +1,4 @@
-package com.pencil.chuangyin.desktop.ui
+﻿package com.pencil.chuangyin.desktop.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -877,7 +877,7 @@ private fun AboutPage(onBack: () -> Unit) {
     SettingsPage(title = "开源许可", onBack = onBack) {
         SectionLabel("铅笔创印Pro 桌面版")
         Text(
-            text = "版本 2.1.0.2",
+            text = "版本 2.1.0.3",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

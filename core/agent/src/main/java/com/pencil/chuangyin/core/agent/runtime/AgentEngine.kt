@@ -62,6 +62,8 @@ class AgentEngine @Inject constructor(
         }
 
         val working = history.toMutableList()
+        // 本轮已执行过的工具调用签名（工具名 + 归一化参数），用于拦截原地打转的重复调用。
+        val executedCalls = HashMap<String, String>()
         var iterations = 0
         while (iterations < AgentDefaults.MAX_TOOL_ITERATIONS) {
             iterations++
@@ -139,7 +141,7 @@ class AgentEngine @Inject constructor(
             }
 
             toolCalls.forEach { call ->
-                working += executeTool(call, conversationId, working.toList(), onEvent)
+                working += executeTool(call, conversationId, working.toList(), executedCalls, onEvent)
             }
         }
 
@@ -178,31 +180,38 @@ class AgentEngine @Inject constructor(
         call: ToolCallRequest,
         conversationId: String,
         transcript: List<ChatMessage>,
+        executedCalls: MutableMap<String, String>,
         onEvent: (AgentEvent) -> Unit,
     ): List<ChatMessage> {
         onEvent(AgentEvent.ToolStarted(call.id, call.name, call.arguments))
+        val signature = signatureOf(call)
         val tool = registry.find(call.name)
-        val output = if (tool == null) {
-            ToolOutput(UNKNOWN_TOOL_PREFIX + call.name, isError = true)
-        } else if (!isApproved(tool.spec, call, transcript)) {
-            // 用户拒绝了本次执行（或等待超时）：不执行工具函数，把结果回灌给模型。
-            ToolOutput(CONFIRMATION_DENIED_MESSAGE, isError = true)
-        } else {
-            val context = object : ToolContext {
-                override val conversationId: String = conversationId
-
-                override suspend fun transcript(): List<ChatMessage> = transcript
-
-                override fun reportProgress(text: String) {
-                    onEvent(AgentEvent.ToolProgress(call.id, text))
-                }
+        val output = when {
+            tool == null -> ToolOutput(UNKNOWN_TOOL_PREFIX + call.name, isError = true)
+            executedCalls[signature] != null -> ToolOutput(DUPLICATE_CALL_MESSAGE, isError = true)
+            !isApproved(tool.spec, call, transcript) -> {
+                // 用户拒绝了本次执行（或等待超时）：不执行工具函数，把结果回灌给模型。
+                ToolOutput(CONFIRMATION_DENIED_MESSAGE, isError = true)
             }
-            try {
-                tool.invoke(parseArguments(call.arguments), context)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                ToolOutput(TOOL_FAILED_PREFIX + (e.message ?: e.javaClass.simpleName), isError = true)
+
+            else -> {
+                executedCalls[signature] = call.id
+                val context = object : ToolContext {
+                    override val conversationId: String = conversationId
+
+                    override suspend fun transcript(): List<ChatMessage> = transcript
+
+                    override fun reportProgress(text: String) {
+                        onEvent(AgentEvent.ToolProgress(call.id, text))
+                    }
+                }
+                try {
+                    tool.invoke(parseArguments(call.arguments), context)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    ToolOutput(TOOL_FAILED_PREFIX + (e.message ?: e.javaClass.simpleName), isError = true)
+                }
             }
         }
 
@@ -250,6 +259,15 @@ class AgentEngine @Inject constructor(
         }
     }
 
+    /** 生成与参数书写顺序无关的调用签名，用于判定「完全相同的调用」。 */
+    private fun signatureOf(call: ToolCallRequest): String {
+        val arguments = parseArguments(call.arguments)
+        val normalized = arguments.entries
+            .sortedBy { it.key }
+            .joinToString(separator = ",", prefix = "{", postfix = "}") { "${it.key}=${it.value}" }
+        return call.name + normalized
+    }
+
     private fun parseArguments(raw: String): JsonObject {
         if (raw.isBlank()) return buildJsonObject { }
         return try {
@@ -274,5 +292,8 @@ class AgentEngine @Inject constructor(
             "用户未批准本次操作，工具未执行（已拦截）。" +
                 "请不要重复调用同一工具，先用一句话说明你原本想做什么、以及为什么被拦截，" +
                 "然后等待用户明确指示；若用户要求继续，再重新调用。"
+        const val DUPLICATE_CALL_MESSAGE =
+            "本次调用与之前一次完全相同，已被系统拦截（未执行，未产生新文件或打印）。" +
+                "请不要再重复同样的调用：要么修改参数后重试一次，要么直接向用户说明当前结果并等待指示。"
     }
 }

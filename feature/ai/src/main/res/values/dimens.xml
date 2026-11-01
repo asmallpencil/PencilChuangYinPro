@@ -10,6 +10,8 @@
 
     <!-- 产物预览 -->
     <dimen name="ai_artifact_size">160dp</dimen>
+    <!-- 聊天内图片产物的预览高度：足够看清表格结构，又能一屏放得下 -->
+    <dimen name="ai_artifact_preview_height">260dp</dimen>
 
     <!-- 输入栏 -->
     <dimen name="ai_input_max_height">140dp</dimen>

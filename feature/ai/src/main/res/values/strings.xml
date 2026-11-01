@@ -4,7 +4,7 @@
     <string name="ai_title">AI 打印</string>
     <string name="ai_subtitle_ready">当前模型：%1$s</string>
     <string name="ai_subtitle_no_model">尚未配置模型</string>
-    <string name="ai_input_hint">描述你想打印或完成的任务…</string>
+    <string name="ai_input_hint">发消息或长按说话…</string>
     <string name="ai_send">发送</string>
     <string name="ai_stop">停止</string>
     <string name="ai_new_conversation">新建对话</string>
@@ -12,8 +12,14 @@
     <string name="ai_history_empty">暂无历史对话</string>
     <string name="ai_untitled_conversation">未命名对话</string>
     <string name="ai_message_count">%1$d 条消息</string>
-    <string name="ai_welcome_title">你好，我是打印助手</string>
-    <string name="ai_welcome_desc">连接打印机后直接下达任务，我可以查资料、读写文件、画图并直接打印。</string>
+    <string name="ai_welcome_title">今天想打印点什么？</string>
+    <string name="ai_welcome_desc">做表格、排版笔记、画插画、查资料——说出来，我先做出来给你看，确认后再打印。</string>
+
+    <!-- 欢迎页建议 -->
+    <string name="ai_suggestion_table">做一张本周计划表</string>
+    <string name="ai_suggestion_note">把一段话排版成小纸条</string>
+    <string name="ai_suggestion_image">画一张简约小插画</string>
+    <string name="ai_suggestion_tips">生成《热敏打印小贴士》</string>
 
     <!-- 深度思考 -->
     <string name="ai_reasoning_title">深度思考</string>
@@ -22,6 +28,7 @@
     <string name="ai_thinking">正在思考…</string>
     <string name="ai_waiting_reply">已收到任务，正在组织回答…</string>
     <string name="ai_copy_bubble">复制这条消息</string>
+    <string name="ai_copy_short">复制</string>
     <string name="ai_copied">已复制到剪贴板</string>
 
     <!-- 工具活动 -->
@@ -66,7 +73,9 @@
     <string name="ai_tool_extract_archive">解压文件</string>
     <string name="ai_tool_create_archive">打包压缩</string>
     <string name="ai_tool_edit_image">处理图片</string>
-    <string name="ai_tool_print_table">打印表格</string>
+    <string name="ai_tool_create_table">生成表格</string>
+    <string name="ai_tool_create_chart">生成图表</string>
+    <string name="ai_tool_create_note">排版笔记</string>
     <string name="ai_tool_app_navigate">跳转页面</string>
     <string name="ai_tool_app_list_destinations">查询可跳转页面</string>
     <string name="ai_tool_pixiv_home_feed">浏览 P 站首页</string>
@@ -78,12 +87,17 @@
     <string name="ai_tool_web_search">联网搜索</string>
     <string name="ai_tool_web_fetch">抓取网页</string>
     <string name="ai_tool_run_command">执行终端命令</string>
+    <string name="ai_tool_run_script">运行脚本</string>
     <string name="ai_tool_shell_setup">安装终端环境</string>
     <string name="ai_tool_shell_status">查询终端环境</string>
     <string name="ai_tool_unknown">工具调用</string>
 
     <!-- 上传 -->
     <string name="ai_attach">上传图片或文件</string>
+    <string name="ai_upload_camera">拍照</string>
+    <string name="ai_upload_gallery">相册</string>
+    <string name="ai_upload_file">文件</string>
+    <string name="ai_camera_unavailable">无法调起系统相机</string>
     <string name="ai_attach_title">上传到 AI 工作区</string>
     <string name="ai_attach_image">上传图片</string>
     <string name="ai_attach_image_desc">从相册或文件中选择图片，AI 可查看、编辑并打印</string>
@@ -132,6 +146,7 @@
     <string name="ai_no_model_action">去配置</string>
 
     <!-- 打印机状态提示 -->
+    <string name="ai_printer_chip_off">未连接打印机</string>
     <string name="ai_printer_off_hint">打印机未连接，打印类任务将无法完成</string>
 
     <!-- 删除会话 -->
