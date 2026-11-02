@@ -1,83 +1,69 @@
-﻿# 铅笔创印 Pro · Pencil ChuangYin Pro
+<div align="center">
 
-> 一支笔，一张纸，一台蓝牙热敏打印机 —— 把屏幕里的文字、图片、照片和小说的即刻印出来。
-> Android 与 Windows 双端同源，共用同一套主题体系与打印协议栈。
+# 铅笔创印 Pro（Pencil ChuangYin Pro）
 
-<p>
-  <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue.svg"></a>
-  <img alt="AI-built" src="https://img.shields.io/badge/built%20with-Trae%20%2B%20DeepSeek%20V4.1F-8A2BE2.svg">
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.2.x-7F52FF.svg">
-  <img alt="Compose" src="https://img.shields.io/badge/Jetpack%20Compose-2024.12-4285F4.svg">
-  <img alt="Android" src="https://img.shields.io/badge/Android-7.0%2B%20(API%2024)-3DDC84.svg">
-  <img alt="Windows" src="https://img.shields.io/badge/Windows-10%2F11-0078D4.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.1.0.4-orange.svg">
-</p>
+**一款非官方的「错题小印」热敏纸打印机双端客户端**
 
----
+兼容「错题小印」热敏打印机通讯协议 · Android / Windows 双端同源
 
-## ⚠️ 首先说明：这是一个 AI 构建的项目
+[![Platform](https://img.shields.io/badge/Platform-Android%207.0%2B%20%7C%20Windows%2010%2F11%20x64-4A90D9?style=flat-square)](https://github.com/asmallpencil/PencilChuangYinPro)
+[![Language](https://img.shields.io/badge/Language-Kotlin-7F52FF?style=flat-square)](https://kotlinlang.org)
+[![UI](https://img.shields.io/badge/UI-Jetpack%20Compose%20%2B%20MD3-6C8CD5?style=flat-square)](https://m3.material.io)
+[![Version](https://img.shields.io/badge/version-2.1.0.4-4A90D9?style=flat-square)](https://github.com/asmallpencil/PencilChuangYinPro/releases)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](LICENSE)
 
-**本项目是一个 AI 原生（AI-built）项目，绝大部分代码由 AI 编程助手生成、重构与维护，而非传统意义上逐行手写的工程。**
-
-| 项 | 说明 |
-| --- | --- |
-| AI IDE / Agent | **[Trae](https://www.trae.ai)** —— 全程在 Trae 中完成需求拆解、方案设计、编码、编译排错与文档撰写 |
-| 驱动模型 | **DeepSeek V4.1F**（DS V4.1F） |
-| 人类承担的部分 | 提出需求、确定产品方向与设计约束（UI 统一、启动不强制登录、双端同步等）、评估产出、实机验证与最终取舍 |
-| 协作方式 | 人给方向与验收标准 → AI 读写代码、跑 Gradle 构建、定位报错并迭代 → 人复核并决定是否采纳 |
-
-因此：
-
-- 代码的**架构与实现是 AI 与人类协作的结果**，风格上会带有明显的「AI 辅助生成」特征（注释密度高、模块划分规整、命名偏描述性）；
-- AI 生成不代表免于审查 —— 遇到问题时请以源码与实际行为为准，欢迎开 Issue 纠正；
-- 我们在此**如实标注 AI 参与程度**，不做「纯手工打造」的包装。这也是本项目选择 GPL-3.0 的原因之一：AI 辅助产出的代码同样应当接受开源共同体的审视与改进。
-
-> 如果你在别处看到这个项目，请以此处说明为准。
+</div>
 
 ---
 
-## 这是什么
+## 项目简介
 
-铅笔创印 Pro 是一款面向**蓝牙热敏打印机**（58mm / 80mm 小票机、便携错题机、错题打印机等）的内容创作与打印工具。它不只做「把一段文字丢给打印机」，而是把**排版、图片处理、拍照扫描、素材来源和 AI 助手**串成一条完整的「从想法到纸面」的链路。
+铅笔创印 Pro 是面向「错题小印」系列蓝牙热敏打印机的第三方客户端，打印模块实现了**兼容「错题小印」热敏打印机通讯协议**的完整链路，覆盖设备扫描、连接建立、状态与电量查询、位图栅格化、分包下发与打印进度回调。
 
-项目是**多模块 Android 工程 + Compose Multiplatform 桌面端**：Android 端为主形态，Windows 桌面端复用同一套 P 站协议实现与打印协议栈，UI 以「安卓大屏/平板形态」呈现同一套信息架构。
+- **非官方项目**：本项目为独立开发，与「错题小印」原厂商无任何关联，亦未获得其授权或认可。
+- **双端同源**：Android 为主形态；Windows 桌面端复用同一套协议栈、排版与栅格化逻辑，仅传输通道与位图后端按平台实现。
+- **打印规格**：适配 58mm / 80mm 热敏纸，按 384 点行宽进行栅格化与排版。
 
-## 功能一览
+---
 
-### 打印
+## 功能特性
 
-- **蓝牙打印链路**：设备配对 → 连接 → 状态/电量回读 → 逐行栅格化 → `GS v 0` 位图分包下发，支持打印中断、进度回调、走纸测试。
-- **多通道传输**：Android 走 `BluetoothSocket`（SPP / 不安全 SPP 双策略）；Windows 走 Winsock `AF_BTH` RFCOMM 直连，或已配对生成的「蓝牙链接上的标准串行 (COMx)」虚拟串口。
-- **文本打印**：富文本编辑、字号字距、对齐、分页、纸张宽度（58/80mm）自适应，逐行位图渲染保证中文字形。
-- **图片打印**：裁剪、旋转、滤镜、抖动/二值化（含 Sauvola 等自适应算法）、PDF 导入分页、多页批量；预览区内置可复用的**图层编辑器**（1–200% 缩放、拖动定位、锁定、超宽区域裁切提示），保存与打印均按编辑结果合成。
-- **条码打印**：基于 **ZXing**（Apache-2.0）生成并打印全部常用一维/二维条码（UPC-A/E、EAN-8/13、Code 39/93/128、Codabar、ITF、RSS-14/Expanded、QR、Data Matrix、Aztec、PDF417），并内置通用扫描解码器；与图片页同一套「预览 → 编辑 → 打印」流程。
-- **图表与表格**：AI 助手可生成表格、图表并直接送入打印队列。
+### 打印功能一览
 
-### 文稿扫描与拍照
+| 功能 | 说明 |
+|:----:|------|
+| **图片打印** | 相册与文件导入 · PDF 分页导入 · 裁剪旋转 · 滤镜 · 抖动与二值化（含 Sauvola 等自适应算法）· 多页批量 |
+| **图层编辑** | 预览区内置编辑器：1–200% 缩放 · 拖动定位 · 锁定 · 超宽区域灰色裁切提示；保存与打印均按编辑结果合成 |
+| **文本打印** | 富文本编辑 · 字号与字距 · 对齐 · 自动分页 · 58 / 80mm 纸宽自适应 · 逐行位图保证中文字形 |
+| **拍照打印** | CameraX 即时拍摄，拍摄完成后直接进入图片处理与打印流程 |
+| **文稿扫描** | 文档四边形检测 · 自动色彩模式判定 · 透视校正与增强 · 多页连拍与相册导入 |
+| **AI 打印** | 生成表格、图表、笔记与绘图；制作类任务统一遵循「生成 → 对话内预览 → 用户确认 → 打印」流程 |
+| **条码打印** | 基于 ZXing 生成 15 种一维 / 二维条码（UPC-A/E、EAN-8/13、Code 39/93/128、Codabar、ITF、RSS-14/Expanded、QR、Data Matrix、Aztec、PDF417），并提供通用扫描解码器 |
+| **P 站图库** | 浏览、搜索、排行榜、关注流、作品详情、评论、收藏、下载与一键打印全部页；支持小说正文阅读、收藏与直接送打 |
 
-- **文稿扫描**：内嵌 **FairScan**（GPL-3.0）的 `imageprocessing` 算法层 —— CameraX 实时取景做文档四边形检测，拍照/导入后自动判定色彩模式，再做透视校正与增强；支持多页连拍、相册导入、旋转与「自动 / 彩色 / 灰度 / 纯黑白」切换，完成后直接送入图片打印。
-- **拍照**：保留一条极简拍照通道，拍完即进入图片处理与打印，不内置任何 AI 图像处理。
+> P 站相关功能基于非官方接口，仅供个人学习、技术研究与内容备份，请遵守 Pixiv 服务条款。
 
-### Pixiv（P 站）图库
+### 界面与体验
 
-- 浏览 / 搜索 / 排行榜 / 关注流，作品详情、评论区（读取与发表）、收藏、下载、**一键打印全部页**。
-- 小说阅读：正文排版、收藏、下载、直接送入文本打印页。
-- App API 客户端：接口清单、签名参数与 PKCE 流程来自 **Pix-EzViewer / PiPixiv**，以 Retrofit + OkHttp + kotlinx.serialization 实现，仅作个人学习与研究用途。
+- **Material 3 Expressive**：动态取色（壁纸 / 图片生成配色）、深浅色主题、可配置的首次引导。
+- **液态玻璃控件**：Android 端提供可开关的 backdrop 模糊、透镜折射、边缘高光与噪点；Windows 端为稳定性采用纯色实底。
+- **三入口结构**：主页（打印与工具）、创意（内容生成）、P 站（图库与小说），打印能力不依赖账号登录。
 
-### AI 打印助手
+---
 
-- 基于 OpenAI 兼容接口的 Agent 运行时（SSE 流式、工具调用、上下文折叠、模型配置仓库）。
-- 使用 **Google ADK for Kotlin** 的 `@Tool` / `@Param` 注解 + KSP 处理器生成工具描述，内置「存储 / 打印 / 绘图 / 表格 / 图表 / 笔记排版 / 联网检索 / 终端脚本」等工具集。
-- **制作类任务走「生成 → 对话内预览 → 用户确认 → 打印」**：`create_table` / `create_chart` / `create_note` / `draw_image` 默认只生成 PNG 并附在对话里，不会擅自下单打印；生成器统一按 384 点热敏宽度排版并做硬阈值二值化，预览与打印结果一致、笔画粗细稳定。
-- 运行时对「完全相同的工具调用」做去重拦截，避免模型打转；终端提供 `run_script` 与缺失命令（python/node/git/apt）的明确提示，能力边界可预期。
-- 启动即进首页，P 站只是三个顶级 Tab 之一 —— 不登录也能用打印。
+## 平台与技术栈
 
-### 界面
+| 项 | 内容 |
+|:----:|------|
+| 开发语言 | Kotlin 2.2.20 |
+| UI | Jetpack Compose + Material 3 Expressive 1.3.1；Windows 端为 Compose Multiplatform 1.12.1 |
+| 工程结构 | 多模块 Android 工程（`core` / `feature`）+ Compose Desktop |
+| 依赖注入与代码生成 | Hilt + KSP |
+| Android | 7.0 及以上（minSdk 24，targetSdk 35），arm64-v8a / armeabi-v7a 双 ABI |
+| Windows | Windows 10 / 11 **x64**，JVM 17，免安装 app-image |
+| 构建环境 | JDK 17 · Gradle 8.13（仓库自带 wrapper）· Android Gradle Plugin 8.10.1 |
 
-- **液态玻璃（Liquid Glass）**：Android 侧的 backdrop 模糊、透镜折射、边缘高光、噪点、弹簧动画一整套参数化实现，另有 C++（Dear ImGui + OpenGL ES）玻璃渲染管线；Windows 桌面端已移除玻璃效果，改为纯色实底，保证渲染稳定与性能。
-- **引导与新手教程**：首次启动的全屏引导（主题色 / 形状 / 动效 / 界面细节 / 氛围粒子等全部可配置），完成后进入真实页面还会按页触发挖孔式教程浮层，说明导入入口等晦涩按钮的作用。
-- **开发者调试**：设置内的高权限诊断面板，覆盖打印机链路（扫描 / 连接 / 裸指令 / 走纸 / 测试打印）、网络探测、文件读写自检、AI 配置与内置提示词现场覆盖、主题与引导标记重置，以及全程操作日志。
-- **动态取色**：基于 MaterialKolor 从壁纸/图片生成 Material 3 Expressive 配色，支持手动调色盘与深浅色。
+---
 
 ## 架构
 
@@ -85,96 +71,102 @@
 app                  Application 装配、导航宿主、权限入口
 core/
   printer            打印协议栈（扫描 / 连接 / 栅格化 / 分包 / 状态轮询）
-  barcode            条码生成与通用解码（ZXing，Apache-2.0）
+  barcode            条码生成与通用解码（ZXing）
   scanner            OpenCV 文档扫描算法
-  agent              OpenAI 兼容 Agent 内核（SSE、工具协议、上下文折叠）
-  backdrop           液态玻璃 Compose 实现（vendor 自 AndroidLiquidGlass）
-  kyant-shapes       圆角形状 / 透镜折射所需的 Shape API（vendor 自 Kyant0/shapes）
-  theme              动态取色、字体、玻璃主题
-  ui                 通用玻璃组件库
-  resources          资源与品牌
+  agent              AI Agent 内核（流式响应 / 工具调用 / 上下文折叠）
+  backdrop           液态玻璃 Compose 实现
+  theme / ui         动态取色与玻璃组件库
 feature/
-  dashboard          首页、蓝牙打印机连接页
-  text               文本编辑与打印
-  image              图片处理与打印（含可复用图层编辑器）
-  barcode            条码生成 / 扫描解码与打印
-  scanner            文稿扫描（内嵌 FairScan 算法、多页拍摄与校正）
-  camera             极简拍照
-  pixiv              P 站浏览 / 评论 / 下载 / 打印
-  ai                 AI 打印助手（会话、工具、UI）
-  settings           设置
-  onboarding         首次引导
+  dashboard / text / image / barcode / scanner / camera / pixiv / ai / settings / onboarding
 third_party/
-  fairscan-imageprocessing   FairScan 的纯 Kotlin 算法层（GPL-3.0，整体内嵌）
-desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-image）
+  fairscan-imageprocessing   FairScan 纯 Kotlin 算法层
+desktopApp           Windows 桌面端（Compose Multiplatform）
 ```
 
-- 依赖注入统一使用 **Hilt**；状态以 `StateFlow` + 单向数据流驱动。
-- 打印协议层与平台无关，仅「传输通道」和「位图渲染后端」按平台实现（Android `Bitmap` / Desktop Skia）。
+打印协议层与平台无关，仅传输通道与位图渲染后端按平台实现（Android `Bitmap` / Desktop Skia）。
 
-## 构建
+---
 
-### 环境
+## 下载安装
 
-| 项 | 版本 |
-| --- | --- |
-| JDK | 17 |
-| Gradle | 8.13（仓库自带 wrapper） |
-| Android Gradle Plugin | 8.10.1 |
-| Kotlin | 2.2.20 |
-| NDK | 26.3.11579264（仅 Android，C++ 玻璃管线需要） |
-| CMake | 3.22.1 |
+安装包与源码归档发布于 [Releases](https://github.com/asmallpencil/PencilChuangYinPro/releases)。
 
-### Android
-
-```bash
-# 调试包（一次构建产出三个 APK：32 位 / 64 位 / 通用）
-./gradlew :app:assembleDebug
-# 产物：app/build/outputs/apk/debug/
-#   app-arm64-v8a-debug.apk     64 位（arm64-v8a）
-#   app-armeabi-v7a-debug.apk   32 位（armeabi-v7a）
-#   app-universal-debug.apk     通用包（两种架构都含）
-
-# 发布包（沿用与历史版本一致的签名，可直接覆盖升级）
-./gradlew :app:assembleRelease
-```
-
-> 按设备架构分发可显著减小下载体积：64 位机型装 `arm64-v8a`，老设备装 `armeabi-v7a`；不确定或需一个包兼容全部时用 `universal`。
-
-### Windows 桌面版
-
-```bash
-# 产出可直接运行的 app-image（内含 PencilChuangYinPro.exe）
-./gradlew :desktopApp:createDistributable
-# 产物：desktopApp/build/compose/binaries/main/app/PencilChuangYinPro/
-```
-
-> 说明：`packageMsi` / `packageExe` 需要 WiX，若你的网络无法访问 GitHub 下载 WiX，直接使用 `createDistributable` 的 app-image 即可，双击 `PencilChuangYinPro.exe` 运行。
-
-## 下载
-
-安装包与源码归档都在 **[Releases](https://github.com/asmallpencil/PencilChuangYinPro/releases)** 页面。
-
-当前版本 **v2.1.0.4**（debug 构建，Android 分架构提供三个 APK，按设备按需下载即可）：
+当前版本 **v2.1.0.4（debug 构建）**：
 
 | 平台 | 文件 | 体积 | 说明 |
-| --- | --- | --- | --- |
-| Android 7.0+ 64 位 | [`PencilChuangYinPro-2.1.0.4-arm64-v8a-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.4/PencilChuangYinPro-2.1.0.4-arm64-v8a-debug.apk) | ≈64 MB | 绝大多数现代机型，体积最小，推荐优先选择 |
-| Android 7.0+ 32 位 | [`PencilChuangYinPro-2.1.0.4-armeabi-v7a-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.4/PencilChuangYinPro-2.1.0.4-armeabi-v7a-debug.apk) | ≈63 MB | 老设备 / 32 位系统专用 |
-| Android 7.0+ 32/64 共通 | [`PencilChuangYinPro-2.1.0.4-universal-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.4/PencilChuangYinPro-2.1.0.4-universal-debug.apk) | ≈98 MB | 不确定架构时的兜底包，同时包含两种 ABI |
-| Windows 10/11 x64 | [`PencilChuangYinPro-2.1.0.4-windows-x64.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.4/PencilChuangYinPro-2.1.0.4-windows-x64.zip) | ≈68 MB | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装；桌面端最新构建也可从源码生成（见上文） |
+|:----:|------|:----:|------|
+| Android 7.0+ 64 位 | `PencilChuangYinPro-2.1.0.4-arm64-v8a-debug.apk` | ≈78 MB | 现代机型首选，体积最小 |
+| Android 7.0+ 32 位 | `PencilChuangYinPro-2.1.0.4-armeabi-v7a-debug.apk` | ≈77 MB | 老设备 / 32 位系统 |
+| Android 32/64 共通 | `PencilChuangYinPro-2.1.0.4-universal-debug.apk` | ≈115 MB | 不确定架构时的兜底包 |
+| Windows 10/11 x64 | `PencilChuangYinPro-2.1.0.4-windows-x64.zip` | ≈68 MB | 解压后双击 `PencilChuangYinPro.exe` 运行 |
 
-> 本次为 **debug 构建**，沿用调试签名（与历史 release 包签名不同，首次安装需先卸载旧版）。三者功能完全一致，仅打包的 ABI 不同；`32/64 共通版` 因同时内置两套原生库（含 sing-box）体积约为单包 1.5 倍。签名库与本机 `keystore.properties` 不入库。
+> 本次为 debug 构建，沿用调试签名；若与已安装版本签名冲突，需先卸载旧版。三套 APK 功能一致，仅打包的 ABI 不同。
+
+---
+
+## 编译
+
+```bash
+# Android：一次构建产出 32 位、64 位与通用三个 APK
+./gradlew :app:assembleDebug
+
+# Windows：产出可直接运行的 app-image
+./gradlew :desktopApp:createDistributable
+```
 
 ---
 
 ## 开源致谢
 
-这个项目的每一行代码，都建立在别人的肩膀上。
+本项目在实现过程中使用、移植或参考了 **52 个开源项目**，完整清单（作者、许可、具体贡献与链接）见文末附录。
 
-下面**不再按「类别」或「使用深度」分层，所有项目一视同仁地列在同一张表里** —— 无论是被 vendor 进仓库的源码、Gradle 坐标引入的依赖，还是被移植、仿写、参照过的实现，都是这个项目得以存在的原因，贡献同等重要。
+其中对核心功能起决定作用的有：
 
-**排名不分先后，贡献不论形式，共同鸣谢。**
+- **AndroidLiquidGlass** / **Kyant0/shapes** / **LiquidGlass-Cpp**：液态玻璃的模糊、折射与 C++ 渲染管线
+- **FairScan**（GPL-3.0）：文稿扫描的四边形检测、色彩模式判定与透视校正
+- **ZXing**（Apache-2.0）：条码生成与解码内核
+- **OpenCV** / **CameraX**：文档检测与图像采集
+- **Pix-EzViewer**（MIT）/ **PiPixiv**（Apache-2.0）：P 站接口、签名、PKCE 与页面结构
+- **Operit**（LGPL-3.0）：AI 工具确认与权限分档模型
+- **Google ADK for Kotlin**：`@Tool` / `@Param` 注解与 KSP 工具描述生成
+- **Kotlin / Jetpack Compose / Hilt / Gradle**：工程基础设施
+
+第三方许可原文收录于 [`licenses/`](licenses/)，版权归各自作者所有。如署名、链接或许可标注有误，欢迎通过 Issue 指出。
+
+---
+
+## 开源协议
+
+本项目遵循 [**GNU General Public License v3.0**](LICENSE) 协议开源。
+
+| 权利 | 说明 |
+|:----:|------|
+| 使用 | 允许个人与商业使用 |
+| 修改 | 允许修改与二次开发 |
+| 分发 | 允许再发布，包括商业分发 |
+| 限制 | 衍生作品须以 GPL-3.0 开源，并保留原作者署名与许可声明 |
+
+其中 **FairScan** 与 **sing-box** 同为 GPL-3.0，源码整体内嵌并保留原署名；**Pix-EzViewer**（MIT）、**PiPixiv** / **AndroidLiquidGlass** / **ZXing**（Apache-2.0）与 GPL-3.0 兼容；**jSerialComm**、**JNA**、**Operit** 的 LGPL 条款通过不改源码、动态链接的方式满足。
+
+---
+
+## 免责声明
+
+1. 本项目为**非官方**第三方工具，与「错题小印」原厂商及 Pixiv Inc. 均无关联，亦未获其授权或认可。
+2. 打印协议为兼容实现；不同型号打印机的指令集存在差异，可能需在设置中调整纸宽与浓度。
+3. P 站相关功能基于非官方接口，仅限个人学习、技术研究与内容备份，请遵守 Pixiv 服务条款与当地法律法规，不得用于侵权用途。
+4. 本项目按「现状」提供，不附带任何担保。因使用本项目造成的设备损坏、耗材浪费或数据丢失，由使用者自行承担；建议先在废纸上试打。
+5. 使用者应自行确保其使用行为符合所在地法律法规。
+
+---
+
+## AI 开发声明
+
+这是一个 vibe coding 项目，使用 Trae + DeepSeek V4.1 Flash 编写。
+
+---
+
+## 附录：开源致谢明细
 
 | 项目 | 作者 | 许可 | 对本项目的贡献 | 链接 |
 | --- | --- | --- | --- | --- |
@@ -231,9 +223,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 | **Skia / Skiko** | Google / JetBrains | BSD-3-Clause | 桌面端的位图绘制与栅格化后端（随 Compose 提供）。文本打印的逐行位图、图片抖动与预览都经由它落到屏幕与打印机 | https://github.com/JetBrains/skiko |
 | **ZXing** | ZXing authors | Apache-2.0 | 条码打印的生成与解码内核。`core:barcode` 用 `MultiFormatWriter` 生成 15 种一维/二维条码，用 `MultiFormatReader` + `HybridBinarizer` 做通用扫描解码；以未修改的二进制依赖引入 | https://github.com/zxing/zxing |
 
-### 共同鸣谢
-
-以上 50 个项目，参与方式各不相同 —— 有的是被 vendor 进仓库的源码，有的是 Gradle 坐标引入的依赖，有的是被移植、仿写、参照过的实现。但它们对项目的贡献是**同等**的：少了任何一个，这个项目都不会是现在的样子。
+以上 52 个项目，参与方式各不相同 —— 有的是被 vendor 进仓库的源码，有的是 Gradle 坐标引入的依赖，有的是被移植、仿写、参照过的实现。但它们对项目的贡献是**同等**的：少了任何一个，这个项目都不会是现在的样子。
 
 - 没有 **AndroidLiquidGlass** 与 **Kyant0/shapes**，就没有液态玻璃；
 - 没有 **LiquidGlass-Cpp** 与 **Dear ImGui**，C++ 侧的光学实验无从谈起；
@@ -251,31 +241,6 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 
 > 如果你是上表中某个项目的作者，发现署名、链接或许可标注有误，或希望调整致谢方式（包括移除），请开 Issue，我会尽快处理。
 
-## 许可
-
-本项目以 **GNU General Public License v3.0** 发布，全文见 [LICENSE](LICENSE)。
-
-这意味着你可以自由使用、修改、再发布本项目，但**衍生作品也必须以 GPL-3.0 开源**，并保留原作者署名与许可声明。
-
-其中 **Pix-EzViewer**（MIT）、**PiPixiv**（Apache-2.0）、**AndroidLiquidGlass** / **Kyant0/shapes** / **LiquidGlass-Cpp** / **ZXing**（Apache-2.0）等源码级来源的许可，与本项目的 GPL-3.0 兼容；**FairScan** 与 **sing-box** 同为 GPL-3.0，与本项目同协议、源码整体内嵌并保留原署名与许可；**jSerialComm**、**JNA**、**Operit** 的 LGPL 条款通过「不改源码、动态链接」的方式满足。
-
-**Ketch** 与 **ImageCorrection** 的上游仓库目前未附带许可文件。本项目对二者的使用方式为：Ketch 经由 Pix-EzViewer 的源码子模块关系沿用其管线分层，ImageCorrection 采用其双路径算法思路并由本项目代码独立实现。若两位作者希望补充许可或调整署名，请开 Issue。
-
-第三方组件的许可原文收录于 [`licenses/`](licenses/) 目录，其版权归各自作者所有。
-
-## 免责声明
-
-- 本项目是**非官方**第三方工具，与 Pixiv Inc. 无任何关联，也未获其授权或认可。
-- P 站相关功能仅用于**个人学习、技术研究与内容备份**；请遵守 Pixiv 的服务条款与所在地法律法规，不要用于任何商业或侵权用途。你所访问的内容与账号行为由你自行负责。
-- 蓝牙热敏打印协议依据设备**实际通信行为**（抓包观测）与公开的指令示例整理实现，**未包含任何厂商闭源 SDK 的二进制或反编译代码**。不同型号打印机的指令集存在差异，可能需要在设置中调整纸张宽度/浓度。
-- 本项目由 AI 辅助生成，代码虽经实机验证，仍可能存在未覆盖的边界情况。使用时请先在废纸上试打。
-- 本项目按「现状」提供，不附带任何担保。使用本软件造成的硬件损坏、耗材浪费或数据丢失，作者不承担责任。
-
-## 参与贡献
-
-欢迎 Issue 与 PR。提交前请确保：
-
-1. `./gradlew :app:assembleDebug` 与 `./gradlew :desktopApp:compileKotlin` 均能通过；
-2. 新增的第三方代码/资源已在 README 致谢表中补充来源与许可（包括新增的 Maven 依赖）；
-3. 不提交任何密钥、账号信息或他人版权素材；
-4. 若使用 AI 工具生成代码，请在 PR 描述中注明，便于评审。
+<p align="center">
+  <i>如果这个项目对你有帮助，欢迎点一个 Star。</i>
+</p>
