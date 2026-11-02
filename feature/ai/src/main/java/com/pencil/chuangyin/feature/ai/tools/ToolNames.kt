@@ -37,6 +37,10 @@ object ToolNames {
     const val CREATE_CHART = "create_chart"
     const val CREATE_NOTE = "create_note"
 
+    // 条码类
+    const val CREATE_BARCODE = "create_barcode"
+    const val SCAN_BARCODE = "scan_barcode"
+
     // 应用控制类
     const val APP_NAVIGATE = "app_navigate"
     const val APP_LIST_DESTINATIONS = "app_list_destinations"

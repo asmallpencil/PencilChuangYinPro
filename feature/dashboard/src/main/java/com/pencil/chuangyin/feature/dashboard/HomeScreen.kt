@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.Card
@@ -74,6 +75,7 @@ fun HomeRoute(
     onOpenConnect: () -> Unit,
     onOpenText: () -> Unit,
     onOpenImage: () -> Unit,
+    onOpenBarcode: () -> Unit,
     onOpenScanner: () -> Unit,
     onOpenAi: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -87,6 +89,7 @@ fun HomeRoute(
         onOpenConnect = onOpenConnect,
         onOpenText = onOpenText,
         onOpenImage = onOpenImage,
+        onOpenBarcode = onOpenBarcode,
         onOpenScanner = onOpenScanner,
         onOpenAi = onOpenAi,
         onOpenSettings = onOpenSettings,
@@ -102,6 +105,7 @@ fun HomeScreen(
     onOpenConnect: () -> Unit,
     onOpenText: () -> Unit,
     onOpenImage: () -> Unit,
+    onOpenBarcode: () -> Unit,
     onOpenScanner: () -> Unit,
     onOpenAi: () -> Unit = {},
     onOpenSettings: () -> Unit,
@@ -170,6 +174,7 @@ fun HomeScreen(
                 CreativeToolsCard(
                     onOpenText = onOpenText,
                     onOpenImage = onOpenImage,
+                    onOpenBarcode = onOpenBarcode,
                     onOpenScanner = onOpenScanner,
                     onOpenAi = onOpenAi,
                     modifier = Modifier.coachMarkAnchor("home_tools"),
@@ -398,6 +403,7 @@ private fun CapsuleStatusChip(item: CapsuleStatusItem) {
 private fun CreativeToolsCard(
     onOpenText: () -> Unit,
     onOpenImage: () -> Unit,
+    onOpenBarcode: () -> Unit,
     onOpenScanner: () -> Unit,
     onOpenAi: () -> Unit,
     modifier: Modifier = Modifier,
@@ -426,6 +432,7 @@ private fun CreativeToolsCard(
             val tools = listOf(
                 CreativeTool(Icons.Filled.Description, stringResource(ResR.string.creative_text_print), stringResource(ResR.string.creative_text_print_desc), onOpenText),
                 CreativeTool(Icons.Filled.Image, stringResource(ResR.string.creative_image_print), stringResource(ResR.string.creative_image_print_desc), onOpenImage),
+                CreativeTool(Icons.Filled.QrCode2, stringResource(R.string.creative_barcode_print), stringResource(R.string.creative_barcode_print_desc), onOpenBarcode),
                 CreativeTool(Icons.Filled.DocumentScanner, stringResource(ResR.string.creative_scan_print), stringResource(ResR.string.creative_scan_print_desc), onOpenScanner),
                 CreativeTool(Icons.Filled.AutoAwesome, stringResource(ResR.string.creative_ai_print), stringResource(ResR.string.creative_ai_print_desc), onOpenAi),
             )
@@ -505,6 +512,7 @@ private fun HomeScreenPreview() {
         onOpenConnect = {},
         onOpenText = {},
         onOpenImage = {},
+        onOpenBarcode = {},
         onOpenScanner = {},
         onOpenAi = {},
         onOpenSettings = {},

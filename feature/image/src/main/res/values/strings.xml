@@ -18,9 +18,16 @@
     <string name="image_preview_empty">选择图片后显示打印预览</string>
     <string name="image_page_indicator">第 %1$d / %2$d 页</string>
     <string name="image_preview_loading">正在生成预览…</string>
+    <string name="image_action_edit">编辑</string>
+    <string name="image_action_fullscreen">全屏</string>
+    <string name="image_editor_title">编辑图层</string>
+    <string name="image_editor_done">完成</string>
+    <string name="image_editor_hint">拖动图片调整位置，双指缩放查看；灰色区域在打印时会被裁切</string>
 
     <!-- 算法 -->
     <string name="image_section_algorithm">抖动算法</string>
+    <string name="image_alg_more">更多算法</string>
+    <string name="image_alg_less">收起</string>
     <string name="image_alg_auto">智能</string>
     <string name="image_alg_none">无</string>
     <string name="image_alg_otsu">Otsu</string>

@@ -1341,14 +1341,23 @@ private fun AiImageArtifact(
     ) {
         val bitmap = image
         if (bitmap != null) {
-            Image(
-                bitmap = bitmap,
-                contentDescription = stringResource(R.string.ai_artifact_image),
-                contentScale = ContentScale.Fit,
+            // 固定高度 + Fit 会把很长的表格压成一条看不清的细带；改为按宽度铺满、纵向滚动，
+            // 位图本身已是 2 倍超采样，预览按原始比例呈现即可保持清晰。
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(4.dp),
-            )
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = stringResource(R.string.ai_artifact_image),
+                    contentScale = ContentScale.FillWidth,
+                    filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp),
+                )
+            }
         } else {
             Icon(
                 imageVector = Icons.Filled.BrokenImage,

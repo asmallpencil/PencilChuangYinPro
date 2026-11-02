@@ -28,8 +28,8 @@ android {
         applicationId = "com.pencil.chuangyin.pro"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2100003
-        versionName = "2.1.0.3"
+        versionCode = 2100004
+        versionName = "2.1.0.4"
 
         // OpenCV 与内置代理内核均只打包真机 ARM 架构，控制包体。
         ndk {
@@ -126,6 +126,7 @@ dependencies {
     implementation(project(":feature:dashboard"))
     implementation(project(":feature:text"))
     implementation(project(":feature:image"))
+    implementation(project(":feature:barcode"))
     implementation(project(":feature:camera"))
     implementation(project(":feature:scanner"))
     implementation(project(":feature:pixiv"))

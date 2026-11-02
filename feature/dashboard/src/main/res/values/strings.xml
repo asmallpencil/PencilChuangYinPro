@@ -63,4 +63,8 @@
     <string name="connect_test_ok">指令已发送，请观察打印机是否走纸</string>
     <string name="connect_test_failed">测试指令发送失败，请重新连接后再试</string>
     <string name="home_err_not_connected">打印机未连接</string>
+
+    <!-- 条码打印入口 -->
+    <string name="creative_barcode_print">条码打印</string>
+    <string name="creative_barcode_print_desc">生成一维码/二维码并打印</string>
 </resources>

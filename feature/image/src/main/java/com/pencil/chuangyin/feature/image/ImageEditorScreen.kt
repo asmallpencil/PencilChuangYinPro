@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -55,7 +56,17 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
+import com.pencil.chuangyin.core.ui.editor.FullscreenImageDialog
+import com.pencil.chuangyin.core.ui.editor.LayerEditorToolbar
+import com.pencil.chuangyin.core.ui.editor.LayerEditorViewport
+import com.pencil.chuangyin.core.ui.editor.PageLayerEditorState
+import com.pencil.chuangyin.core.ui.editor.PageLayerTransform
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -205,6 +216,9 @@ fun ImageEditorRoute(
             onBatchChange = viewModel::setBatchEnabled,
             onCopiesChange = viewModel::setCopies,
             onResetPageOptions = viewModel::resetPageOptions,
+            onOpenEditor = viewModel::openEditor,
+            onCloseEditor = viewModel::closeEditor,
+            onEditTransformChange = viewModel::updateEditTransform,
             onSave = viewModel::save,
             onPrint = viewModel::print,
             onPrintSingle = viewModel::printSingle,
@@ -243,6 +257,9 @@ fun ImageEditorScreen(
     onBatchChange: (Boolean) -> Unit,
     onCopiesChange: (Int) -> Unit,
     onResetPageOptions: () -> Unit,
+    onOpenEditor: () -> Unit,
+    onCloseEditor: () -> Unit,
+    onEditTransformChange: (PageLayerTransform) -> Unit,
     onSave: () -> Unit,
     onPrint: () -> Unit,
     onPrintSingle: () -> Unit,
@@ -479,51 +496,73 @@ fun ImageEditorScreen(
             )
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
 
-            // 预览区上方的页码/清空操作行。
+            // 页码 / 删除 / 清空：收进一张近不透明的卡片，与页面背景彻底分离
+            //（旧版直接浮在背景图上，文字与按钮互相压叠、读不清）。
             if (state.pages.isNotEmpty()) {
-                Row(
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
-                    AppText(
-                        text = stringResource(R.string.image_page_indicator, state.currentIndex + 1, state.pages.size),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    // 删除：仅移除当前预览页一张；清空：移除全部页。
-                    TextButton(onClick = onRemoveCurrent) {
-                        Icon(
-                            imageVector = Icons.Filled.DeleteOutline,
-                            contentDescription = null,
-                            modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_touch_target) * 0.45f),
-                        )
-                        Text(text = stringResource(R.string.image_action_delete))
-                    }
-                    TextButton(onClick = onClearAll) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = null,
-                            modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_touch_target) * 0.45f),
-                        )
-                        Text(text = stringResource(R.string.image_action_clear))
-                    }
-                }
-                // 本页已单独调整时给出一键恢复沿用第 1 页参数的入口。
-                if (state.currentPageCustomized) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
+                    Column(
+                        modifier = Modifier.padding(
+                            horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                            vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
+                        ),
                     ) {
-                        AppText(
-                            text = stringResource(R.string.image_page_options_custom),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.tertiary,
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        AppTextButton(text = stringResource(R.string.image_action_reset_page), onClick = onResetPageOptions)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            AppText(
+                                text = stringResource(
+                                    R.string.image_page_indicator,
+                                    state.currentIndex + 1,
+                                    state.pages.size,
+                                ),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            // 删除：仅移除当前预览页一张；清空：移除全部页。
+                            TextButton(onClick = onRemoveCurrent) {
+                                Icon(
+                                    imageVector = Icons.Filled.DeleteOutline,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text(text = stringResource(R.string.image_action_delete))
+                            }
+                            TextButton(onClick = onClearAll) {
+                                Icon(
+                                    imageVector = Icons.Filled.Close,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text(text = stringResource(R.string.image_action_clear))
+                            }
+                        }
+                        // 本页已单独调整时给出一键恢复沿用第 1 页参数的入口。
+                        if (state.currentPageCustomized) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                AppText(
+                                    text = stringResource(R.string.image_page_options_custom),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                AppTextButton(
+                                    text = stringResource(R.string.image_action_reset_page),
+                                    onClick = onResetPageOptions,
+                                )
+                            }
+                        }
                     }
                 }
+                Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
             }
 
             PreviewPaper(
@@ -531,7 +570,13 @@ fun ImageEditorScreen(
                 currentIndex = state.currentIndex,
                 previewBitmap = state.previewBitmap,
                 isPreparing = state.isPreparing,
+                editorOpen = state.editorOpen,
+                editorLayerBitmap = state.editorLayerBitmap,
+                editTransform = state.editTransform,
                 onPageChange = onPageChange,
+                onOpenEditor = onOpenEditor,
+                onCloseEditor = onCloseEditor,
+                onEditTransformChange = onEditTransformChange,
             )
 
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_l)))
@@ -676,6 +721,10 @@ private class TakePictureWithGrant : ActivityResultContract<Uri, Boolean>() {
 /**
  * 白底纸张预览：空态显示引导文案；多页时可左右滑动（与打印顺序一致），
  * 仅渲染当前页真实位图，其它页显示页码占位，保证上百页也不卡顿/不 OOM。
+ *
+ * 预览区同时是「编辑器」的入口：右上角浮动「编辑 / 全屏」，进入编辑后切换为
+ * [LayerEditorViewport]（画布 + 图片图层）。编辑模式的高度与普通预览不同，
+ * 通过 [animateDpAsState] 平滑过渡，避免布局跳动。
  */
 @Composable
 private fun PreviewPaper(
@@ -683,13 +732,36 @@ private fun PreviewPaper(
     currentIndex: Int,
     previewBitmap: android.graphics.Bitmap?,
     isPreparing: Boolean,
+    editorOpen: Boolean,
+    editorLayerBitmap: android.graphics.Bitmap?,
+    editTransform: PageLayerTransform,
     onPageChange: (Int) -> Unit,
+    onOpenEditor: () -> Unit,
+    onCloseEditor: () -> Unit,
+    onEditTransformChange: (PageLayerTransform) -> Unit,
 ) {
     val glassActive = rememberLiquidGlassActive()
+    var fullscreen by remember { mutableStateOf(false) }
+    val editorState = remember(currentIndex, editorOpen) { PageLayerEditorState(editTransform) }
+    // 编辑过程中的参数变化实时回写 ViewModel（退出时才真正合成，避免每帧重渲染）。
+    LaunchedEffect(editorState) {
+        snapshotFlow { editorState.transform }
+            .distinctUntilChanged()
+            .collect(onEditTransformChange)
+    }
+    val previewHeight by animateDpAsState(
+        targetValue = if (editorOpen) {
+            dimensionResource(ResR.dimen.dimen_image_preview_height) + 60.dp
+        } else {
+            dimensionResource(ResR.dimen.dimen_image_preview_height)
+        },
+        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+        label = "imagePreviewHeight",
+    )
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(dimensionResource(ResR.dimen.dimen_image_preview_height))
+            .height(previewHeight)
             // 预览区随页面滚动，走真玻璃会因背景纹理滞后一帧而在滑动时抖动 → 固定用伪玻璃。
             .pseudoGlassSurface(
                 shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_m)),
@@ -702,7 +774,13 @@ private fun PreviewPaper(
         shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_m)),
         color = Color.Transparent,
     ) {
-        if (pages.isEmpty()) {
+        if (editorOpen) {
+            EditorPanel(
+                layerBitmap = editorLayerBitmap,
+                editorState = editorState,
+                onDone = onCloseEditor,
+            )
+        } else if (pages.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 AppText(
                     text = stringResource(R.string.image_preview_empty),
@@ -711,57 +789,164 @@ private fun PreviewPaper(
                 )
             }
         } else {
-            // 页数变化（删除/新增）时重建 pager，避免删到末页后停留在越界页号。
-            androidx.compose.runtime.key(pages.size) {
-                val pagerState = rememberPagerState(
-                    initialPage = currentIndex.coerceIn(0, pages.lastIndex),
-                    pageCount = { pages.size },
-                )
-                LaunchedEffect(pagerState) {
-                    snapshotFlow { pagerState.settledPage }
-                        .distinctUntilChanged()
-                        .collect(onPageChange)
-                }
-                HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (page == currentIndex && previewBitmap != null) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(rememberScrollState()),
-                                contentAlignment = Alignment.TopCenter,
-                            ) {
-                                // 大图缩小显示必须用 High（mipmap 三线性）：默认 Low 双线性
-                                // 在 6~8 倍下采样时严重走样，高清图预览成"马赛克"。
-                                Image(
-                                    bitmap = previewBitmap.asImageBitmap(),
-                                    contentDescription = stringResource(R.string.image_title),
-                                    contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
-                                    filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
+            Box(modifier = Modifier.fillMaxSize()) {
+                // 页数变化（删除/新增）时重建 pager，避免删到末页后停留在越界页号。
+                androidx.compose.runtime.key(pages.size) {
+                    val pagerState = rememberPagerState(
+                        initialPage = currentIndex.coerceIn(0, pages.lastIndex),
+                        pageCount = { pages.size },
+                    )
+                    LaunchedEffect(pagerState) {
+                        snapshotFlow { pagerState.settledPage }
+                            .distinctUntilChanged()
+                            .collect(onPageChange)
+                    }
+                    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (page == currentIndex && previewBitmap != null) {
+                                Box(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(dimensionResource(ResR.dimen.dimen_global_padding_s)),
-                                )
-                            }
-                        } else {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                if (page == currentIndex && isPreparing) {
-                                    AppLoadingIndicator(size = 28.dp)
-                                    Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+                                        .fillMaxSize()
+                                        .verticalScroll(rememberScrollState()),
+                                    contentAlignment = Alignment.TopCenter,
+                                ) {
+                                    // 大图缩小显示必须用 High（mipmap 三线性）：默认 Low 双线性
+                                    // 在 6~8 倍下采样时严重走样，高清图预览成"马赛克"。
+                                    Image(
+                                        bitmap = previewBitmap.asImageBitmap(),
+                                        contentDescription = stringResource(R.string.image_title),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
+                                        filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(dimensionResource(ResR.dimen.dimen_global_padding_s)),
+                                    )
                                 }
-                                AppText(
-                                    text = stringResource(R.string.image_page_indicator, page + 1, pages.size),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                            } else {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    if (page == currentIndex && isPreparing) {
+                                        AppLoadingIndicator(size = 28.dp)
+                                        Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+                                    }
+                                    AppText(
+                                        text = stringResource(R.string.image_page_indicator, page + 1, pages.size),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }
                 }
+                // 浮动操作条：近不透明底，避免压在纸张图形上看不清。
+                PreviewActions(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(dimensionResource(ResR.dimen.dimen_global_padding_s)),
+                    canEdit = currentIndex in pages.indices,
+                    canFullscreen = previewBitmap != null,
+                    onEdit = onOpenEditor,
+                    onFullscreen = { fullscreen = true },
+                )
             }
         }
+    }
+    if (fullscreen && previewBitmap != null) {
+        FullscreenImageDialog(
+            image = previewBitmap.asImageBitmap(),
+            onDismiss = { fullscreen = false },
+        )
+    }
+}
+
+/** 预览区浮动「编辑 / 全屏」按钮组。 */
+@Composable
+private fun PreviewActions(
+    modifier: Modifier = Modifier,
+    canEdit: Boolean,
+    canFullscreen: Boolean,
+    onEdit: () -> Unit,
+    onFullscreen: () -> Unit,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(dimensionResource(ResR.dimen.dimen_shape_corner_s)),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 3.dp,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onEdit, enabled = canEdit) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = stringResource(R.string.image_action_edit))
+            }
+            TextButton(onClick = onFullscreen, enabled = canFullscreen) {
+                Icon(
+                    imageVector = Icons.Filled.Fullscreen,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = stringResource(R.string.image_action_fullscreen))
+            }
+        }
+    }
+}
+
+/** 编辑模式：工具条 + 画布视口 + 完成入口。 */
+@Composable
+private fun EditorPanel(
+    layerBitmap: android.graphics.Bitmap?,
+    editorState: PageLayerEditorState,
+    onDone: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(
+                horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
+            ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AppText(
+                text = stringResource(R.string.image_editor_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            TextButton(onClick = onDone) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = stringResource(R.string.image_editor_done))
+            }
+        }
+        LayerEditorToolbar(state = editorState)
+        LayerEditorViewport(
+            image = layerBitmap?.asImageBitmap(),
+            state = editorState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+        )
+        AppText(
+            text = stringResource(R.string.image_editor_hint),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = dimensionResource(ResR.dimen.dimen_global_padding_s)),
+        )
     }
 }
 
@@ -776,60 +961,88 @@ private fun AlgorithmControls(
     onThresholdChange: (Int) -> Unit,
     onRotationChange: (Int) -> Unit,
 ) {
-    AppText(
-        text = stringResource(R.string.image_section_algorithm),
-        style = MaterialTheme.typography.titleLarge,
-    )
-    Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-
-    val algorithms = listOf(
-        BinarizeAlgorithm.Auto,
-        BinarizeAlgorithm.StructureAware,
-        BinarizeAlgorithm.FloydSteinberg,
-        BinarizeAlgorithm.JarvisJudiceNinke,
-        BinarizeAlgorithm.Stucki,
-        BinarizeAlgorithm.Atkinson,
-        BinarizeAlgorithm.BayerOrdered,
-        BinarizeAlgorithm.BlueNoise,
-        BinarizeAlgorithm.OtsuThreshold,
-        BinarizeAlgorithm.FixedThreshold,
-        BinarizeAlgorithm.SauvolaAdaptive,
-        BinarizeAlgorithm.SobelEdge,
-    )
-    FlowRow(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
-        algorithms.forEach { option ->
-            AppFilterChip(
-                selected = algorithm == option,
-                onClick = { onAlgorithmChange(option) },
-                label = stringResource(algorithmLabelRes(option)),
+        Column(
+            modifier = Modifier.padding(
+                horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
+            ),
+        ) {
+            AppText(
+                text = stringResource(R.string.image_section_algorithm),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+
+            // 常用算法直接展示，其余收进「更多算法」：12 个 chip 全部平铺会让面板过密。
+            var showAll by remember { mutableStateOf(false) }
+            val allAlgorithms = listOf(
+                BinarizeAlgorithm.Auto,
+                BinarizeAlgorithm.StructureAware,
+                BinarizeAlgorithm.FloydSteinberg,
+                BinarizeAlgorithm.JarvisJudiceNinke,
+                BinarizeAlgorithm.Stucki,
+                BinarizeAlgorithm.Atkinson,
+                BinarizeAlgorithm.BayerOrdered,
+                BinarizeAlgorithm.BlueNoise,
+                BinarizeAlgorithm.OtsuThreshold,
+                BinarizeAlgorithm.FixedThreshold,
+                BinarizeAlgorithm.SauvolaAdaptive,
+                BinarizeAlgorithm.SobelEdge,
+            )
+            // 当前选中的算法必须始终可见，否则收起时会看不到选中项。
+            val visibleAlgorithms = if (showAll) {
+                allAlgorithms
+            } else {
+                allAlgorithms.take(6).let { if (algorithm in it) it else it + algorithm }
+            }
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(dimensionResource(ResR.dimen.dimen_global_padding_s)),
+            ) {
+                visibleAlgorithms.forEach { option ->
+                    AppFilterChip(
+                        selected = algorithm == option,
+                        onClick = { onAlgorithmChange(option) },
+                        label = stringResource(algorithmLabelRes(option)),
+                    )
+                }
+                AppFilterChip(
+                    selected = false,
+                    onClick = { showAll = !showAll },
+                    label = stringResource(
+                        if (showAll) R.string.image_alg_less else R.string.image_alg_more,
+                    ),
+                )
+            }
+            AppText(
+                text = stringResource(algorithmDescRes(algorithm)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = dimensionResource(ResR.dimen.dimen_global_padding_s)),
+            )
+
+            Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
+
+            LabeledSlider(
+                label = stringResource(R.string.image_label_threshold, threshold),
+                value = threshold.toFloat(),
+                valueRange = ImageProcessOptions.MIN_THRESHOLD.toFloat()..ImageProcessOptions.MAX_THRESHOLD.toFloat(),
+                onValueChange = onThresholdChange,
+            )
+            LabeledSlider(
+                label = stringResource(R.string.image_label_rotation, rotationDegrees),
+                value = rotationDegrees.toFloat(),
+                valueRange = 0f..ImageProcessOptions.ROTATION_STEPS.last().toFloat(),
+                steps = ImageProcessOptions.ROTATION_STEPS.size - 2,
+                onValueChange = onRotationChange,
             )
         }
     }
-    AppText(
-        text = stringResource(algorithmDescRes(algorithm)),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = dimensionResource(ResR.dimen.dimen_global_padding_s)),
-    )
-
-    Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-
-    LabeledSlider(
-        label = stringResource(R.string.image_label_threshold, threshold),
-        value = threshold.toFloat(),
-        valueRange = ImageProcessOptions.MIN_THRESHOLD.toFloat()..ImageProcessOptions.MAX_THRESHOLD.toFloat(),
-        onValueChange = onThresholdChange,
-    )
-    LabeledSlider(
-        label = stringResource(R.string.image_label_rotation, rotationDegrees),
-        value = rotationDegrees.toFloat(),
-        valueRange = 0f..ImageProcessOptions.ROTATION_STEPS.last().toFloat(),
-        steps = ImageProcessOptions.ROTATION_STEPS.size - 2,
-        onValueChange = onRotationChange,
-    )
 }
 
 @Composable
@@ -1185,6 +1398,9 @@ private fun ImageEditorScreenPreview() {
         onBatchChange = {},
         onCopiesChange = {},
         onResetPageOptions = {},
+        onOpenEditor = {},
+        onCloseEditor = {},
+        onEditTransformChange = {},
         onSave = {},
         onPrint = {},
         onPrintSingle = {},

@@ -81,70 +81,47 @@ class ShellRuntime @Inject constructor(
     @Volatile private var termuxExecCache: Boolean? = null
 
     /**
-     * 兼容 bin 目录：提供 `bash → sh` shim（以及 `python3` 之类的缺命令提示）。
+     * 兼容 bin 目录：提供 `bash → sh` 的符号链接（以及旧版 shim 的清理）。
      *
      * 模型生成脚本时最常踩的坑就是写 `bash script.sh`，而 Android 系统终端只有 toybox `sh`，
-     * 于是报 `bash: not found`。这里在 PATH 最前面放一个同名 shim，等于把「bash 语法子集」
+     * 于是报 `bash: not found`。这里在 PATH 最前面放一个同名符号链接，等于把「bash 语法子集」
      * 直接接到 sh 上，无需用户装任何东西。
      */
     private val binDir: File by lazy {
         val dir = File(context.filesDir, BIN_DIR_NAME)
         if (!dir.exists()) dir.mkdirs()
-        ensureBashShim(dir)
-        ensureMissingCommandShims(dir)
+        ensureShellShims(dir)
         dir
     }
 
-    private fun ensureBashShim(dir: File) {
-        val bash = File(dir, "bash")
-        if (bash.exists()) return
+    /**
+     * 在兼容 bin 目录里放置 `sh` / `bash` 的**符号链接**（指向系统终端）。
+     *
+     * 关键约束：Android 10+ 禁止从应用可写目录 execve，所以旧版「写一个 `#!/bin/sh` 包装脚本」
+     * 的做法会让 `sh 脚本.sh` 直接报 Permission denied。符号链接的最终目标是 /system/bin/sh，
+     * 不在可写目录里，因此可以正常执行。
+     *
+     * 同时清理旧版本遗留的脚本型 shim（sh / python / node / git 等），避免它们继续命中 PATH。
+     */
+    private fun ensureShellShims(dir: File) {
         val target = systemShell?.absolutePath ?: return
-        // 优先真实符号链接；部分文件系统不支持软链时退化为 tiny wrapper 脚本。
-        val linked = runCatching {
-            android.system.Os.symlink(target, bash.absolutePath)
-            true
-        }.getOrDefault(false)
-        if (!linked) {
-            runCatching { bash.writeText("#!/system/bin/sh\nexec $target \"$@\"\n") }
-            bash.setExecutable(true, false)
+        (MISSING_COMMANDS + "sh").forEach { name ->
+            val legacy = File(dir, name)
+            if (legacy.exists() && !isSymlink(legacy)) runCatching { legacy.delete() }
+        }
+        listOf("sh", "bash").forEach { name ->
+            val link = File(dir, name)
+            if (isSymlink(link)) return@forEach
+            runCatching { link.delete() }
+            runCatching { android.system.Os.symlink(target, link.absolutePath) }
         }
     }
 
-    /**
-     * 为当前终端里确实不存在的解释器/工具放置「明确的失败提示」。
-     *
-     * 以前模型会反复尝试 `python3 script.py`，然后在大量 `command not found` 里打转；
-     * 这里让这些命令直接返回一段可读的替代方案并以 127 退出，模型一次就能知道该换工具。
-     */
-    private fun ensureMissingCommandShims(dir: File) {
-        val shell = systemShell?.absolutePath ?: "/system/bin/sh"
-        MISSING_COMMANDS.forEach { name ->
-            val file = File(dir, name)
-            if (file.exists()) return@forEach
-            val hint = when (name) {
-                "python", "python3", "pip", "pip3" ->
-                    "当前内置终端不支持 Python。请改用项目内置工具（create_table / create_chart / create_note / draw_image / edit_image），或用 sh + awk/sed 处理文本。"
-                "node", "npm", "npx" ->
-                    "当前内置终端不支持 Node.js。请改用项目内置工具，或只用 sh 脚本完成文本/文件处理。"
-                "git" ->
-                    "当前内置终端不提供 git。文件操作请使用内置工具（read_file / write_file / copy_file / move_file / list_files）。"
-                else ->
-                    "当前内置终端不提供 $name，请改用项目内置工具或 sh 脚本。"
-            }
-            runCatching {
-                file.writeText("#!/bin/sh\nprintf '%s\\n' \"[pencil] $hint\" >&2\nexit 127\n")
-                file.setExecutable(true, false)
-            }
-        }
-        // 兼容 shell 名：模型常用 `sh` 直接跑脚本，这里保证 PATH 中 sh 可被解析。
-        val sh = File(dir, "sh")
-        if (!sh.exists()) {
-            runCatching {
-                sh.writeText("#!/bin/sh\nexec $shell \"$@\"\n")
-                sh.setExecutable(true, false)
-            }
-        }
-    }
+    /** 判断 [file] 是否为符号链接（不跟随目标）。 */
+    private fun isSymlink(file: File): Boolean = runCatching {
+        val mode = android.system.Os.lstat(file.absolutePath).st_mode.toInt()
+        (mode and android.system.OsConstants.S_IFMT) == android.system.OsConstants.S_IFLNK
+    }.getOrDefault(false)
 
     fun status(): ShellStatus {
         val installed = installedMarker.exists() && termuxRoot.isDirectory
@@ -158,7 +135,7 @@ class ShellRuntime @Inject constructor(
             systemShellProbe = probe.first,
             systemShellProbeDetail = probe.second,
             workspaceBinPath = binDir.absolutePath,
-            bashAvailable = bash.exists(),
+            bashAvailable = bash.exists() && bash.canExecute(),
         )
     }
 

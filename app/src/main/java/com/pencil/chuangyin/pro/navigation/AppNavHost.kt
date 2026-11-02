@@ -84,6 +84,7 @@ import com.pencil.chuangyin.feature.ai.ui.AiChatRoute
 import com.pencil.chuangyin.feature.ai.ui.AiConfigRoute
 import com.pencil.chuangyin.feature.dashboard.ConnectRoute
 import com.pencil.chuangyin.feature.dashboard.HomeRoute
+import com.pencil.chuangyin.feature.barcode.BarcodeRoute
 import com.pencil.chuangyin.feature.camera.CameraRoute
 import com.pencil.chuangyin.feature.image.ImageEditorRoute
 import com.pencil.chuangyin.feature.scanner.ScannerRoute
@@ -135,6 +136,7 @@ object AppRoutes {
     const val CREATIVE = "creative"
     const val PSTATION = "pstation"
     const val IMAGE = "image"
+    const val BARCODE = "barcode"
     const val CAMERA = "camera"
     const val SCANNER = "scanner"
     const val SETTINGS = "settings"
@@ -295,6 +297,7 @@ fun AppNavHost(
             AppDestination("connect", "打印机连接页") { AppRoutes.CONNECT },
             AppDestination("text_editor", "文本编辑与打印页") { AppRoutes.TEXT },
             AppDestination("image_editor", "图片编辑与打印页") { AppRoutes.IMAGE },
+            AppDestination("barcode", "条码生成与打印页") { AppRoutes.BARCODE },
             AppDestination("camera", "相机拍照页") { AppRoutes.CAMERA },
             AppDestination("scanner", "文稿扫描页（FairScan 开源文稿扫描器）") { AppRoutes.SCANNER },
             AppDestination("settings", "应用设置页") { AppRoutes.SETTINGS },
@@ -390,6 +393,7 @@ fun AppNavHost(
                     onOpenConnect = { navController.navigate(AppRoutes.CONNECT) },
                     onOpenText = { navController.navigate(AppRoutes.TEXT) },
                     onOpenImage = { navController.navigate(AppRoutes.IMAGE) },
+                    onOpenBarcode = { navController.navigate(AppRoutes.BARCODE) },
                     onOpenScanner = { navController.navigate(AppRoutes.SCANNER) },
                     onOpenAi = { navController.navigate(AppRoutes.AI) },
                     onOpenSettings = { navController.navigate(AppRoutes.SETTINGS) },
@@ -433,6 +437,12 @@ fun AppNavHost(
                     onOpenCamera = { navController.navigate(AppRoutes.CAMERA) },
                     onOpenScanner = { navController.navigate(AppRoutes.SCANNER) },
                     onOpenPixivGallery = { navController.navigate(AppRoutes.pixivGallery("image")) },
+                )
+            }
+            composable(AppRoutes.BARCODE) {
+                BarcodeRoute(
+                    onBack = { safeBack() },
+                    onGoConnect = { navController.navigate(AppRoutes.CONNECT) },
                 )
             }
             composable(AppRoutes.SCANNER) {
@@ -688,6 +698,7 @@ private fun MainTabPager(
     onOpenConnect: () -> Unit,
     onOpenText: () -> Unit,
     onOpenImage: () -> Unit,
+    onOpenBarcode: () -> Unit,
     onOpenScanner: () -> Unit,
     onOpenAi: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -717,6 +728,7 @@ private fun MainTabPager(
                 onOpenConnect = onOpenConnect,
                 onOpenText = onOpenText,
                 onOpenImage = onOpenImage,
+                onOpenBarcode = onOpenBarcode,
                 onOpenScanner = onOpenScanner,
                 onOpenAi = onOpenAi,
                 onOpenSettings = onOpenSettings,

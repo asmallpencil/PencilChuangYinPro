@@ -39,6 +39,15 @@ internal object StudioRenderer {
     private const val OUTER_MARGIN = 14f
     private const val BINARIZE_THRESHOLD = 128
 
+    /**
+     * 超采样倍数：按逻辑尺寸绘制，输出 2 倍像素位图。
+     *
+     * 打印头只有 384 点宽，若直接在 384 像素上绘制，聊天里的预览会被放大成马赛克，
+     * 细节笔画也会糊掉（用户反馈「画质被压缩、文字缺部件」）。这里保持与打印一致的
+     * 版式（列宽/字号/换行都不变），只是以 2 倍分辨率渲染，预览清晰、打印时再高质量降采样。
+     */
+    private const val SUPERSAMPLE = 2f
+
     /** 表格渲染结果。 */
     class TableResult(val bitmap: Bitmap, val truncatedCount: Int)
 
@@ -88,9 +97,14 @@ internal object StudioRenderer {
         val tableHeight = (rows.size + 1) * (rowHeight + BORDER) + BORDER
         val bitmapHeight = (OUTER_MARGIN * 2 + titleArea + tableHeight).roundToInt().coerceAtLeast(1)
 
-        val bitmap = Bitmap.createBitmap(canvasWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(
+            (canvasWidth * SUPERSAMPLE).roundToInt(),
+            (bitmapHeight * SUPERSAMPLE).roundToInt(),
+            Bitmap.Config.ARGB_8888,
+        )
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
+        canvas.scale(SUPERSAMPLE, SUPERSAMPLE)
 
         if (!title.isNullOrBlank()) {
             val titlePaint = Paint().apply {
@@ -186,9 +200,14 @@ internal object StudioRenderer {
         val count = min(labels.size, values.size)
         val width = canvasWidth
         val height = canvasHeight.coerceIn(220, 1400)
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(
+            (width * SUPERSAMPLE).roundToInt(),
+            (height * SUPERSAMPLE).roundToInt(),
+            Bitmap.Config.ARGB_8888,
+        )
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
+        canvas.scale(SUPERSAMPLE, SUPERSAMPLE)
 
         val left = 48f
         val right = width - 20f
@@ -324,9 +343,14 @@ internal object StudioRenderer {
         val maxWidth = canvasWidth - margin * 2
         val lines = wrap(bodyPaint, content, maxWidth)
         val bitmapHeight = (margin * 2 + titleArea + lines.size * lineHeight).roundToInt().coerceAtLeast(1)
-        val bitmap = Bitmap.createBitmap(canvasWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(
+            (canvasWidth * SUPERSAMPLE).roundToInt(),
+            (bitmapHeight * SUPERSAMPLE).roundToInt(),
+            Bitmap.Config.ARGB_8888,
+        )
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
+        canvas.scale(SUPERSAMPLE, SUPERSAMPLE)
 
         if (!title.isNullOrBlank()) {
             val text = truncate(titlePaint, title, maxWidth)

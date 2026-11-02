@@ -63,6 +63,10 @@ object GeneratedAgentToolsModule {
 
     @Provides
     @ElementsIntoSet
+    fun barcodeTools(impl: BarcodeTools, scope: MutableToolCallScope): Set<AgentTool> = impl.generatedTools().asAgentTools(scope)
+
+    @Provides
+    @ElementsIntoSet
     fun printTools(impl: PrintTools, scope: MutableToolCallScope): Set<AgentTool> = impl.generatedTools().asAgentTools(scope)
 
     @Provides

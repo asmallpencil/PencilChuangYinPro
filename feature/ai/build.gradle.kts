@@ -41,6 +41,7 @@ dependencies {
     implementation(project(":core:theme"))
     implementation(project(":core:ui"))
     implementation(project(":core:printer"))
+    implementation(project(":core:barcode"))
     implementation(project(":core:agent"))
 
     // Google ADK for Kotlin 官方 KSP processor：为 @Tool/@Param 注解函数生成 FunctionTool 包装器

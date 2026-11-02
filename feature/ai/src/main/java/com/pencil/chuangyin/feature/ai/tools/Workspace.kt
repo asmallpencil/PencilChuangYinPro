@@ -103,14 +103,14 @@ class Workspace @Inject constructor(
     /**
      * 把 [bytes] 写入 agent 目录下的 [target]。
      *
-     * 授权了输出目录时写 SAF，[target] 只用到 [File.name]（相对 agent 目录）；
+     * 授权了输出目录时写 SAF（用 [target] 相对 agent 目录的路径，保留嵌套结构）；
      * 否则按常规私有路径落盘。
      */
     fun writeBytes(target: File, bytes: ByteArray): Boolean {
         val tree = outputTreeUri
         if (tree != null) {
             return runCatching {
-                SafOutputDir.openOutputStream(context, tree, "$AGENT_DIR_NAME/${target.name}")?.use { it.write(bytes) }
+                SafOutputDir.openOutputStream(context, tree, "$AGENT_DIR_NAME/${relativeName(target)}")?.use { it.write(bytes) }
             }.getOrNull() != null
         }
         return runCatching {
@@ -142,7 +142,7 @@ class Workspace @Inject constructor(
         val tree = outputTreeUri
         if (tree != null) {
             return runCatching {
-                SafOutputDir.delete(context, tree, "$AGENT_DIR_NAME/${target.name}")
+                SafOutputDir.delete(context, tree, "$AGENT_DIR_NAME/${relativeName(target)}")
             }.getOrDefault(false)
         }
         return runCatching { target.delete() }.getOrDefault(false)
@@ -153,10 +153,32 @@ class Workspace @Inject constructor(
         val tree = outputTreeUri
         if (tree != null) {
             return runCatching {
-                SafOutputDir.openInputStream(context, tree, "$AGENT_DIR_NAME/${file.name}")
+                SafOutputDir.openInputStream(context, tree, "$AGENT_DIR_NAME/${relativeName(file)}")
             }.getOrNull()
         }
         return runCatching { file.inputStream() }.getOrNull()
+    }
+
+    /**
+     * 缓存中的临时文件路径（打包/解压等中间产物）。
+     *
+     * 中间产物必须落在可写缓存：授权输出目录时 agent 内的 [File] 只是占位路径，
+     * 不能直接新建目录；且素材多为 SAF 文档 URI，无法当普通文件读写。
+     */
+    fun stagingFile(name: String): File {
+        val dir = File(context.cacheDir, STAGING_DIR_NAME).apply { mkdirs() }
+        return File(dir, name)
+    }
+
+    /** agent 内的相对路径（嵌套目录保留结构）；不在 agent 目录时退回文件名。 */
+    private fun relativeName(file: File): String {
+        val canonical = canonicalOf(file)
+        val root = canonicalOf(writeRoot)
+        return if (isInside(canonical, root)) {
+            canonical.path.removePrefix(root.path).trimStart(File.separatorChar).ifEmpty { file.name }
+        } else {
+            file.name
+        }
     }
 
     /**
@@ -354,6 +376,9 @@ class Workspace @Inject constructor(
         val AGENT_DIR_NAME: String = OutputDomain.AGENT.folderName
 
         private const val MAX_FILE_NAME_LENGTH = 120
+
+        /** 打包/解压等中间产物在缓存里的子目录。 */
+        private const val STAGING_DIR_NAME = "agent_staging"
 
         /** materialize 认定为「已带可用后缀」的扩展名，避免重复补后缀。 */
         private val KNOWN_EXTENSIONS = setOf(

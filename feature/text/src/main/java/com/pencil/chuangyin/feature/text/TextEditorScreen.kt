@@ -649,6 +649,18 @@ private fun PrintParameterControls(
     onCopiesChange: (Int) -> Unit,
 ) {
     val motion = rememberAppMotion()
+    // 打印参数统一收进近不透明卡片：背景图不再透过控件，解决文字与控件"叠在背景上"。
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(
+            modifier = Modifier.padding(
+                horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
+            ),
+        ) {
     AppText(
         text = stringResource(R.string.text_label_align),
         style = MaterialTheme.typography.titleMedium,
@@ -723,6 +735,8 @@ private fun PrintParameterControls(
             onValueChange = { onCopiesChange(it.toInt()) },
         )
     }
+        }
+    }
 }
 
 /** 排版三项：字号/标题字号/行距（置于预览正上方）。 */
@@ -733,6 +747,17 @@ private fun TypographyControls(
     onTitleSizeChange: (Float) -> Unit,
     onLineSpacingChange: (Float) -> Unit,
 ) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(
+            modifier = Modifier.padding(
+                horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m),
+                vertical = dimensionResource(ResR.dimen.dimen_global_padding_s),
+            ),
+        ) {
     AppText(
         text = stringResource(R.string.text_typography_section),
         style = MaterialTheme.typography.titleMedium,
@@ -759,6 +784,8 @@ private fun TypographyControls(
         valueRange = TextDoc.MIN_LINE_SPACING..TextDoc.MAX_LINE_SPACING,
         onValueChange = onLineSpacingChange,
     )
+        }
+    }
 }
 
 @Composable

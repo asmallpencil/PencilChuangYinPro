@@ -26,6 +26,7 @@ object ToolPermissions {
         ToolNames.CREATE_TABLE,
         ToolNames.CREATE_CHART,
         ToolNames.CREATE_NOTE,
+        ToolNames.CREATE_BARCODE,
     )
 
     private val DANGEROUS = setOf(

@@ -14,6 +14,7 @@ import com.pencil.chuangyin.feature.image.data.ExtractedImages
 import com.pencil.chuangyin.feature.image.data.FileImageSource
 import com.pencil.chuangyin.feature.image.data.calculateInSampleSize
 import com.pencil.chuangyin.core.ui.data.GallerySaver
+import com.pencil.chuangyin.core.ui.editor.PageLayerTransform
 import com.pencil.chuangyin.feature.image.data.ImageArchiveImporter
 import com.pencil.chuangyin.feature.image.data.ImageSource
 import com.pencil.chuangyin.feature.image.data.PdfDocumentBundle
@@ -130,6 +131,12 @@ data class ImageEditorUiState(
     val pick: PickUiState? = null,
     /** 当前页经算法处理后的黑白预览（384 点宽）。 */
     val previewBitmap: Bitmap? = null,
+    /** 编辑模式：预览区切换为「画布 + 图片图层」编辑器。 */
+    val editorOpen: Boolean = false,
+    /** 编辑模式下用于摆放图层的未变形底图（不含图层参数）。 */
+    val editorLayerBitmap: Bitmap? = null,
+    /** 当前页图层参数（切页时同步）。 */
+    val editTransform: PageLayerTransform = PageLayerTransform(),
     val isPreparing: Boolean = false,
     val isSaving: Boolean = false,
     val connectedDevice: PrinterDevice? = null,
@@ -164,6 +171,9 @@ class ImageEditorViewModel @Inject constructor(
 
     /** 逐页处理参数覆盖：页号 → 参数；第 0 页为基准，未覆盖页沿用基准。 */
     private val optionOverrides = mutableMapOf<Int, ImageProcessOptions>()
+
+    /** 逐页图层编辑参数（位置/大小/锁定），随页创建、随页删除迁移。 */
+    private val pageTransforms = mutableMapOf<Int, PageLayerTransform>()
 
     /** 当前选择会话（PDF/压缩包挑选阶段）。 */
     private var pickSession: PickSessionData? = null
@@ -484,6 +494,12 @@ class ImageEditorViewModel @Inject constructor(
             .mapKeys { (page, _) -> if (page > index) page - 1 else page }
         optionOverrides.clear()
         optionOverrides.putAll(shifted)
+        // 图层参数同样要跟随页号迁移，并丢弃被删页的设置。
+        pageTransforms.remove(index)
+        val shiftedTransforms = pageTransforms.toSortedMap()
+            .mapKeys { (page, _) -> if (page > index) page - 1 else page }
+        pageTransforms.clear()
+        pageTransforms.putAll(shiftedTransforms)
         val pages = sources.map { ImagePageInfo(it.name) }
         if (sources.isEmpty()) {
             optionOverrides.clear()
@@ -495,6 +511,9 @@ class ImageEditorViewModel @Inject constructor(
                     processOptions = ImageProcessOptions(),
                     previewBitmap = null,
                     isPreparing = false,
+                    editorOpen = false,
+                    editorLayerBitmap = null,
+                    editTransform = PageLayerTransform(),
                 )
             }
             return
@@ -506,6 +525,9 @@ class ImageEditorViewModel @Inject constructor(
                 currentIndex = newIndex,
                 processOptions = effectiveOptions(newIndex),
                 currentPageCustomized = newIndex != 0 && optionOverrides.containsKey(newIndex),
+                editorOpen = false,
+                editorLayerBitmap = null,
+                editTransform = pageTransforms[newIndex] ?: PageLayerTransform(),
             )
         }
         schedulePreview()
@@ -526,6 +548,8 @@ class ImageEditorViewModel @Inject constructor(
                 ?.forEach { it.delete() }
         }
         optionOverrides.clear()
+        pageTransforms.clear()
+        _state.value.editorLayerBitmap?.let { runCatching { it.recycle() } }
         _state.update {
             it.copy(
                 pages = emptyList(),
@@ -534,6 +558,9 @@ class ImageEditorViewModel @Inject constructor(
                 processOptions = ImageProcessOptions(),
                 previewBitmap = null,
                 isPreparing = false,
+                editorOpen = false,
+                editorLayerBitmap = null,
+                editTransform = PageLayerTransform(),
             )
         }
     }
@@ -543,11 +570,18 @@ class ImageEditorViewModel @Inject constructor(
     fun setCurrentPage(index: Int) {
         val snapshot = _state.value
         if (index == snapshot.currentIndex || index !in snapshot.pages.indices) return
+        // 切页时退出编辑，避免把上一页的图层参数误当成下一页的。
+        if (snapshot.editorOpen) {
+            snapshot.editorLayerBitmap?.let { runCatching { it.recycle() } }
+        }
         _state.update {
             it.copy(
                 currentIndex = index,
                 processOptions = effectiveOptions(index),
                 currentPageCustomized = index != 0 && optionOverrides.containsKey(index),
+                editorOpen = false,
+                editorLayerBitmap = null,
+                editTransform = pageTransforms[index] ?: PageLayerTransform(),
             )
         }
         schedulePreview()
@@ -610,6 +644,45 @@ class ImageEditorViewModel @Inject constructor(
     fun clearNotice() = _state.update { it.copy(notice = null) }
 
     fun clearResult() = _state.update { it.copy(lastResult = null) }
+
+    // ---- 图层编辑（图片打印与创意工坊共用同一套模型） ----
+
+    /** 进入编辑模式：生成一张「不含图层参数」的底图供拖动摆放。 */
+    fun openEditor() {
+        val snapshot = _state.value
+        val index = snapshot.currentIndex
+        if (index !in sources.indices) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val layer = runCatching {
+                val raw = sources[index].load()
+                val prepared = imagePreparer.prepare(raw, snapshot.processOptions)
+                if (prepared != raw) runCatching { raw.recycle() }
+                prepared
+            }.getOrNull()
+            if (layer == null) return@launch
+            _state.update {
+                it.copy(
+                    editorOpen = true,
+                    editorLayerBitmap = layer,
+                    editTransform = pageTransforms[index] ?: PageLayerTransform(),
+                )
+            }
+        }
+    }
+
+    /** 退出编辑模式：保存当前页图层参数并重渲染最终预览。 */
+    fun closeEditor() {
+        _state.value.editorLayerBitmap?.let { runCatching { it.recycle() } }
+        _state.update { it.copy(editorOpen = false, editorLayerBitmap = null) }
+        schedulePreview()
+    }
+
+    /** 编辑过程中的实时参数（不触发重渲染，退出时才合成）。 */
+    fun updateEditTransform(transform: PageLayerTransform) {
+        val index = _state.value.currentIndex
+        pageTransforms[index] = transform
+        _state.update { it.copy(editTransform = transform) }
+    }
 
     // ---- 保存 ----
 
@@ -687,8 +760,12 @@ class ImageEditorViewModel @Inject constructor(
                 onProgress = { p -> _state.update { it.copy(progress = p) } },
                 processSelector = { relativeIndex -> effectiveOptions(indices[relativeIndex]) },
             ) { relativeIndex ->
-                // 控制器负责回收返回的位图。
-                sources[indices[relativeIndex]].load()
+                // 控制器负责回收返回的位图；这里先按图层参数合成，再交给打印管线。
+                val sourceIndex = indices[relativeIndex]
+                val raw = sources[sourceIndex].load()
+                val composed = ImagePageComposer.compose(raw, pageTransforms[sourceIndex] ?: PageLayerTransform())
+                if (composed !== raw) runCatching { raw.recycle() }
+                composed
             }
             _state.update { it.copy(isPrinting = false, progress = null, lastResult = result) }
         }
@@ -724,13 +801,19 @@ class ImageEditorViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 载入某一页并处理：先按图层参数合成画布（位置/大小/超宽裁切），
+     * 再走统一的旋转/缩放/二值化管线，保证预览、保存与打印完全一致。
+     */
     private fun loadAndProcess(
         index: Int,
         options: ImageProcessOptions,
     ): Pair<Bitmap, Bitmap>? = runCatching {
         val raw = sources[index].load()
-        val processed = imagePreparer.prepare(raw, options)
-        raw to processed
+        val composed = ImagePageComposer.compose(raw, pageTransforms[index] ?: PageLayerTransform())
+        if (composed !== raw) runCatching { raw.recycle() }
+        val processed = imagePreparer.prepare(composed, options)
+        composed to processed
     }.getOrNull()
 
     private fun queryDisplayName(uri: Uri, contentResolver: ContentResolver): String {

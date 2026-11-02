@@ -10,7 +10,7 @@
   <img alt="Compose" src="https://img.shields.io/badge/Jetpack%20Compose-2024.12-4285F4.svg">
   <img alt="Android" src="https://img.shields.io/badge/Android-7.0%2B%20(API%2024)-3DDC84.svg">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%2F11-0078D4.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.1.0.3-orange.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.1.0.4-orange.svg">
 </p>
 
 ---
@@ -49,7 +49,8 @@
 - **蓝牙打印链路**：设备配对 → 连接 → 状态/电量回读 → 逐行栅格化 → `GS v 0` 位图分包下发，支持打印中断、进度回调、走纸测试。
 - **多通道传输**：Android 走 `BluetoothSocket`（SPP / 不安全 SPP 双策略）；Windows 走 Winsock `AF_BTH` RFCOMM 直连，或已配对生成的「蓝牙链接上的标准串行 (COMx)」虚拟串口。
 - **文本打印**：富文本编辑、字号字距、对齐、分页、纸张宽度（58/80mm）自适应，逐行位图渲染保证中文字形。
-- **图片打印**：裁剪、旋转、滤镜、抖动/二值化（含 Sauvola 等自适应算法）、PDF 导入分页、多页批量。
+- **图片打印**：裁剪、旋转、滤镜、抖动/二值化（含 Sauvola 等自适应算法）、PDF 导入分页、多页批量；预览区内置可复用的**图层编辑器**（1–200% 缩放、拖动定位、锁定、超宽区域裁切提示），保存与打印均按编辑结果合成。
+- **条码打印**：基于 **ZXing**（Apache-2.0）生成并打印全部常用一维/二维条码（UPC-A/E、EAN-8/13、Code 39/93/128、Codabar、ITF、RSS-14/Expanded、QR、Data Matrix、Aztec、PDF417），并内置通用扫描解码器；与图片页同一套「预览 → 编辑 → 打印」流程。
 - **图表与表格**：AI 助手可生成表格、图表并直接送入打印队列。
 
 ### 文稿扫描与拍照
@@ -84,6 +85,7 @@
 app                  Application 装配、导航宿主、权限入口
 core/
   printer            打印协议栈（扫描 / 连接 / 栅格化 / 分包 / 状态轮询）
+  barcode            条码生成与通用解码（ZXing，Apache-2.0）
   scanner            OpenCV 文档扫描算法
   agent              OpenAI 兼容 Agent 内核（SSE、工具协议、上下文折叠）
   backdrop           液态玻璃 Compose 实现（vendor 自 AndroidLiquidGlass）
@@ -94,7 +96,8 @@ core/
 feature/
   dashboard          首页、蓝牙打印机连接页
   text               文本编辑与打印
-  image              图片处理与打印
+  image              图片处理与打印（含可复用图层编辑器）
+  barcode            条码生成 / 扫描解码与打印
   scanner            文稿扫描（内嵌 FairScan 算法、多页拍摄与校正）
   camera             极简拍照
   pixiv              P 站浏览 / 评论 / 下载 / 打印
@@ -152,14 +155,14 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 
 安装包与源码归档都在 **[Releases](https://github.com/asmallpencil/PencilChuangYinPro/releases)** 页面。
 
-当前版本 **v2.1.0.3**（debug 构建，Android 分架构提供三个 APK，按设备按需下载即可）：
+当前版本 **v2.1.0.4**（debug 构建，Android 分架构提供三个 APK，按设备按需下载即可）：
 
 | 平台 | 文件 | 体积 | 说明 |
 | --- | --- | --- | --- |
-| Android 7.0+ 64 位 | [`PencilChuangYinPro-2.1.0.3-arm64-v8a-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.3/PencilChuangYinPro-2.1.0.3-arm64-v8a-debug.apk) | ≈64 MB | 绝大多数现代机型，体积最小，推荐优先选择 |
-| Android 7.0+ 32 位 | [`PencilChuangYinPro-2.1.0.3-armeabi-v7a-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.3/PencilChuangYinPro-2.1.0.3-armeabi-v7a-debug.apk) | ≈63 MB | 老设备 / 32 位系统专用 |
-| Android 7.0+ 32/64 共通 | [`PencilChuangYinPro-2.1.0.3-universal-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.3/PencilChuangYinPro-2.1.0.3-universal-debug.apk) | ≈98 MB | 不确定架构时的兜底包，同时包含两种 ABI |
-| Windows 10/11 x64 | [`PencilChuangYinPro-2.1.0.3-windows-x64.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.3/PencilChuangYinPro-2.1.0.3-windows-x64.zip) | ≈68 MB | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装；桌面端最新构建也可从源码生成（见上文） |
+| Android 7.0+ 64 位 | [`PencilChuangYinPro-2.1.0.4-arm64-v8a-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.4/PencilChuangYinPro-2.1.0.4-arm64-v8a-debug.apk) | ≈64 MB | 绝大多数现代机型，体积最小，推荐优先选择 |
+| Android 7.0+ 32 位 | [`PencilChuangYinPro-2.1.0.4-armeabi-v7a-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.4/PencilChuangYinPro-2.1.0.4-armeabi-v7a-debug.apk) | ≈63 MB | 老设备 / 32 位系统专用 |
+| Android 7.0+ 32/64 共通 | [`PencilChuangYinPro-2.1.0.4-universal-debug.apk`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.4/PencilChuangYinPro-2.1.0.4-universal-debug.apk) | ≈98 MB | 不确定架构时的兜底包，同时包含两种 ABI |
+| Windows 10/11 x64 | [`PencilChuangYinPro-2.1.0.4-windows-x64.zip`](https://github.com/asmallpencil/PencilChuangYinPro/releases/download/v2.1.0.4/PencilChuangYinPro-2.1.0.4-windows-x64.zip) | ≈68 MB | 解压后双击 `PencilChuangYinPro.exe` 运行，免安装；桌面端最新构建也可从源码生成（见上文） |
 
 > 本次为 **debug 构建**，沿用调试签名（与历史 release 包签名不同，首次安装需先卸载旧版）。三者功能完全一致，仅打包的 ABI 不同；`32/64 共通版` 因同时内置两套原生库（含 sing-box）体积约为单包 1.5 倍。签名库与本机 `keystore.properties` 不入库。
 
@@ -226,10 +229,11 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 | **Retrofit** | Square | Apache-2.0 | P 站 App API 的声明式 HTTP 封装，接口定义即文档 | https://github.com/square/retrofit |
 | **sing-box** | SagerNet / sing-box 贡献者 | GPL-3.0 | 应用内代理的协议内核。以官方 Android 可执行文件随包内置（`core:proxy` 的 `jniLibs/arm64-v8a/libsingbox.so`），按节点生成出站配置并暴露回环 SOCKS 入口，承载 VLESS（含 REALITY）、VMess、Trojan、Shadowsocks、Hysteria / Hysteria2、TUIC、AnyTLS、SSH 等协议。路由、规则与出口选择仍由本应用的 ProxyRouter 负责 | https://github.com/SagerNet/sing-box |
 | **Skia / Skiko** | Google / JetBrains | BSD-3-Clause | 桌面端的位图绘制与栅格化后端（随 Compose 提供）。文本打印的逐行位图、图片抖动与预览都经由它落到屏幕与打印机 | https://github.com/JetBrains/skiko |
+| **ZXing** | ZXing authors | Apache-2.0 | 条码打印的生成与解码内核。`core:barcode` 用 `MultiFormatWriter` 生成 15 种一维/二维条码，用 `MultiFormatReader` + `HybridBinarizer` 做通用扫描解码；以未修改的二进制依赖引入 | https://github.com/zxing/zxing |
 
 ### 共同鸣谢
 
-以上 49 个项目，参与方式各不相同 —— 有的是被 vendor 进仓库的源码，有的是 Gradle 坐标引入的依赖，有的是被移植、仿写、参照过的实现。但它们对项目的贡献是**同等**的：少了任何一个，这个项目都不会是现在的样子。
+以上 50 个项目，参与方式各不相同 —— 有的是被 vendor 进仓库的源码，有的是 Gradle 坐标引入的依赖，有的是被移植、仿写、参照过的实现。但它们对项目的贡献是**同等**的：少了任何一个，这个项目都不会是现在的样子。
 
 - 没有 **AndroidLiquidGlass** 与 **Kyant0/shapes**，就没有液态玻璃；
 - 没有 **LiquidGlass-Cpp** 与 **Dear ImGui**，C++ 侧的光学实验无从谈起；
@@ -239,6 +243,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 - 没有 **Operit**，AI 助手的工具确认与权限模型不会成型；
 - 没有 **FairScan**，文稿扫描只是把照片存下来 —— 四边形检测、自动色彩模式、透视校正与增强全部来自它的算法；
 - 没有 **ImageCorrection** 的双路径思路，相机取景里的文档预览就无从谈起；
+- 没有 **ZXing**，条码生成与扫描解码要另写一套编码器/识别器；
 - 没有 **OpenCV / CameraX / PDFBox / Coil / Retrofit / OkHttp**，图像与网络两块直接归零；
 - 没有 **Kotlin / Compose / AndroidX / Hilt / Gradle / KSP** 这一整套基础设施，这个项目连编译都过不去。
 
@@ -252,7 +257,7 @@ desktopApp           Windows 桌面端（Compose Multiplatform / JVM → app-ima
 
 这意味着你可以自由使用、修改、再发布本项目，但**衍生作品也必须以 GPL-3.0 开源**，并保留原作者署名与许可声明。
 
-其中 **Pix-EzViewer**（MIT）、**PiPixiv**（Apache-2.0）、**AndroidLiquidGlass** / **Kyant0/shapes** / **LiquidGlass-Cpp**（Apache-2.0）等源码级来源的许可，与本项目的 GPL-3.0 兼容；**FairScan** 与 **sing-box** 同为 GPL-3.0，与本项目同协议、源码整体内嵌并保留原署名与许可；**jSerialComm**、**JNA**、**Operit** 的 LGPL 条款通过「不改源码、动态链接」的方式满足。
+其中 **Pix-EzViewer**（MIT）、**PiPixiv**（Apache-2.0）、**AndroidLiquidGlass** / **Kyant0/shapes** / **LiquidGlass-Cpp** / **ZXing**（Apache-2.0）等源码级来源的许可，与本项目的 GPL-3.0 兼容；**FairScan** 与 **sing-box** 同为 GPL-3.0，与本项目同协议、源码整体内嵌并保留原署名与许可；**jSerialComm**、**JNA**、**Operit** 的 LGPL 条款通过「不改源码、动态链接」的方式满足。
 
 **Ketch** 与 **ImageCorrection** 的上游仓库目前未附带许可文件。本项目对二者的使用方式为：Ketch 经由 Pix-EzViewer 的源码子模块关系沿用其管线分层，ImageCorrection 采用其双路径算法思路并由本项目代码独立实现。若两位作者希望补充许可或调整署名，请开 Issue。
 

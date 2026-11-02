@@ -151,8 +151,10 @@ class ShellTools @Inject constructor(
             isError = true,
         )
         val timeout = (timeout_ms ?: DEFAULT_TIMEOUT_MS).toLong().coerceIn(MIN_TIMEOUT_MS, MAX_TIMEOUT_MS)
-        val baseName = file_name?.trim()?.takeIf { it.isNotEmpty() }?.removeSuffix(".sh")
-            ?.map { ch -> if (ch.isLetterOrDigit() || ch == '_' || ch == '-') ch else '_' }
+        // 注意：CharSequence.map 返回 List<Char>，旧实现直接拼进文件名会得到 "[s, e, l, ...]"
+        // 这种「把字母拆成列表」的怪文件名；这里用字符串替换生成合法文件名。
+        val baseName = file_name?.trim()?.removeSuffix(".sh")?.takeIf { it.isNotEmpty() }
+            ?.replace(Regex("[^A-Za-z0-9_-]"), "_")
             ?.takeIf { it.isNotEmpty() }
             ?: ("script_" + System.currentTimeMillis())
         // 脚本必须落在真实可执行的私有工作区（授权输出目录走 SAF，无法被 sh 直接读取）。
@@ -173,8 +175,11 @@ class ShellTools @Inject constructor(
 
         val relative = "scripts/${target.name}"
         val quotedArgs = args.orEmpty().joinToString(" ") { shQuote(it) }
+        // 用系统终端的绝对路径当解释器：PATH 里的 shim 位于应用私有目录，Android 10+
+        // 禁止从可写目录 execve，`sh 脚本.sh` 会报 Permission denied。
+        val interpreter = runtime.systemShell?.absolutePath ?: "sh"
         val command = buildString {
-            append("sh ").append(shQuote(target.absolutePath))
+            append(shQuote(interpreter)).append(' ').append(shQuote(target.absolutePath))
             if (quotedArgs.isNotEmpty()) append(' ').append(quotedArgs)
         }
 
