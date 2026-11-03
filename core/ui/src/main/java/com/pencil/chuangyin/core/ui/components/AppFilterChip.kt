@@ -47,6 +47,8 @@ fun AppFilterChip(
     label: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /** 标签最大行数；等宽芯片（如条码格式网格）用 1 行 + 省略号保持行高一致。 */
+    labelMaxLines: Int = Int.MAX_VALUE,
 ) {
     val nativeHost = LocalLiquidGlassWidgetHost.current
     if (enabled && rememberLiquidGlassActive() && nativeHost != null) {
@@ -77,6 +79,9 @@ fun AppFilterChip(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelLarge,
+                maxLines = labelMaxLines,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .alpha(0f)
                     .padding(horizontal = chipHorizontalPadding(), vertical = chipVerticalPadding()),
@@ -139,7 +144,14 @@ fun AppFilterChip(
                 selected = selected,
             )
         },
-        label = { Text(label) },
+        label = {
+            Text(
+                text = label,
+                maxLines = labelMaxLines,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        },
     )
 }
 

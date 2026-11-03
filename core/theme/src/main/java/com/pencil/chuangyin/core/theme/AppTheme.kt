@@ -200,7 +200,25 @@ private fun decodeSampledBackground(context: Context, uri: Uri, maxWidthPx: Int)
     while (maxWidthPx > 0 && bounds.outWidth / (sampleSize * 2) >= maxWidthPx && sampleSize < 64) {
         sampleSize *= 2
     }
-    context.contentResolver.openInputStream(uri)?.use { stream ->
+    val decoded = context.contentResolver.openInputStream(uri)?.use { stream ->
         BitmapFactory.decodeStream(stream, null, BitmapFactory.Options().apply { inSampleSize = sampleSize })
+    } ?: return@runCatching null
+    // 二次精确限制：inSampleSize 只能按 2 的幂降采样，4K/超长壁纸仍可能解出整屏级大位图
+    // （例如 4000×5000 ≈ 80MB），在高版本系统/高分辨率设备上是最容易被忽略的内存峰值。
+    // 这里统一把长边压到 4096px、宽压到目标屏宽，既够铺满屏，也不给 GPU 上传超大纹理。
+    val maxEdge = 4096f
+    val scale = minOf(
+        1f,
+        maxWidthPx.toFloat() / decoded.width.coerceAtLeast(1),
+        maxEdge / maxOf(decoded.width, decoded.height).coerceAtLeast(1),
+    )
+    if (scale >= 1f) {
+        decoded
+    } else {
+        val w = (decoded.width * scale).roundToInt().coerceAtLeast(1)
+        val h = (decoded.height * scale).roundToInt().coerceAtLeast(1)
+        val scaled = Bitmap.createScaledBitmap(decoded, w, h, true)
+        if (scaled !== decoded) decoded.recycle()
+        scaled
     }
 }.getOrNull()

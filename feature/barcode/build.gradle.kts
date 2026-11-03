@@ -33,6 +33,12 @@ kotlin {
     }
 }
 
+configurations.configureEach {
+    // 与 feature:camera 相同：google-adk 把 listenablefuture 约束成空壳包，
+    // 会让 CameraX 无法解析真实的 ListenableFuture 接口。
+    resolutionStrategy.force("com.google.guava:listenablefuture:1.0")
+}
+
 dependencies {
     implementation(project(":core:resources"))
     implementation(project(":core:theme"))
@@ -52,6 +58,15 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.exifinterface)
+
+    // 通用扫描器：CameraX 实时取帧 + ZXing 解码（core:barcode）。
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    // 实时解码直接使用 ZXing Reader；core:barcode 内部是 implementation，不传递。
+    implementation(libs.zxing.core)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

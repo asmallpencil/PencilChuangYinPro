@@ -50,6 +50,8 @@ class LiquidGlassControllerImpl(private val view: LiquidGlassView) : LiquidGlass
         var registered: Boolean = false
     }
 
+    private var controlsEnabled = false
+    private var navbarEnabled = false
     private val entries = HashMap<Any, Entry>()
     private val byId = HashMap<Int, Entry>()
     private val freeIds = ArrayDeque<Int>()
@@ -67,6 +69,8 @@ class LiquidGlassControllerImpl(private val view: LiquidGlassView) : LiquidGlass
      * 位置与文案重注册，避免「关闭再开启后控件不显示」。
      */
     fun setEnabled(controls: Boolean, navbar: Boolean) {
+        controlsEnabled = controls
+        navbarEnabled = navbar
         if (!controls) {
             entries.values.forEach { invalidateNativeWidget(it) }
         }
@@ -75,6 +79,21 @@ class LiquidGlassControllerImpl(private val view: LiquidGlassView) : LiquidGlass
             entries.values.forEach { entry ->
                 if (entry.box?.let(::isVisibleOnScreen) == true) register(entry)
             }
+        }
+    }
+
+    /**
+     * EGL 上下文重建后恢复原生覆盖层：重开开关并按缓存重注册所有可见控件。
+     *
+     * 上层在 [LiquidGlassView.onGlContextRecreated] 里调用；主题色/样式等标量参数由
+     * MainActivity 的 LaunchedEffect 一并重发。
+     */
+    fun restoreAfterGlContextLoss() {
+        view.setGlassEnabled(controlsEnabled, navbarEnabled)
+        entries.values.forEach { invalidateNativeWidget(it) }
+        if (!controlsEnabled) return
+        entries.values.forEach { entry ->
+            if (entry.box?.let(::isVisibleOnScreen) == true) register(entry)
         }
     }
 

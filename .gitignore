@@ -25,6 +25,7 @@ build-verify/
 *.aab
 *.har
 ketch-prune.zip
+dist/
 
 # ---------- 本仓库的本地参考资料（体积大、非本项目代码，不随源码发布） ----------
 third_party/

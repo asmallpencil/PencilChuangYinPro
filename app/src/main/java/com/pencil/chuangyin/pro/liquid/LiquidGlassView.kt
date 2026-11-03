@@ -119,10 +119,28 @@ class LiquidGlassView @JvmOverloads constructor(
     private val density: Float = resources.displayMetrics.density
 
     private var glReady = false
+
+    /** EGL 上下文丢失后重建完成：通知上层重注册控件与主题参数。 */
+    var onGlContextRecreated: (() -> Unit)? = null
+    private var pendingRestore = false
     private var tracking = false
     private var lastBackdropAt = 0L
     private var capturing = false
-    private var backdropBitmap: Bitmap? = null
+
+    /**
+     * backdrop 采样缓冲区池；**只在主线程访问**。
+     *
+     * 为什么不是单张复用：PixelCopy 回调把位图交给 GL 线程上传纹理是异步的，下一轮 PixelCopy
+     * 若直接复用同一张位图，就会在 GL 线程读像素的同时被 PixelCopy 改写（ColorOS/Android 15
+     * 上曾表现为原生闪退）。这里改为「上传完成后才归还」的小池：既避免读写竞争，也不会在
+     * 每帧新建整屏位图造成内存抖动。
+     */
+    private val backdropPool = ArrayDeque<Bitmap>()
+    private var backdropInFlight = 0
+    private var backdropCaptureFailed = false
+
+    /** 同尺寸缓冲区上限：最多 3 张（一张在采、一张在上传、一张待命）。 */
+    private val backdropPoolLimit = 3
     /** 强制立即刷新 backdrop（忽略节流）：主题/背景色变化时由 Compose 侧触发。 */
     private var forceBackdrop = false
 
@@ -462,6 +480,10 @@ class LiquidGlassView @JvmOverloads constructor(
         dialogActive = false
         dialogTracking = false
         dialogPendingFrames = 0
+        // 池中缓冲区此刻确定未被采集/上传引用，释放可立刻归还整屏内存（仍在上传中的
+        // 缓冲区由 GL 线程回调归还，交给 GC，绝不在主线程提前 recycle）。
+        backdropPool.forEach { runCatching { it.recycle() } }
+        backdropPool.clear()
         queueEvent {
             nativeRelease()
             glReady = false
@@ -550,43 +572,103 @@ class LiquidGlassView @JvmOverloads constructor(
 
     private fun captureBackdrop() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
+        if (backdropCaptureFailed) return
         val activity = context as? Activity ?: return
+        // 已 detach / 正在销毁时不再抓帧，避免 PixelCopy 在收尾阶段与窗口生命周期打架。
+        if (!isAttachedToWindow || activity.isFinishing || activity.isDestroyed) return
         val w = width
         val h = height
         if (w <= 0 || h <= 0) return
         // 全分辨率采集：面板/控件直接采样该纹理，半分辨率会经 GL_LINEAR 上采样，
         // 使压在玻璃下的文字与图标整体发糊（用户反馈的「整个区域变模糊」）。
-        val bw = w
-        val bh = h
-        var bmp = backdropBitmap
-        if (bmp == null || bmp.width != bw || bmp.height != bh) {
-            bmp?.recycle()
-            bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
-            backdropBitmap = bmp
-        }
-        val target = bmp ?: return
+        val target = obtainBackdropBuffer(w, h) ?: return
         capturing = true
         try {
             PixelCopy.request(activity.window, target, { result ->
                 capturing = false
                 if (result == PixelCopy.SUCCESS) {
-                    queueEvent { nativeBindBackdrop(target) }
+                    backdropInFlight++
+                    queueEvent {
+                        nativeBindBackdrop(target)
+                        // GL 线程完成纹理上传后才归还缓冲区：此后 PixelCopy 再写入同一张位图
+                        // 才不会和上一轮上传抢像素。
+                        mainHandler.post {
+                            backdropInFlight = (backdropInFlight - 1).coerceAtLeast(0)
+                            releaseBackdropBuffer(target)
+                        }
+                    }
                     requestRender()
+                } else {
+                    releaseBackdropBuffer(target)
                 }
             }, mainHandler)
         } catch (t: Throwable) {
             capturing = false
+            // PixelCopy 本身不可用（部分 ROM 限制 / 窗口已不可见）：本次会话放弃 backdrop，
+            // 保留常温玻璃外观，而不是让异常冒到主线程造成闪退。
+            releaseBackdropBuffer(target)
         }
+    }
+
+    /**
+     * 取一张符合当前窗口尺寸的空闲缓冲区。
+     *
+     * 没有空闲且已在上传/采集中的数量达到上限时返回 null，本帧放弃采样——
+     * 宁可少一帧 backdrop，也不复用仍在被 GPU 读取的位图。
+     */
+    private fun obtainBackdropBuffer(w: Int, h: Int): Bitmap? {
+        while (true) {
+            val candidate = backdropPool.removeFirstOrNull() ?: break
+            if (candidate.width == w && candidate.height == h && !candidate.isRecycled) {
+                return candidate
+            }
+            // 尺寸已变化（旋转/分屏）：该缓冲区不会再被使用，直接回收。
+            runCatching { candidate.recycle() }
+        }
+        if (backdropInFlight + 1 >= backdropPoolLimit) return null
+        return try {
+            Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        } catch (t: Throwable) {
+            // 整屏 ARGB 位图分配失败（内存紧张）时永久降级，不再尝试。
+            backdropCaptureFailed = true
+            null
+        }
+    }
+
+    /** 归还缓冲区；只有确认不再被 PixelCopy / GL 线程引用的位图才会回到池里。 */
+    private fun releaseBackdropBuffer(bitmap: Bitmap) {
+        if (bitmap.isRecycled) return
+        if (backdropPool.size >= backdropPoolLimit) {
+            runCatching { bitmap.recycle() }
+            return
+        }
+        backdropPool.addLast(bitmap)
     }
 
     private inner class GlassRenderer : GLSurfaceView.Renderer {
         override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-            // 延迟到 onSurfaceChanged 取得尺寸后再初始化原生层
+            // 首次创建时 glReady 为 false，等 onSurfaceChanged 拿到尺寸再初始化。
+            // 但 EGL 上下文被系统回收后（后台切回、拍照/选图回来、ColorOS 内存回收）也会
+            // 走 onSurfaceCreated：此时原生层的 VAO/着色器/纹理全部失效，必须先释放再重建。
+            // 旧实现因为 glReady 仍为 true 而跳过重建，下一次 nativeRender 拿着已删除的
+            // GL 对象作图，表现为「回到前台显示图像后直接闪退」。
+            if (glReady) {
+                nativeRelease()
+                glReady = false
+                pendingRestore = true
+            }
+            capturing = false
         }
 
         override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
             if (!glReady) {
                 glReady = nativeInit(width.toFloat(), height.toFloat(), density)
+                if (glReady && pendingRestore) {
+                    pendingRestore = false
+                    // 原生控件表已随上下文一起清空，交给上层按缓存重注册（Compose 不会因为
+                    // 一次 EGL 重建就自动重发）。
+                    mainHandler.post { onGlContextRecreated?.invoke() }
+                }
             } else {
                 nativeResize(width.toFloat(), height.toFloat())
             }

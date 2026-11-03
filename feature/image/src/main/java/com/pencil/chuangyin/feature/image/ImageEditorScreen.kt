@@ -62,7 +62,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
-import com.pencil.chuangyin.core.ui.editor.FullscreenImageDialog
+import com.pencil.chuangyin.core.ui.editor.FullscreenPageEditorDialog
 import com.pencil.chuangyin.core.ui.editor.LayerEditorToolbar
 import com.pencil.chuangyin.core.ui.editor.LayerEditorViewport
 import com.pencil.chuangyin.core.ui.editor.PageLayerEditorState
@@ -424,7 +424,8 @@ fun ImageEditorScreen(
                 //（纯色背景 + 玻璃着色 = 一块不透明底板的观感）。
                 .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                // 编辑态关闭页面滚动：把纵向滑动让给图层/预览手势，避免滑一下页面就把编辑器带走。
+                .verticalScroll(rememberScrollState(), enabled = !state.editorOpen)
                 .padding(horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m))
                 .padding(
                     top = dimensionResource(ResR.dimen.dimen_global_padding_m),
@@ -742,6 +743,8 @@ private fun PreviewPaper(
 ) {
     val glassActive = rememberLiquidGlassActive()
     var fullscreen by remember { mutableStateOf(false) }
+    // 从「预览态」直接点全屏时，会自动进入编辑；关闭全屏后再退出编辑，回到纯净预览。
+    var fullscreenFromView by remember { mutableStateOf(false) }
     val editorState = remember(currentIndex, editorOpen) { PageLayerEditorState(editTransform) }
     // 编辑过程中的参数变化实时回写 ViewModel（退出时才真正合成，避免每帧重渲染）。
     LaunchedEffect(editorState) {
@@ -779,6 +782,7 @@ private fun PreviewPaper(
                 layerBitmap = editorLayerBitmap,
                 editorState = editorState,
                 onDone = onCloseEditor,
+                onFullscreen = { fullscreen = true },
             )
         } else if (pages.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -848,15 +852,29 @@ private fun PreviewPaper(
                     canEdit = currentIndex in pages.indices,
                     canFullscreen = previewBitmap != null,
                     onEdit = onOpenEditor,
-                    onFullscreen = { fullscreen = true },
+                    onFullscreen = {
+                        // 全屏也是编辑器：先准备未变形图层，加载期间全屏内展示加载态。
+                        fullscreenFromView = true
+                        fullscreen = true
+                        onOpenEditor()
+                    },
                 )
             }
         }
     }
-    if (fullscreen && previewBitmap != null) {
-        FullscreenImageDialog(
-            image = previewBitmap.asImageBitmap(),
-            onDismiss = { fullscreen = false },
+    if (fullscreen) {
+        FullscreenPageEditorDialog(
+            image = editorLayerBitmap
+                ?.takeIf { !it.isRecycled }
+                ?.asImageBitmap(),
+            state = editorState,
+            onDismiss = {
+                fullscreen = false
+                if (fullscreenFromView) {
+                    fullscreenFromView = false
+                    onCloseEditor()
+                }
+            },
         )
     }
 }
@@ -905,6 +923,7 @@ private fun EditorPanel(
     layerBitmap: android.graphics.Bitmap?,
     editorState: PageLayerEditorState,
     onDone: () -> Unit,
+    onFullscreen: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -923,6 +942,13 @@ private fun EditorPanel(
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = onFullscreen) {
+                Icon(
+                    imageVector = Icons.Filled.Fullscreen,
+                    contentDescription = stringResource(R.string.image_action_fullscreen),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
             TextButton(onClick = onDone) {
                 Icon(
                     imageVector = Icons.Filled.Check,
@@ -935,7 +961,7 @@ private fun EditorPanel(
         }
         LayerEditorToolbar(state = editorState)
         LayerEditorViewport(
-            image = layerBitmap?.asImageBitmap(),
+            image = layerBitmap?.takeIf { !it.isRecycled }?.asImageBitmap(),
             state = editorState,
             modifier = Modifier
                 .fillMaxWidth()

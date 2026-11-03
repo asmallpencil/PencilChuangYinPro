@@ -85,6 +85,7 @@ import com.pencil.chuangyin.feature.ai.ui.AiConfigRoute
 import com.pencil.chuangyin.feature.dashboard.ConnectRoute
 import com.pencil.chuangyin.feature.dashboard.HomeRoute
 import com.pencil.chuangyin.feature.barcode.BarcodeRoute
+import com.pencil.chuangyin.feature.barcode.scan.BarcodeScanRoute
 import com.pencil.chuangyin.feature.camera.CameraRoute
 import com.pencil.chuangyin.feature.image.ImageEditorRoute
 import com.pencil.chuangyin.feature.scanner.ScannerRoute
@@ -137,6 +138,8 @@ object AppRoutes {
     const val PSTATION = "pstation"
     const val IMAGE = "image"
     const val BARCODE = "barcode"
+    const val BARCODE_SCAN = "barcode_scan"
+    const val BARCODE_SCAN_FILL = "barcode_scan_fill"
     const val CAMERA = "camera"
     const val SCANNER = "scanner"
     const val SETTINGS = "settings"
@@ -298,6 +301,7 @@ fun AppNavHost(
             AppDestination("text_editor", "文本编辑与打印页") { AppRoutes.TEXT },
             AppDestination("image_editor", "图片编辑与打印页") { AppRoutes.IMAGE },
             AppDestination("barcode", "条码生成与打印页") { AppRoutes.BARCODE },
+            AppDestination("barcode_scan", "通用扫描器（相机实时识别）") { AppRoutes.BARCODE_SCAN },
             AppDestination("camera", "相机拍照页") { AppRoutes.CAMERA },
             AppDestination("scanner", "文稿扫描页（FairScan 开源文稿扫描器）") { AppRoutes.SCANNER },
             AppDestination("settings", "应用设置页") { AppRoutes.SETTINGS },
@@ -395,6 +399,7 @@ fun AppNavHost(
                     onOpenImage = { navController.navigate(AppRoutes.IMAGE) },
                     onOpenBarcode = { navController.navigate(AppRoutes.BARCODE) },
                     onOpenScanner = { navController.navigate(AppRoutes.SCANNER) },
+                    onOpenBarcodeScan = { navController.navigate(AppRoutes.BARCODE_SCAN) },
                     onOpenAi = { navController.navigate(AppRoutes.AI) },
                     onOpenSettings = { navController.navigate(AppRoutes.SETTINGS) },
                     onPixivLogin = { navController.navigate(AppRoutes.PIXIV_LOGIN) },
@@ -443,6 +448,34 @@ fun AppNavHost(
                 BarcodeRoute(
                     onBack = { safeBack() },
                     onGoConnect = { navController.navigate(AppRoutes.CONNECT) },
+                    onOpenScanner = { navController.navigate(AppRoutes.BARCODE_SCAN_FILL) },
+                )
+            }
+            composable(AppRoutes.BARCODE_SCAN) {
+                BarcodeScanRoute(
+                    allowFillBarcode = false,
+                    onClose = { safeBack() },
+                    onOpenTextPrint = {
+                        // 跳到文本打印后扫描页即关闭，返回键回到首页而不是结果页。
+                        navController.navigate(AppRoutes.TEXT) {
+                            popUpTo(AppRoutes.BARCODE_SCAN) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onFillBarcode = { safeBack() },
+                )
+            }
+            composable(AppRoutes.BARCODE_SCAN_FILL) {
+                BarcodeScanRoute(
+                    allowFillBarcode = true,
+                    onClose = { safeBack() },
+                    onOpenTextPrint = {
+                        navController.navigate(AppRoutes.TEXT) {
+                            popUpTo(AppRoutes.BARCODE_SCAN_FILL) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onFillBarcode = { safeBack() },
                 )
             }
             composable(AppRoutes.SCANNER) {
@@ -700,6 +733,7 @@ private fun MainTabPager(
     onOpenImage: () -> Unit,
     onOpenBarcode: () -> Unit,
     onOpenScanner: () -> Unit,
+    onOpenBarcodeScan: () -> Unit,
     onOpenAi: () -> Unit,
     onOpenSettings: () -> Unit,
     onPixivLogin: () -> Unit,
@@ -730,6 +764,7 @@ private fun MainTabPager(
                 onOpenImage = onOpenImage,
                 onOpenBarcode = onOpenBarcode,
                 onOpenScanner = onOpenScanner,
+                onOpenBarcodeScan = onOpenBarcodeScan,
                 onOpenAi = onOpenAi,
                 onOpenSettings = onOpenSettings,
                 bottomBarSpace = bottomBarSpace,

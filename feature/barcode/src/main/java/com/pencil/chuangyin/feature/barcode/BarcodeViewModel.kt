@@ -2,15 +2,13 @@ package com.pencil.chuangyin.feature.barcode
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pencil.chuangyin.core.barcode.BarcodeDecoder
 import com.pencil.chuangyin.core.barcode.BarcodeFormatOption
 import com.pencil.chuangyin.core.barcode.BarcodeGenerator
-import com.pencil.chuangyin.core.barcode.DecodedBarcode
 import com.pencil.chuangyin.core.ui.data.GallerySaver
 import com.pencil.chuangyin.core.ui.editor.PageLayerTransform
+import com.pencil.chuangyin.printer.BarcodeContentTransferBus
 import com.pencil.chuangyin.printer.BinarizeAlgorithm
 import com.pencil.chuangyin.printer.ConnectionState
 import com.pencil.chuangyin.printer.ImagePrintOptions
@@ -26,6 +24,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,6 +51,8 @@ data class BarcodeUiState(
     val editTransform: PageLayerTransform = PageLayerTransform(),
     val editorOpen: Boolean = false,
     val isGenerating: Boolean = false,
+    /** 当前内容/格式无法编码出条码时置位，界面上做内联错误提示。 */
+    val generateFailed: Boolean = false,
     val isSaving: Boolean = false,
     val connectedDevice: PrinterDevice? = null,
     val isConnecting: Boolean = false,
@@ -60,9 +62,6 @@ data class BarcodeUiState(
     val printerStatus: PrinterStatus? = null,
     /** 打印机是否正处于过热保护（固件自主冷却中）。 */
     val overheatActive: Boolean = false,
-    /** 相册图片解码结果；非 null 时界面弹出结果对话框。 */
-    val scanResult: DecodedBarcode? = null,
-    val isScanning: Boolean = false,
     val notice: BarcodeNotice? = null,
 )
 
@@ -72,10 +71,14 @@ class BarcodeViewModel @Inject constructor(
     private val printerController: PrinterController,
     private val printerSettings: PrinterSettings,
     private val gallerySaver: GallerySaver,
+    private val contentTransferBus: BarcodeContentTransferBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(initialState())
     val state: StateFlow<BarcodeUiState> = _state.asStateFlow()
+
+    /** 输入防抖后的编码任务；新输入到来时取消上一次，避免逐字生成堆积。 */
+    private var generateJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -98,48 +101,75 @@ class BarcodeViewModel @Inject constructor(
                 _state.update { it.copy(overheatActive = PrinterStatus.Overheat in device.activeStatuses) }
             }
         }
+        // 通用扫描器回填：扫描结果页点「填入条码内容」后，内容总线会推来文本。
+        viewModelScope.launch {
+            contentTransferBus.pending.collect { text ->
+                if (text.isNullOrBlank()) return@collect
+                contentTransferBus.consume()
+                _state.update { it.copy(content = text) }
+                scheduleRefresh(delayMs = 0L)
+            }
+        }
     }
 
     // ---- 内容 / 格式 ----
 
+    /** 输入变化：防抖后自动重排预览，不需要再点「生成」。 */
     fun setContent(value: String) {
         _state.update { it.copy(content = value) }
+        scheduleRefresh(delayMs = AUTO_REFRESH_DELAY_MS)
     }
 
-    /** 切换格式；已生成过条码时立即按新格式重新生成。 */
+    /** 切换格式后立即按新格式刷新。 */
     fun setFormat(option: BarcodeFormatOption) {
-        val snapshot = _state.value
-        if (snapshot.format == option) return
+        if (_state.value.format == option) return
         _state.update { it.copy(format = option) }
-        if (snapshot.generatedBitmap != null && snapshot.content.isNotEmpty()) generate()
+        scheduleRefresh(delayMs = 0L)
     }
 
-    /** 生成条码并切回默认图层变换（新条码不应沿用旧位置）。 */
-    fun generate() {
+    /**
+     * 自动刷新：取消上一次待执行任务，按当前内容/格式重新编码。
+     * 保留用户已调好的图层变换（尺寸/位置/锁定），连续输入时预览不会跳回默认。
+     */
+    private fun scheduleRefresh(delayMs: Long) {
+        generateJob?.cancel()
         val snapshot = _state.value
-        if (snapshot.isGenerating) return
-        val content = snapshot.content
-        if (content.isEmpty()) {
-            _state.update { it.copy(notice = BarcodeNotice.ContentEmpty) }
+        if (snapshot.content.isBlank()) {
+            _state.update {
+                it.copy(
+                    generatedBitmap = null,
+                    previewBitmap = null,
+                    isGenerating = false,
+                    generateFailed = false,
+                )
+            }
             return
         }
-        val option = snapshot.format
-        val width = printerSettings.printWidthPx()
-        viewModelScope.launch(Dispatchers.Default) {
+        generateJob = viewModelScope.launch(Dispatchers.Default) {
+            if (delayMs > 0) delay(delayMs)
             _state.update { it.copy(isGenerating = true) }
-            val raw = BarcodeGenerator.encode(content, option, widthPx = width)
+            val width = printerSettings.printWidthPx()
+            val raw = BarcodeGenerator.encode(snapshot.content, snapshot.format, widthPx = width)
             if (raw == null) {
-                _state.update { it.copy(isGenerating = false, notice = BarcodeNotice.GenerateFailed) }
+                _state.update {
+                    it.copy(
+                        generatedBitmap = null,
+                        previewBitmap = null,
+                        isGenerating = false,
+                        generateFailed = true,
+                    )
+                }
                 return@launch
             }
-            val page = BarcodePageComposer.compose(raw, PageLayerTransform(), width)
+            val transform = _state.value.editTransform
+            val page = BarcodePageComposer.compose(raw, transform, width)
             _state.update {
                 it.copy(
                     generatedBitmap = raw,
                     previewBitmap = page,
-                    editTransform = PageLayerTransform(),
                     editorOpen = false,
                     isGenerating = false,
+                    generateFailed = false,
                 )
             }
         }
@@ -243,32 +273,6 @@ class BarcodeViewModel @Inject constructor(
 
     fun cancelPrint() = printerController.cancelPrint()
 
-    // ---- 扫描解码 ----
-
-    /** 从相库图片解码条码；识别失败给一次性提示，不弹结果框。 */
-    fun scanFromUri(uri: Uri) {
-        if (_state.value.isScanning) return
-        viewModelScope.launch(Dispatchers.IO) {
-            _state.update { it.copy(isScanning = true) }
-            val decoded = BarcodeDecoder.decodeFromUri(appContext, uri)
-            _state.update {
-                it.copy(
-                    isScanning = false,
-                    scanResult = decoded,
-                    notice = if (decoded == null) BarcodeNotice.ScanFailed else it.notice,
-                )
-            }
-        }
-    }
-
-    /** 把扫描结果填入输入框并关闭结果对话框。 */
-    fun applyScanResultToContent() {
-        val decoded = _state.value.scanResult ?: return
-        _state.update { it.copy(content = decoded.text, scanResult = null) }
-    }
-
-    fun clearScanResult() = _state.update { it.copy(scanResult = null) }
-
     fun clearNotice() = _state.update { it.copy(notice = null) }
 
     fun clearResult() = _state.update { it.copy(lastResult = null) }
@@ -281,3 +285,6 @@ class BarcodeViewModel @Inject constructor(
         )
     }
 }
+
+/** 输入停顿后自动刷新的防抖时长。 */
+private const val AUTO_REFRESH_DELAY_MS = 320L

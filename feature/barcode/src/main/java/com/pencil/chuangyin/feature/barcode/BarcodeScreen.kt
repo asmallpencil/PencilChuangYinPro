@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -89,7 +90,7 @@ import com.pencil.chuangyin.core.ui.components.AppTextField
 import com.pencil.chuangyin.core.ui.components.nativeGlassSurface
 import com.pencil.chuangyin.core.ui.components.pseudoGlassSurface
 import com.pencil.chuangyin.core.ui.components.rememberLiquidGlassActive
-import com.pencil.chuangyin.core.ui.editor.FullscreenImageDialog
+import com.pencil.chuangyin.core.ui.editor.FullscreenPageEditorDialog
 import com.pencil.chuangyin.core.ui.editor.LayerEditorToolbar
 import com.pencil.chuangyin.core.ui.editor.LayerEditorViewport
 import com.pencil.chuangyin.core.ui.editor.PageLayerEditorState
@@ -108,6 +109,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 fun BarcodeRoute(
     onBack: () -> Unit,
     onGoConnect: () -> Unit,
+    onOpenScanner: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: BarcodeViewModel = hiltViewModel()
@@ -118,7 +120,7 @@ fun BarcodeRoute(
         onGoConnect = onGoConnect,
         onContentChange = viewModel::setContent,
         onFormatChange = viewModel::setFormat,
-        onGenerate = viewModel::generate,
+        onOpenScanner = onOpenScanner,
         onOpenEditor = viewModel::openEditor,
         onCloseEditor = viewModel::closeEditor,
         onEditTransformChange = viewModel::updateEditTransform,
@@ -126,9 +128,6 @@ fun BarcodeRoute(
         onPrint = viewModel::print,
         onPrintSingle = viewModel::printSingle,
         onCancelPrint = viewModel::cancelPrint,
-        onScan = viewModel::scanFromUri,
-        onApplyScanResult = viewModel::applyScanResultToContent,
-        onClearScanResult = viewModel::clearScanResult,
         onClearResult = viewModel::clearResult,
         onClearNotice = viewModel::clearNotice,
         modifier = modifier,
@@ -147,7 +146,7 @@ fun BarcodeScreen(
     onGoConnect: () -> Unit,
     onContentChange: (String) -> Unit,
     onFormatChange: (BarcodeFormatOption) -> Unit,
-    onGenerate: () -> Unit,
+    onOpenScanner: () -> Unit,
     onOpenEditor: () -> Unit,
     onCloseEditor: () -> Unit,
     onEditTransformChange: (PageLayerTransform) -> Unit,
@@ -155,9 +154,6 @@ fun BarcodeScreen(
     onPrint: () -> Unit,
     onPrintSingle: () -> Unit,
     onCancelPrint: () -> Unit,
-    onScan: (Uri) -> Unit,
-    onApplyScanResult: () -> Unit,
-    onClearScanResult: () -> Unit,
     onClearResult: () -> Unit,
     onClearNotice: () -> Unit,
     modifier: Modifier = Modifier,
@@ -167,10 +163,6 @@ fun BarcodeScreen(
 
     // 控制编辑模式优先于返回：先退出图层编辑，再退出页面。
     BackHandler(enabled = state.editorOpen) { onCloseEditor() }
-
-    val scanLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-    ) { uri -> if (uri != null) onScan(uri) }
 
     // Android 9 及以下保存公共相册需要写存储权限。
     val writeStoragePermission = rememberPermissionState(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -252,44 +244,6 @@ fun BarcodeScreen(
         )
     }
 
-    state.scanResult?.let { decoded ->
-        AppAlertDialog(
-            onDismissRequest = onClearScanResult,
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.QrCodeScanner,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            },
-            title = { AppText(text = stringResource(R.string.barcode_scan_title)) },
-            text = {
-                Column {
-                    AppText(
-                        text = stringResource(R.string.barcode_scan_format, decoded.formatName),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
-                    AppText(text = decoded.text, style = MaterialTheme.typography.bodyLarge)
-                }
-            },
-            confirmButton = {
-                AppTextButton(
-                    text = stringResource(R.string.barcode_scan_fill),
-                    onClick = onApplyScanResult,
-                )
-            },
-            dismissButton = {
-                AppTextButton(
-                    text = stringResource(R.string.barcode_scan_close),
-                    onClick = onClearScanResult,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-        )
-    }
-
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -332,7 +286,8 @@ fun BarcodeScreen(
             modifier = Modifier
                 .padding(top = innerPadding.calculateTopPadding())
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                // 编辑态关闭页面滚动，纵向手势全部交给图层/预览。
+                .verticalScroll(rememberScrollState(), enabled = !state.editorOpen)
                 .padding(horizontal = dimensionResource(ResR.dimen.dimen_global_padding_m))
                 .padding(
                     top = dimensionResource(ResR.dimen.dimen_global_padding_m),
@@ -344,19 +299,10 @@ fun BarcodeScreen(
                 content = state.content,
                 format = state.format,
                 isGenerating = state.isGenerating,
-                isScanning = state.isScanning,
+                generateFailed = state.generateFailed,
                 onContentChange = onContentChange,
                 onFormatChange = onFormatChange,
-                onGenerate = onGenerate,
-                onScan = {
-                    runCatching {
-                        scanLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                        )
-                    }.onFailure {
-                        Toast.makeText(context, R.string.barcode_scan_failed, Toast.LENGTH_SHORT).show()
-                    }
-                },
+                onOpenScanner = onOpenScanner,
             )
 
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
@@ -383,18 +329,17 @@ fun BarcodeScreen(
     }
 }
 
-/** 内容输入 + 格式选择 + 生成/扫描操作。 */
+/** 内容输入 + 格式选择 + 扫描入口。输入与格式变化都会自动刷新预览，不再需要「生成」按钮。 */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ContentAndFormatCard(
     content: String,
     format: BarcodeFormatOption,
     isGenerating: Boolean,
-    isScanning: Boolean,
+    generateFailed: Boolean,
     onContentChange: (String) -> Unit,
     onFormatChange: (BarcodeFormatOption) -> Unit,
-    onGenerate: () -> Unit,
-    onScan: () -> Unit,
+    onOpenScanner: () -> Unit,
 ) {
     var showAll by remember { mutableStateOf(false) }
     Surface(
@@ -419,6 +364,35 @@ private fun ContentAndFormatCard(
                 placeholder = stringResource(R.string.barcode_content_placeholder),
                 singleLine = false,
             )
+
+            Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (isGenerating) {
+                        stringResource(R.string.barcode_generating)
+                    } else {
+                        stringResource(R.string.barcode_auto_hint)
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                if (isGenerating) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .width(56.dp)
+                            .height(2.dp),
+                    )
+                }
+            }
+            if (generateFailed) {
+                Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
+                Text(
+                    text = stringResource(R.string.barcode_generate_invalid),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
 
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
             AppText(
@@ -465,26 +439,9 @@ private fun ContentAndFormatCard(
             }
 
             Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_m)))
-            AppPrimaryButton(
-                text = if (isGenerating) {
-                    stringResource(R.string.barcode_generating)
-                } else {
-                    stringResource(R.string.barcode_action_generate)
-                },
-                onClick = onGenerate,
-                enabled = content.isNotBlank() && !isGenerating,
-                leadingIcon = Icons.Filled.QrCode2,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(modifier = Modifier.height(dimensionResource(ResR.dimen.dimen_global_padding_s)))
             AppOutlinedButton(
-                text = if (isScanning) {
-                    stringResource(R.string.barcode_scanning)
-                } else {
-                    stringResource(R.string.barcode_scan_entry)
-                },
-                onClick = onScan,
-                enabled = !isScanning,
+                text = stringResource(R.string.barcode_scan_open_camera),
+                onClick = onOpenScanner,
                 leadingIcon = Icons.Filled.QrCodeScanner,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -492,6 +449,7 @@ private fun ContentAndFormatCard(
     }
 }
 
+/** 格式芯片统一宽度与单行省略，保证一维/二维格式网格的行高和控件尺寸一致。 */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FormatChipRow(
@@ -508,6 +466,8 @@ private fun FormatChipRow(
                 selected = selected == option,
                 onClick = { onSelect(option) },
                 label = option.displayName,
+                modifier = Modifier.width(104.dp),
+                labelMaxLines = 1,
             )
         }
     }
@@ -536,6 +496,8 @@ private fun BarcodePreview(
 ) {
     val glassActive = rememberLiquidGlassActive()
     var fullscreen by remember { mutableStateOf(false) }
+    // 从预览态点全屏时自动进入编辑，关闭全屏后再退出编辑。
+    var fullscreenFromView by remember { mutableStateOf(false) }
     val editorState = remember(editorOpen) { PageLayerEditorState(editTransform) }
     LaunchedEffect(editorState) {
         snapshotFlow { editorState.transform }
@@ -571,6 +533,7 @@ private fun BarcodePreview(
                 layerBitmap = generatedBitmap,
                 editorState = editorState,
                 onDone = onCloseEditor,
+                onFullscreen = { fullscreen = true },
             )
         } else if (previewBitmap == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -586,21 +549,24 @@ private fun BarcodePreview(
             }
         } else {
             Box(modifier = Modifier.fillMaxSize()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
-                    contentAlignment = Alignment.TopCenter,
-                ) {
-                    Image(
-                        bitmap = previewBitmap.asImageBitmap(),
-                        contentDescription = stringResource(R.string.barcode_title),
-                        contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
-                        filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
+                val safePreview = previewBitmap.takeIf { !it.isRecycled }
+                if (safePreview != null) {
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(dimensionResource(ResR.dimen.dimen_global_padding_s)),
-                    )
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                        contentAlignment = Alignment.TopCenter,
+                    ) {
+                        Image(
+                            bitmap = safePreview.asImageBitmap(),
+                            contentDescription = stringResource(R.string.barcode_title),
+                            contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
+                            filterQuality = androidx.compose.ui.graphics.FilterQuality.High,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(dimensionResource(ResR.dimen.dimen_global_padding_s)),
+                        )
+                    }
                 }
                 BarcodePreviewActions(
                     modifier = Modifier
@@ -609,15 +575,29 @@ private fun BarcodePreview(
                     canEdit = generatedBitmap != null,
                     canFullscreen = previewBitmap != null,
                     onEdit = onOpenEditor,
-                    onFullscreen = { fullscreen = true },
+                    onFullscreen = {
+                        // 全屏即编辑器：条码图层在生成时已就绪，可直接进入编辑。
+                        fullscreenFromView = true
+                        fullscreen = true
+                        onOpenEditor()
+                    },
                 )
             }
         }
     }
-    if (fullscreen && previewBitmap != null) {
-        FullscreenImageDialog(
-            image = previewBitmap.asImageBitmap(),
-            onDismiss = { fullscreen = false },
+    if (fullscreen) {
+        FullscreenPageEditorDialog(
+            image = generatedBitmap
+                ?.takeIf { !it.isRecycled }
+                ?.asImageBitmap(),
+            state = editorState,
+            onDismiss = {
+                fullscreen = false
+                if (fullscreenFromView) {
+                    fullscreenFromView = false
+                    onCloseEditor()
+                }
+            },
         )
     }
 }
@@ -665,6 +645,7 @@ private fun BarcodeEditorPanel(
     layerBitmap: android.graphics.Bitmap?,
     editorState: PageLayerEditorState,
     onDone: () -> Unit,
+    onFullscreen: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -683,6 +664,13 @@ private fun BarcodeEditorPanel(
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = onFullscreen) {
+                Icon(
+                    imageVector = Icons.Filled.Fullscreen,
+                    contentDescription = stringResource(R.string.barcode_action_fullscreen),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
             TextButton(onClick = onDone) {
                 Icon(
                     imageVector = Icons.Filled.Check,
@@ -695,7 +683,7 @@ private fun BarcodeEditorPanel(
         }
         LayerEditorToolbar(state = editorState)
         LayerEditorViewport(
-            image = layerBitmap?.asImageBitmap(),
+            image = layerBitmap?.takeIf { !it.isRecycled }?.asImageBitmap(),
             state = editorState,
             modifier = Modifier
                 .fillMaxWidth()
@@ -926,7 +914,7 @@ private fun BarcodeScreenPreview() {
         onGoConnect = {},
         onContentChange = {},
         onFormatChange = {},
-        onGenerate = {},
+        onOpenScanner = {},
         onOpenEditor = {},
         onCloseEditor = {},
         onEditTransformChange = {},
@@ -934,9 +922,6 @@ private fun BarcodeScreenPreview() {
         onPrint = {},
         onPrintSingle = {},
         onCancelPrint = {},
-        onScan = {},
-        onApplyScanResult = {},
-        onClearScanResult = {},
         onClearResult = {},
         onClearNotice = {},
     )

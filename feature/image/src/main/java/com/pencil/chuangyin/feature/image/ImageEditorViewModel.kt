@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /** 已加入任务的图片页（仅展示信息，真实位图经 [ImageSource] 懒加载）。 */
@@ -181,6 +182,7 @@ class ImageEditorViewModel @Inject constructor(
     private val thumbInFlight = mutableSetOf<String>()
 
     private var previewJob: Job? = null
+    private var editorJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -535,6 +537,7 @@ class ImageEditorViewModel @Inject constructor(
 
     fun clearAll() {
         previewJob?.cancel()
+        editorJob?.cancel()
         sources.forEach { s -> runCatching { s.close() } }
         sources.clear()
         pdfBundles.forEach { b -> runCatching { b.close() } }
@@ -549,7 +552,6 @@ class ImageEditorViewModel @Inject constructor(
         }
         optionOverrides.clear()
         pageTransforms.clear()
-        _state.value.editorLayerBitmap?.let { runCatching { it.recycle() } }
         _state.update {
             it.copy(
                 pages = emptyList(),
@@ -571,9 +573,7 @@ class ImageEditorViewModel @Inject constructor(
         val snapshot = _state.value
         if (index == snapshot.currentIndex || index !in snapshot.pages.indices) return
         // 切页时退出编辑，避免把上一页的图层参数误当成下一页的。
-        if (snapshot.editorOpen) {
-            snapshot.editorLayerBitmap?.let { runCatching { it.recycle() } }
-        }
+        editorJob?.cancel()
         _state.update {
             it.copy(
                 currentIndex = index,
@@ -652,7 +652,9 @@ class ImageEditorViewModel @Inject constructor(
         val snapshot = _state.value
         val index = snapshot.currentIndex
         if (index !in sources.indices) return
-        viewModelScope.launch(Dispatchers.IO) {
+        // 重复点「编辑/全屏」时取消上一次准备任务，避免旧位图晚到后覆盖当前页。
+        editorJob?.cancel()
+        editorJob = viewModelScope.launch(Dispatchers.IO) {
             val layer = runCatching {
                 val raw = sources[index].load()
                 val prepared = imagePreparer.prepare(raw, snapshot.processOptions)
@@ -660,6 +662,10 @@ class ImageEditorViewModel @Inject constructor(
                 prepared
             }.getOrNull()
             if (layer == null) return@launch
+            if (!isActive || _state.value.currentIndex != index) {
+                runCatching { layer.recycle() }
+                return@launch
+            }
             _state.update {
                 it.copy(
                     editorOpen = true,
@@ -672,7 +678,9 @@ class ImageEditorViewModel @Inject constructor(
 
     /** 退出编辑模式：保存当前页图层参数并重渲染最终预览。 */
     fun closeEditor() {
-        _state.value.editorLayerBitmap?.let { runCatching { it.recycle() } }
+        editorJob?.cancel()
+        // 不立刻 recycle：全屏编辑器/内嵌编辑器可能还在最后一帧引用该位图，
+        // 回收时机交给 GC，避免「trying to use a recycled bitmap」闪退。
         _state.update { it.copy(editorOpen = false, editorLayerBitmap = null) }
         schedulePreview()
     }

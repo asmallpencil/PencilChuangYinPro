@@ -4,10 +4,12 @@ import android.os.Bundle
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import android.graphics.Bitmap
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,6 +84,27 @@ class MainActivity : ComponentActivity() {
             var navbarActive by remember { mutableStateOf(false) }
             // 全局弹窗宿主状态：在 AppTheme 之外创建，供主题内容（注入）与弹窗可见性效应（下方）共用。
             val dialogHost = remember { AppDialogHostState() }
+            // EGL 上下文被系统回收并重建后，原生层的控件表/图标/主题参数都会清零。
+            // 这里用 tick 让下方的主题下发 LaunchedEffect 重新执行一次。
+            var glassRestoreTick by remember { mutableStateOf(0) }
+            val navIconsRef = remember { mutableStateOf<List<Bitmap>>(emptyList()) }
+            val navIndexRef = remember { mutableStateOf(0) }
+            DisposableEffect(glass) {
+                if (glass == null) {
+                    onDispose { }
+                } else {
+                    glass.onGlContextRecreated = {
+                        controller?.restoreAfterGlContextLoss()
+                        navIconsRef.value.forEachIndexed { index, icon ->
+                            glass.setNavIconBitmap(index, icon)
+                        }
+                        glass.setNavIndex(navIndexRef.value)
+                        glass.refreshBackdropNow()
+                        glassRestoreTick++
+                    }
+                    onDispose { glass.onGlContextRecreated = null }
+                }
+            }
             AppTheme(
                 themeState = themeState,
                 colorSchemeProvider = colorSchemeProvider,
@@ -98,6 +121,7 @@ class MainActivity : ComponentActivity() {
                     glassColorScheme.primary,
                     glassColorScheme.surface,
                     glassColorScheme.onSurface,
+                    glassRestoreTick,
                 ) {
                     glass?.setThemeColors(
                         glassColorScheme.primary.toArgb(),
@@ -115,10 +139,15 @@ class MainActivity : ComponentActivity() {
                             navigation = navigationBus,
                             liquidGlassNavbarEnabled = themeState.liquidGlassNavbarEnabled,
                             onNavTapHandlerReady = { handler -> navTapHandler = handler },
-                            onNavIndexChanged = { index -> glass?.setNavIndex(index) },
+                            onNavIndexChanged = { index ->
+                                navIndexRef.value = index
+                                glass?.setNavIndex(index)
+                            },
                             onNavbarActiveChanged = { active -> navbarActive = active },
                             // 应用内图标（首页/创作/P站）离屏渲染为位图后下发原生导航栏。
                             onNavIconsReady = { icons ->
+                                // 缓存一份：EGL 上下文重建后原生图标纹理会丢失，需要重新下发。
+                                navIconsRef.value = icons
                                 icons.forEachIndexed { index, icon -> glass?.setNavIconBitmap(index, icon) }
                             },
                         )
@@ -142,6 +171,7 @@ class MainActivity : ComponentActivity() {
                 themeState.darkTheme,
                 themeState.liquidGlassRenderer,
                 navbarActive,
+                glassRestoreTick,
             ) {
                 val cppActive = themeState.liquidGlassRenderer == LiquidGlassRenderer.Cpp
                 val controlsOn = cppActive && themeState.liquidGlassControlsEnabled
@@ -161,13 +191,14 @@ class MainActivity : ComponentActivity() {
                 themeState.liquidGlassShadowOn,
                 themeState.liquidGlassGlassOn,
                 themeState.liquidGlassContourEdge,
+                glassRestoreTick,
             ) {
                 glass?.setStyle(themeState.toLiquidGlassStyle())
             }
             // 容器玻璃面（Panel）参数：容器盖在实时 Compose 内容之上，模糊只会让压在
             // 下面的文字变糊，因此面板默认不模糊；主体保持透明（PANEL_SHEET_ALPHA_SCALE），
             // 玻璃质感由边缘高光 + 透镜 + 投影承担。
-            LaunchedEffect(themeState.liquidGlassGlassOn) {
+            LaunchedEffect(themeState.liquidGlassGlassOn, glassRestoreTick) {
                 glass?.setPanelStyle(
                     blurDp = PANEL_BLUR_DP,
                     padDp = PANEL_PAD_DP,
@@ -179,7 +210,7 @@ class MainActivity : ComponentActivity() {
             // 而不是停留在上一帧的页面（否则卡片内容会短暂空白/错位）。
             // 同时放行「弹窗容器玻璃面」：弹窗常常在控件玻璃**尚未开启**时出现（如开启前的多级警告
             // 弹窗），若原生层此时停绘，弹窗就只剩 Compose 实心底，即「伪液态玻璃弹窗」。
-            LaunchedEffect(dialogHost.hasVisibleDialog) {
+            LaunchedEffect(dialogHost.hasVisibleDialog, glassRestoreTick) {
                 glass?.setModalTouchBlocked(dialogHost.hasVisibleDialog)
                 glass?.setGlassPanelsAlwaysOn(dialogHost.hasVisibleDialog)
                 glass?.refreshBackdropNow()

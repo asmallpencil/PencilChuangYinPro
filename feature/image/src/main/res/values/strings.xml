@@ -22,7 +22,7 @@
     <string name="image_action_fullscreen">全屏</string>
     <string name="image_editor_title">编辑图层</string>
     <string name="image_editor_done">完成</string>
-    <string name="image_editor_hint">拖动图片调整位置，双指缩放查看；灰色区域在打印时会被裁切</string>
+    <string name="image_editor_hint">单指拖动图层 · 双指缩放视图（仅显示）· 右侧竖条调整图层尺寸（影响打印）</string>
 
     <!-- 算法 -->
     <string name="image_section_algorithm">抖动算法</string>

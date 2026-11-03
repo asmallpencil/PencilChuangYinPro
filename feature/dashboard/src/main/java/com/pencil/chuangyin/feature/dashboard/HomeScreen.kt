@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -77,6 +78,7 @@ fun HomeRoute(
     onOpenImage: () -> Unit,
     onOpenBarcode: () -> Unit,
     onOpenScanner: () -> Unit,
+    onOpenBarcodeScan: () -> Unit,
     onOpenAi: () -> Unit,
     onOpenSettings: () -> Unit,
     bottomBarSpace: Dp = Dp(0f),
@@ -91,6 +93,7 @@ fun HomeRoute(
         onOpenImage = onOpenImage,
         onOpenBarcode = onOpenBarcode,
         onOpenScanner = onOpenScanner,
+        onOpenBarcodeScan = onOpenBarcodeScan,
         onOpenAi = onOpenAi,
         onOpenSettings = onOpenSettings,
         bottomBarSpace = bottomBarSpace,
@@ -107,6 +110,7 @@ fun HomeScreen(
     onOpenImage: () -> Unit,
     onOpenBarcode: () -> Unit,
     onOpenScanner: () -> Unit,
+    onOpenBarcodeScan: () -> Unit,
     onOpenAi: () -> Unit = {},
     onOpenSettings: () -> Unit,
     bottomBarSpace: Dp = Dp(0f),
@@ -135,6 +139,13 @@ fun HomeScreen(
             TopAppBar(
                 title = { AppText(text = stringResource(R.string.dashboard_title)) },
                 actions = {
+                    AppIconButton(
+                        onClick = onOpenBarcodeScan,
+                        imageVector = Icons.Filled.QrCodeScanner,
+                        contentDescription = stringResource(R.string.home_barcode_scan),
+                        // 顶栏快捷入口不使用液态玻璃（避免导航区玻璃滥用）。
+                        glass = false,
+                    )
                     AppIconButton(
                         onClick = onOpenSettings,
                         imageVector = Icons.Filled.Settings,
@@ -514,6 +525,7 @@ private fun HomeScreenPreview() {
         onOpenImage = {},
         onOpenBarcode = {},
         onOpenScanner = {},
+        onOpenBarcodeScan = {},
         onOpenAi = {},
         onOpenSettings = {},
     )
