@@ -9,7 +9,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Android%207.0%2B%20%7C%20Windows%2010%2F11%20x64-4A90D9?style=flat-square)](https://github.com/asmallpencil/PencilChuangYinPro)
 [![Language](https://img.shields.io/badge/Language-Kotlin-7F52FF?style=flat-square)](https://kotlinlang.org)
 [![UI](https://img.shields.io/badge/UI-Jetpack%20Compose%20%2B%20MD3-6C8CD5?style=flat-square)](https://m3.material.io)
-[![Version](https://img.shields.io/badge/version-2.1.0.4-4A90D9?style=flat-square)](https://github.com/asmallpencil/PencilChuangYinPro/releases)
+[![Version](https://img.shields.io/badge/version-2.1.0.5-4A90D9?style=flat-square)](https://github.com/asmallpencil/PencilChuangYinPro/releases)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](LICENSE)
 
 </div>
@@ -91,14 +91,14 @@ desktopApp           Windows 桌面端（Compose Multiplatform）
 
 安装包与源码归档发布于 [Releases](https://github.com/asmallpencil/PencilChuangYinPro/releases)。
 
-当前版本 **v2.1.0.4（debug 构建）**：
+当前版本 **v2.1.0.5（debug 构建）**：
 
 | 平台 | 文件 | 体积 | 说明 |
 |:----:|------|:----:|------|
-| Android 7.0+ 64 位 | `PencilChuangYinPro-2.1.0.4-arm64-v8a-debug.apk` | ≈78 MB | 现代机型首选，体积最小 |
-| Android 7.0+ 32 位 | `PencilChuangYinPro-2.1.0.4-armeabi-v7a-debug.apk` | ≈77 MB | 老设备 / 32 位系统 |
-| Android 32/64 共通 | `PencilChuangYinPro-2.1.0.4-universal-debug.apk` | ≈115 MB | 不确定架构时的兜底包 |
-| Windows 10/11 x64 | `PencilChuangYinPro-2.1.0.4-windows-x64.zip` | ≈68 MB | 解压后双击 `PencilChuangYinPro.exe` 运行 |
+| Android 7.0+ 64 位 | `PencilChuangYinPro-2.1.0.5-arm64-v8a-debug.apk` | ≈78 MB | 现代机型首选，体积最小 |
+| Android 7.0+ 32 位 | `PencilChuangYinPro-2.1.0.5-armeabi-v7a-debug.apk` | ≈77 MB | 老设备 / 32 位系统 |
+| Android 32/64 共通 | `PencilChuangYinPro-2.1.0.5-universal-debug.apk` | ≈115 MB | 不确定架构时的兜底包 |
+| Windows 10/11 x64 | `PencilChuangYinPro-2.1.0.5-windows-x64.zip` | ≈68 MB | 解压后双击 `PencilChuangYinPro.exe` 运行 |
 
 > 本次为 debug 构建，沿用调试签名；若与已安装版本签名冲突，需先卸载旧版。三套 APK 功能一致，仅打包的 ABI 不同。
 
